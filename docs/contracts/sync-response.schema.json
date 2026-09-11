@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sih2026.ps26041.contracts/v1/sync-response.schema.json",
+  "title": "SyncResponse",
+  "description": "Response for POST /v1/sync. The client may acknowledge and delete outbox data only for items listed in accepted or duplicates. Rejected items remain in the outbox (or are flagged). certificates[] are server-issued canonical records that replace a local pending draft. No secrets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "server_time",
+    "accepted",
+    "duplicates",
+    "rejected",
+    "certificates"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "server_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Server UTC clock at response generation (RFC 3339)."
+    },
+    "accepted": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/acceptedItem"
+      }
+    },
+    "duplicates": {
+      "type": "array",
+      "maxItems": 20,
+      "description": "Already stored under the same client_attempt_id. Safe to treat as acknowledged.",
+      "items": {
+        "$ref": "#/$defs/duplicateItem"
+      }
+    },
+    "rejected": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/rejectedItem"
+      }
+    },
+    "certificates": {
+      "type": "array",
+      "maxItems": 20,
+      "description": "Canonical certificates issued (or already issued) for qualifying server passes in this response. Never describes a local-only pending draft.",
+      "items": {
+        "$ref": "#/$defs/issuedCertificate"
+      }
+    }
+  },
+  "$defs": {
+    "acceptedItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["client_attempt_id", "server_attempt_id", "server_score", "server_passed"],
+      "properties": {
+        "client_attempt_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "server_attempt_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "server_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "multipleOf": 0.01
+        },
+        "server_passed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "duplicateItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["client_attempt_id", "server_attempt_id"],
+      "properties": {
+        "client_attempt_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "server_attempt_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Existing canonical id. Client should store it if missing locally."
+        }
+      }
+    },
+    "rejectedItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["client_attempt_id", "error_code", "message"],
+      "properties": {
+        "client_attempt_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "error_code": {
+          "type": "string",
+          "enum": [
+            "SCHEMA_INVALID",
+            "UNSUPPORTED_SCHEMA_VERSION",
+            "UNKNOWN_MODULE",
+            "UNKNOWN_CONTENT_VERSION",
+            "ATTEMPT_NOT_COMPLETED",
+            "WORKER_MISMATCH",
+            "EVENT_SEQUENCE_INVALID",
+            "DUPLICATE_EVENT_CONFLICT",
+            "SCORE_OUT_OF_RANGE",
+            "UNAUTHORIZED"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "description": "Human-readable explanation. Must not include secrets or stack traces with credentials."
+        }
+      }
+    },
+    "issuedCertificate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "client_attempt_id",
+        "public_id",
+        "module_id",
+        "content_version",
+        "score",
+        "passed",
+        "issued_at",
+        "status",
+        "verification_url"
+      ],
+      "properties": {
+        "client_attempt_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "public_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "module_id": {
+          "type": "string",
+          "pattern": "^(fire-explosion-response|gas-confined-space|[a-z][a-z0-9-]{2,61})$",
+          "maxLength": 64
+        },
+        "content_version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "maxLength": 32
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "multipleOf": 0.01,
+          "description": "Canonical server score printed on the certificate."
+        },
+        "passed": {
+          "type": "boolean",
+          "const": true,
+          "description": "Issued certificates are qualifying passes only."
+        },
+        "issued_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["issued"],
+          "description": "Sync payload uses issued, not public verify statuses. Public valid/revoked/not_found live in certificate-verify.schema.json."
+        },
+        "verification_url": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 512,
+          "description": "Absolute public verify URL for QR encoding, conceptually https://<public-host>/verify/{public_id}. Host is supplied by the server; this schema does not fix a production domain."
+        }
+      }
+    }
+  }
+}

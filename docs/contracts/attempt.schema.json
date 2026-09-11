@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sih2026.ps26041.contracts/v1/attempt.schema.json",
+  "title": "TrainingAttempt",
+  "description": "One worker run of one module. Created and completable with zero network connectivity. client_attempt_id is a client-generated UUID and must never be reused (retakes = new attempts). Server score and certificate fields are optional post-sync enrichments and must not be required for offline completion.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "client_attempt_id",
+    "worker_id",
+    "module_id",
+    "content_version",
+    "started_at",
+    "status",
+    "events"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "JSON contract version. Distinct from content_version."
+    },
+    "client_attempt_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Client-generated UUID. Primary idempotency key for sync. Never reuse, including after failed or abandoned runs."
+    },
+    "worker_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Stable worker identifier known on-device. May be provisioned before first online session; not a secret."
+    },
+    "module_id": {
+      "type": "string",
+      "pattern": "^(fire-explosion-response|gas-confined-space|[a-z][a-z0-9-]{2,61})$",
+      "maxLength": 64
+    },
+    "content_version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+      "maxLength": 32,
+      "description": "Module/rubric pack version actually used during this run. Required for server re-score."
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Required (non-null) when status is completed. Null while in_progress or abandoned without completion."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["in_progress", "completed", "abandoned"],
+      "description": "in_progress: local only. completed: eligible for outbox sync. abandoned: terminal without a completed assessment; not synced in MVP."
+    },
+    "client_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 10000,
+      "multipleOf": 0.01,
+      "description": "Device-computed score from the bundled rubric. Informational until the server re-scores."
+    },
+    "passed": {
+      "type": "boolean",
+      "description": "Device-computed pass using client_score and module pass_percent. Server may disagree after re-score."
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {
+        "$ref": "attempt-event.schema.json"
+      }
+    },
+    "server_attempt_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Optional canonical id assigned after successful sync. Must be absent for purely offline attempts."
+    },
+    "server_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 10000,
+      "multipleOf": 0.01,
+      "description": "Optional canonical score. Must not be required to complete training offline."
+    },
+    "server_passed": {
+      "type": "boolean"
+    },
+    "certificate_public_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Set only after the server issues a certificate. Local pending drafts must not populate this as a public-valid certificate."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "completed"
+          }
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "required": ["completed_at", "client_score", "passed"],
+        "properties": {
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  ]
+}

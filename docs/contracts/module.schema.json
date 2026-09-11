@@ -1,0 +1,377 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sih2026.ps26041.contracts/v1/module.schema.json",
+  "title": "TrainingModule",
+  "description": "Complete authored training module (step graph). schema_version is the JSON contract version; content_version is the training pack revision workers record on attempts. Domain-agnostic: Fire, Gas, and future domains (e.g. machinery safety) are content, not schema special-cases. No Unity types, no network requirement, no secrets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "module_id",
+    "content_version",
+    "title_key",
+    "description_key",
+    "domain",
+    "pass_percent",
+    "initial_step_id",
+    "steps"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "#/$defs/schemaVersion"
+    },
+    "module_id": {
+      "$ref": "#/$defs/moduleId"
+    },
+    "content_version": {
+      "$ref": "#/$defs/contentVersion"
+    },
+    "title_key": {
+      "$ref": "#/$defs/i18nKey",
+      "description": "Locale key for module title. Resolved from bundled locale packs, not the network."
+    },
+    "description_key": {
+      "$ref": "#/$defs/i18nKey"
+    },
+    "domain": {
+      "$ref": "#/$defs/domain"
+    },
+    "pass_percent": {
+      "$ref": "#/$defs/percent",
+      "description": "Client and server pass threshold for this module. Rubric for the same content_version must use the same value."
+    },
+    "estimated_duration_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 86400
+    },
+    "initial_step_id": {
+      "$ref": "#/$defs/stepId"
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/step"
+      }
+    }
+  },
+  "$defs": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "JSON Schema contract version for this document. Distinct from content_version."
+    },
+    "contentVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+      "maxLength": 32,
+      "description": "Authored training pack version. Attempts must store this exact value for re-scoring."
+    },
+    "moduleId": {
+      "type": "string",
+      "pattern": "^(fire-explosion-response|gas-confined-space|[a-z][a-z0-9-]{2,61})$",
+      "maxLength": 64,
+      "description": "Stable module identifier. MVP values: fire-explosion-response, gas-confined-space. Additional kebab-case ids are allowed for future domains."
+    },
+    "domain": {
+      "type": "string",
+      "enum": [
+        "fire_explosion",
+        "gas_confined_space",
+        "machinery_safety"
+      ],
+      "description": "Controlled training domain. Add values via a schema version bump when introducing a new domain family."
+    },
+    "percent": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "multipleOf": 0.01
+    },
+    "i18nKey": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]{2,127}$",
+      "maxLength": 128
+    },
+    "stepId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{1,63}$",
+      "maxLength": 64
+    },
+    "cueId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{1,63}$",
+      "maxLength": 64,
+      "description": "Bundled VFX/audio cue identifier. Not a URL and not a downloadable asset reference."
+    },
+    "actionType": {
+      "type": "string",
+      "enum": [
+        "identify",
+        "mark",
+        "raise_alarm",
+        "select",
+        "use",
+        "submit_sequence",
+        "recognize_zone",
+        "check_level",
+        "select_ppe",
+        "verify_ppe",
+        "decide",
+        "submit_protocol",
+        "select_procedure",
+        "complete_step"
+      ]
+    },
+    "stepType": {
+      "type": "string",
+      "enum": [
+        "identify_hazard",
+        "raise_alarm",
+        "select_item",
+        "use_item",
+        "mark_location",
+        "submit_sequence",
+        "recognize_zone",
+        "measure_value",
+        "select_ppe",
+        "verify_ppe",
+        "make_decision",
+        "follow_protocol",
+        "select_procedure",
+        "evacuate",
+        "assemble",
+        "instruction"
+      ],
+      "description": "Data-driven step kinds. Fire (hazard, alarm, extinguisher, exit, evacuation, assembly) and Gas (zone, gas check, PPE, buddy, entry, emergency) map onto these types without domain-specific schema branches."
+    },
+    "eventType": {
+      "type": "string",
+      "enum": [
+        "hazard_identified",
+        "hazard_marked",
+        "alarm_raised",
+        "tool_used",
+        "extinguisher_selected",
+        "extinguisher_used",
+        "exit_marked",
+        "evacuation_sequence_submitted",
+        "zone_recognized",
+        "gas_level_checked",
+        "ppe_selected",
+        "ppe_verified",
+        "buddy_system_decision",
+        "entry_protocol_submitted",
+        "emergency_procedure_selected",
+        "decision_made",
+        "assembly_reached",
+        "step_completed"
+      ]
+    },
+    "successCriteria": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["matcher", "event_type"],
+      "properties": {
+        "matcher": {
+          "type": "string",
+          "enum": [
+            "all_of",
+            "any_of",
+            "exact_set",
+            "ordered_sequence",
+            "equals",
+            "threshold",
+            "boolean_equals"
+          ]
+        },
+        "event_type": {
+          "$ref": "#/$defs/eventType"
+        },
+        "payload_key": {
+          "type": "string",
+          "enum": [
+            "action_id",
+            "target_id",
+            "decision_id",
+            "numeric_value",
+            "boolean_value",
+            "selection_ids",
+            "ordered_ids",
+            "outcome"
+          ]
+        },
+        "expected_ids": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "expected_value": {
+          "type": ["string", "number", "boolean"]
+        },
+        "threshold": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["operator", "value"],
+          "properties": {
+            "operator": {
+              "type": "string",
+              "enum": ["gte", "lte", "gt", "lt", "eq"]
+            },
+            "value": {
+              "type": "number"
+            }
+          }
+        },
+        "min_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "max_duration_ms": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "branch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["branch_id", "when_outcome", "next_step_id"],
+      "properties": {
+        "branch_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{1,63}$"
+        },
+        "when_outcome": {
+          "type": "string",
+          "enum": ["success", "failure", "timeout"]
+        },
+        "when_decision_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Optional extra predicate for decision steps (consequences without hardcoding Fire/Gas)."
+        },
+        "next_step_id": {
+          "$ref": "#/$defs/stepId"
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step_id",
+        "sequence",
+        "type",
+        "prompt_key",
+        "required",
+        "success_criteria",
+        "allowed_actions"
+      ],
+      "properties": {
+        "step_id": {
+          "$ref": "#/$defs/stepId"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64,
+          "description": "Authoring order. Runtime graph uses next_step_id / failure_next_step_id / branches, not sequence alone."
+        },
+        "type": {
+          "$ref": "#/$defs/stepType"
+        },
+        "prompt_key": {
+          "$ref": "#/$defs/i18nKey"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "success_criteria": {
+          "$ref": "#/$defs/successCriteria"
+        },
+        "allowed_actions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/actionType"
+          }
+        },
+        "vfx_cue": {
+          "$ref": "#/$defs/cueId"
+        },
+        "next_step_id": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/stepId"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Default successor on success. Null means this success path is terminal unless a branch applies."
+        },
+        "failure_next_step_id": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/stepId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 1000
+        },
+        "is_terminal": {
+          "type": "boolean"
+        },
+        "branches": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/branch"
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "hazard_class": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{1,31}$",
+              "maxLength": 32
+            },
+            "tool_class": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{1,31}$",
+              "maxLength": 32
+            },
+            "zone_class": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{1,31}$",
+              "maxLength": 32
+            },
+            "notes_key": {
+              "$ref": "#/$defs/i18nKey"
+            }
+          },
+          "description": "Optional authored tags (e.g. class_a, confined_space). Not Unity components."
+        }
+      }
+    }
+  }
+}

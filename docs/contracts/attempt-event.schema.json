@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sih2026.ps26041.contracts/v1/attempt-event.schema.json",
+  "title": "AttemptEvent",
+  "description": "One meaningful worker action in an attempt. Created offline. Identified by client_event_id (UUID, never reused). Sufficient for deterministic server re-scoring. No images, video, camera frames, or UnityEngine types.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "client_event_id",
+    "sequence",
+    "event_type",
+    "occurred_at",
+    "step_id",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "JSON contract version. Distinct from module content_version on the parent attempt."
+    },
+    "client_event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Client-generated UUID. Immutable. Used for sync deduplication. Never reuse."
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000,
+      "description": "Monotonic per attempt, starting at 1. Gaps are invalid. Ordering basis for scoring."
+    },
+    "event_type": {
+      "$ref": "#/$defs/eventType"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC instant the action occurred on-device (RFC 3339)."
+    },
+    "step_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{1,63}$",
+      "maxLength": 64
+    },
+    "payload": {
+      "$ref": "#/$defs/eventPayload"
+    }
+  },
+  "$defs": {
+    "eventType": {
+      "type": "string",
+      "enum": [
+        "hazard_identified",
+        "hazard_marked",
+        "alarm_raised",
+        "tool_used",
+        "extinguisher_selected",
+        "extinguisher_used",
+        "exit_marked",
+        "evacuation_sequence_submitted",
+        "zone_recognized",
+        "gas_level_checked",
+        "ppe_selected",
+        "ppe_verified",
+        "buddy_system_decision",
+        "entry_protocol_submitted",
+        "emergency_procedure_selected",
+        "decision_made",
+        "assembly_reached",
+        "step_completed"
+      ],
+      "description": "Controlled action types covering Fire and Gas MVP and reusable for future modules. New types require a schema version bump."
+    },
+    "eventPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Structured, JSON-only evidence. Strings are ids, not media. attributes values are scalars only.",
+      "properties": {
+        "action_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "target_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "selection_ids": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "ordered_ids": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "numeric_value": {
+          "type": "number"
+        },
+        "boolean_value": {
+          "type": "boolean"
+        },
+        "decision_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "outcome": {
+          "type": "string",
+          "enum": ["success", "failure", "partial", "skipped"]
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400000
+        },
+        "attributes": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]{1,63}$"
+          },
+          "additionalProperties": {
+            "type": ["string", "number", "boolean"],
+            "maxLength": 128
+          },
+          "maxProperties": 16
+        }
+      }
+    }
+  }
+}

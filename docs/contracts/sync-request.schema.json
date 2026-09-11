@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sih2026.ps26041.contracts/v1/sync-request.schema.json",
+  "title": "SyncRequest",
+  "description": "Body for POST /v1/sync. Uploads one or more completed offline attempts (each with events) from the SQLite outbox. Retry-safe: the same payload may be submitted repeatedly. Server deduplicates using client_attempt_id and client_event_id. No per-event HTTP in MVP. No secrets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "client_request_id",
+    "worker",
+    "attempts"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "JSON contract version. Distinct from each attempt's content_version."
+    },
+    "client_request_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Correlation id for this HTTP attempt. A retry may reuse this id or generate a new one; attempt/event ids are the durability keys."
+    },
+    "worker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["worker_id"],
+      "properties": {
+        "worker_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Must match worker_id on each enclosed attempt."
+        },
+        "client_device_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Optional opaque device id for diagnostics. Not an authentication secret."
+        }
+      }
+    },
+    "attempts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "description": "Each item is one outbox row: a completed attempt including its events.",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "attempt.schema.json"
+          },
+          {
+            "type": "object",
+            "required": ["status", "completed_at", "client_score", "passed", "events"],
+            "properties": {
+              "status": {
+                "const": "completed"
+              },
+              "completed_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

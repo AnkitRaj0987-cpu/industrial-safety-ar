@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sih2026.ps26041.contracts/v1/certificate-verify.schema.json",
+  "title": "CertificateVerify",
+  "description": "Public certificate verification API payload. Server-authoritative. Local pending drafts must never be serialized with status valid. Contains only information intended for public verification: no government IDs, contact details, secrets, or private keys. QR codes should encode verification_url, conceptually https://<public-host>/verify/{public_id}; this schema does not hardcode a production domain.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["valid", "revoked", "not_found"],
+      "description": "valid: currently trustworthy issued certificate. revoked: was issued then revoked. not_found: unknown public_id. pending/local drafts are not represented."
+    },
+    "public_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "worker_display_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "description": "Public display name only. Do not include employee numbers, phones, or government identifiers."
+    },
+    "module_id": {
+      "type": "string",
+      "pattern": "^(fire-explosion-response|gas-confined-space|[a-z][a-z0-9-]{2,61})$",
+      "maxLength": 64
+    },
+    "module_title_key": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]{2,127}$",
+      "maxLength": 128
+    },
+    "content_version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+      "maxLength": 32
+    },
+    "score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 10000,
+      "multipleOf": 0.01
+    },
+    "passed": {
+      "type": "boolean"
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "revoked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verification_url"],
+      "properties": {
+        "verification_url": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 512,
+          "description": "Canonical public URL for this certificate. Host is deployment-specific."
+        },
+        "verified_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Optional server time of this verify response."
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "not_found"
+          }
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "description": "Unknown id: return status only plus optional public_id echo. No worker or score fields.",
+        "properties": {
+          "worker_display_name": false,
+          "module_id": false,
+          "module_title_key": false,
+          "content_version": false,
+          "score": false,
+          "passed": false,
+          "issued_at": false,
+          "revoked_at": false,
+          "verification": false
+        }
+      },
+      "else": {
+        "required": [
+          "public_id",
+          "worker_display_name",
+          "module_id",
+          "module_title_key",
+          "content_version",
+          "score",
+          "passed",
+          "issued_at",
+          "verification"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "valid"
+          }
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "passed": {
+            "const": true
+          },
+          "revoked_at": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "revoked"
+          }
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "required": ["revoked_at"]
+      }
+    }
+  ]
+}
