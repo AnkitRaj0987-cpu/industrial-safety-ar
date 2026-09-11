@@ -1,0 +1,25 @@
+{
+  "name": "industrial-safety-ar-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backend API foundation for SIH 2026 PS 26041. Shared payloads remain in docs/contracts/.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc --pretty",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit --pretty",
+    "test": "tsx --test src/health.test.ts"
+  },
+  "dependencies": {
+    "fastify": "^5.12.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "tsx": "^4.19.4",
+    "@types/node": "^22.15.29"
+  }
+}
