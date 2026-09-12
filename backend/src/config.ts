@@ -1,6 +1,14 @@
 export type AppConfig = {
   host: string;
   port: number;
+  /** Present when DATABASE_URL is set in the environment. Undefined otherwise. */
+  databaseUrl: string | undefined;
+  /**
+   * Returns DATABASE_URL or throws if it is absent.
+   * Call this only from modules that actually need database access —
+   * not during server startup, so GET /health works without a DB.
+   */
+  requireDatabaseUrl(): string;
 };
 
 function parsePort(raw: string): number {
@@ -21,5 +29,19 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
   }
 
   const port = parsePort(env.PORT ?? "3000");
-  return { host, port };
+  const databaseUrl = env.DATABASE_URL ?? undefined;
+
+  return {
+    host,
+    port,
+    databaseUrl,
+    requireDatabaseUrl(): string {
+      if (databaseUrl === undefined || databaseUrl.trim() === "") {
+        throw new Error(
+          "DATABASE_URL is not set. Add it to your .env file (see .env.example).",
+        );
+      }
+      return databaseUrl;
+    },
+  };
 }
