@@ -1,14 +1,14 @@
 /**
  * POST /v1/sync — business logic
  *
- * MVP scope (STEP 5.2):
+ * MVP scope:
  *  - Structural validation of the request body
  *  - Per-attempt: duplicate detection, worker/module/content_version validation,
  *    event sequence validation, transactional insert
  *  - server_score = client_score for MVP (rubric re-scoring is a later step)
- *  - No certificate issuance yet
+ *  - Certificate issuance for qualifying PASS attempts (STEP 5.4)
  *
- * All DB work is done through the injected PoolClient so tests can mock it.
+ * All DB work is done through an injected PoolClient so tests can mock it.
  * The pool itself is obtained from the caller (app.ts route handler).
  */
 
@@ -60,6 +60,7 @@ export type SyncRequest = {
 };
 
 // Response item shapes
+
 export type AcceptedItem = {
   client_attempt_id: string;
   server_attempt_id: string;
@@ -78,19 +79,38 @@ export type RejectedItem = {
   message: string;
 };
 
+/**
+ * Mirrors the issuedCertificate shape from sync-response.schema.json.
+ * status is always "issued" in a sync response (not "active"/"revoked" —
+ * those are internal DB values).
+ * verification_url is safe for client use; no HMAC secret is included.
+ */
+export type IssuedCertificate = {
+  client_attempt_id: string;
+  public_id: string;
+  module_id: string;
+  content_version: string;
+  score: number;
+  passed: true;
+  issued_at: string;
+  status: "issued";
+  verification_url: string;
+};
+
 export type SyncResponse = {
   schema_version: "1.0.0";
   server_time: string;
   accepted: AcceptedItem[];
   duplicates: DuplicateItem[];
   rejected: RejectedItem[];
-  certificates: unknown[]; // certificate issuance not implemented in MVP
+  certificates: IssuedCertificate[];
 };
 
 // Internal DB row shapes
 type AttemptRow = { id: string };
 type WorkerRow = { id: string };
-type ModuleRow = { id: string; content_version: string; pass_percent: string };
+type ModuleRow = { id: string; content_version: string };
+type CertRow   = { id: string; public_id: string; issued_at: string };
 
 // ---------------------------------------------------------------------------
 // Structural validation helpers
@@ -109,11 +129,7 @@ export function validateSyncRequest(body: unknown): string | null {
   if (typeof b["client_request_id"] !== "string" || b["client_request_id"].trim() === "") {
     return "client_request_id must be a non-empty string";
   }
-  if (
-    b["worker"] === null ||
-    typeof b["worker"] !== "object" ||
-    Array.isArray(b["worker"])
-  ) {
+  if (b["worker"] === null || typeof b["worker"] !== "object" || Array.isArray(b["worker"])) {
     return "worker must be an object";
   }
   const w = b["worker"] as Record<string, unknown>;
@@ -190,7 +206,13 @@ function validateEventShape(
   eventIdx: number,
 ): string | null {
   const prefix = `attempts[${attemptIdx}].events[${eventIdx}]`;
-  for (const field of ["schema_version", "client_event_id", "event_type", "occurred_at", "step_id"] as const) {
+  for (const field of [
+    "schema_version",
+    "client_event_id",
+    "event_type",
+    "occurred_at",
+    "step_id",
+  ] as const) {
     if (typeof e[field] !== "string" || (e[field] as string).trim() === "") {
       return `${prefix}.${field} must be a non-empty string`;
     }
@@ -198,7 +220,11 @@ function validateEventShape(
   if (e["schema_version"] !== "1.0.0") {
     return `${prefix}.schema_version must be "1.0.0"`;
   }
-  if (typeof e["sequence"] !== "number" || !Number.isInteger(e["sequence"]) || (e["sequence"] as number) < 1) {
+  if (
+    typeof e["sequence"] !== "number" ||
+    !Number.isInteger(e["sequence"]) ||
+    (e["sequence"] as number) < 1
+  ) {
     return `${prefix}.sequence must be a positive integer`;
   }
   if (e["payload"] === null || typeof e["payload"] !== "object" || Array.isArray(e["payload"])) {
@@ -242,11 +268,15 @@ export async function processSync(
   const accepted: AcceptedItem[] = [];
   const duplicates: DuplicateItem[] = [];
   const rejected: RejectedItem[] = [];
+  const certificates: IssuedCertificate[] = [];
 
   for (const attempt of request.attempts) {
-    const result = await processSingleAttempt(attempt, request.worker.worker_id, pool);
+    const result = await processSingleAttempt(attempt, request.worker.worker_id, pool, deps.publicBaseUrl);
     if (result.kind === "accepted") {
       accepted.push(result.item);
+      if (result.certificate !== undefined) {
+        certificates.push(result.certificate);
+      }
     } else if (result.kind === "duplicate") {
       duplicates.push(result.item);
     } else {
@@ -260,12 +290,12 @@ export async function processSync(
     accepted,
     duplicates,
     rejected,
-    certificates: [], // certificate issuance: later step
+    certificates,
   };
 }
 
 type AttemptOutcome =
-  | { kind: "accepted"; item: AcceptedItem }
+  | { kind: "accepted"; item: AcceptedItem; certificate: IssuedCertificate | undefined }
   | { kind: "duplicate"; item: DuplicateItem }
   | { kind: "rejected"; item: RejectedItem };
 
@@ -273,6 +303,7 @@ async function processSingleAttempt(
   attempt: SyncAttempt,
   requestWorkerId: string,
   pool: Pool,
+  publicBaseUrl: string,
 ): Promise<AttemptOutcome> {
   const caid = attempt.client_attempt_id;
 
@@ -385,6 +416,24 @@ async function processSingleAttempt(
       );
     }
 
+    // 9. Certificate issuance — only for qualifying PASS attempts
+    let issuedCert: IssuedCertificate | undefined;
+    if (serverPassed) {
+      issuedCert = await issueCertificateInTransaction(
+        client,
+        {
+          workerID: attempt.worker_id,
+          moduleID: attempt.module_id,
+          attemptID: serverAttemptId,
+          clientAttemptID: caid,
+          contentVersion: attempt.content_version,
+          score: serverScore,
+          completedAt: attempt.completed_at,
+        },
+        publicBaseUrl,
+      );
+    }
+
     await client.query("COMMIT");
 
     return {
@@ -395,6 +444,7 @@ async function processSingleAttempt(
         server_score: serverScore,
         server_passed: serverPassed,
       },
+      certificate: issuedCert,
     };
   } catch (err) {
     try { await client.query("ROLLBACK"); } catch { /* ignore rollback error */ }
@@ -405,9 +455,104 @@ async function processSingleAttempt(
   }
 }
 
-function reject(clientAttemptId: string, errorCode: string, message: string): AttemptOutcome {
+// ---------------------------------------------------------------------------
+// Certificate issuance — runs inside an open transaction
+// ---------------------------------------------------------------------------
+
+type CertIssuanceParams = {
+  workerID: string;
+  moduleID: string;
+  attemptID: string;
+  clientAttemptID: string;
+  contentVersion: string;
+  score: number;
+  completedAt: string;
+};
+
+/**
+ * Issues a certificate within the caller's open transaction.
+ *
+ * Idempotency: the attempt duplicate-check higher up in the flow guarantees
+ * this function is only ever called once per unique client_attempt_id.
+ * If somehow a cert already exists for this attempt_id (should never happen
+ * in normal flow), we return the existing cert rather than inserting again.
+ *
+ * Revocation: if an existing ACTIVE certificate exists for (worker_id, module_id),
+ * it is revoked (status → 'revoked', revoked_at → now()) before the new cert
+ * is inserted.  The partial unique index on the DB enforces max one active cert.
+ * Historical revoked certificates are preserved.
+ *
+ * No HMAC/signature is computed in this MVP step — the signature field is
+ * left as the DB default empty string and will be populated in a later step.
+ */
+async function issueCertificateInTransaction(
+  client: PoolClient,
+  params: CertIssuanceParams,
+  publicBaseUrl: string,
+): Promise<IssuedCertificate> {
+  // Guard: if a cert was already issued for this exact attempt (e.g. due to
+  // an unexpected code path), return it without creating a duplicate.
+  const existing = await client.query<CertRow>(
+    `SELECT id, public_id, issued_at FROM certificate WHERE attempt_id = $1`,
+    [params.attemptID],
+  );
+  if (existing.rows.length > 0) {
+    const row = existing.rows[0]!;
+    return buildCertResponse(row.public_id, params, row.issued_at, publicBaseUrl);
+  }
+
+  // Revoke any current active certificate for this worker+module combination.
+  // Lock it first to prevent a concurrent sync from racing.
+  await client.query(
+    `UPDATE certificate
+        SET status = 'revoked', revoked_at = now()
+      WHERE worker_id = $1
+        AND module_id = $2
+        AND status    = 'active'`,
+    [params.workerID, params.moduleID],
+  );
+
+  // Insert the new active certificate.
+  // public_id is generated by the DB (gen_random_uuid()) — unguessable UUID
+  // that appears in QR verification URLs.
+  // signature is left as '' for now (populated in a later step).
+  const insertCert = await client.query<CertRow>(
+    `INSERT INTO certificate
+       (worker_id, module_id, attempt_id, score, status, signature, issued_at)
+     VALUES ($1, $2, $3, $4, 'active', '', now())
+     RETURNING id, public_id, issued_at`,
+    [params.workerID, params.moduleID, params.attemptID, params.score],
+  );
+
+  const row = insertCert.rows[0]!;
+  return buildCertResponse(row.public_id, params, row.issued_at, publicBaseUrl);
+}
+
+function buildCertResponse(
+  publicId: string,
+  params: CertIssuanceParams,
+  issuedAt: string | Date,
+  publicBaseUrl: string,
+): IssuedCertificate {
+  const issuedAtStr = issuedAt instanceof Date ? issuedAt.toISOString() : issuedAt;
+  const verificationUrl = `${publicBaseUrl.replace(/\/$/, "")}/verify/${publicId}`;
+
+  return {
+    client_attempt_id: params.clientAttemptID,
+    public_id: publicId,
+    module_id: params.moduleID,
+    content_version: params.contentVersion,
+    score: params.score,
+    passed: true,
+    issued_at: issuedAtStr,
+    status: "issued",
+    verification_url: verificationUrl,
+  };
+}
+
+function reject(clientAttemptID: string, errorCode: string, message: string): AttemptOutcome {
   return {
     kind: "rejected",
-    item: { client_attempt_id: clientAttemptId, error_code: errorCode, message },
+    item: { client_attempt_id: clientAttemptID, error_code: errorCode, message },
   };
 }
