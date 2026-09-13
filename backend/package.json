@@ -12,7 +12,8 @@
     "build": "tsc --pretty",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit --pretty",
-    "test": "tsx --test src/**/*.test.ts"
+    "test": "tsx --test src/**/*.test.ts",
+    "seed:dev": "tsx src/dev-seed.ts"
   },
   "dependencies": {
     "dotenv": "^17.4.2",
