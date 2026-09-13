@@ -17,3 +17,15 @@ Problem Statement ID: 26041
 
 - Fire & Explosion Response
 - Gas Leak & Confined Space Safety
+
+# Unity generated files
+worker-app/Library/
+worker-app/Temp/
+worker-app/Obj/
+worker-app/Builds/
+worker-app/Logs/
+worker-app/UserSettings/
+
+# Unity build artifacts
+*.apk
+*.aab

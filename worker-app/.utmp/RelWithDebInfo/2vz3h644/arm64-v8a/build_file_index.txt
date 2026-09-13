@@ -1,0 +1,2 @@
+D:\Projects\industrial-safety-ar\worker-app\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\src\main\cpp\CMakeLists.txt
+D:\Projects\industrial-safety-ar\worker-app\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\src\main\cpp\GameActivity\CMakeLists.txt
