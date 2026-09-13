@@ -13,7 +13,8 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit --pretty",
     "test": "tsx --test src/**/*.test.ts",
-    "seed:dev": "tsx src/dev-seed.ts"
+    "seed:dev": "tsx src/dev-seed.ts",
+    "test:sync": "tsx src/dev-test-sync.ts"
   },
   "dependencies": {
     "dotenv": "^17.4.2",
