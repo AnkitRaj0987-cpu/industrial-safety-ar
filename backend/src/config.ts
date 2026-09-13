@@ -9,6 +9,12 @@ export type AppConfig = {
    * not during server startup, so GET /health works without a DB.
    */
   requireDatabaseUrl(): string;
+  /**
+   * Base URL used to construct certificate verification URLs.
+   * e.g. "https://sih2026.example.com" → "https://sih2026.example.com/verify/<uuid>"
+   * Defaults to "http://localhost:3000" when PUBLIC_BASE_URL is not set.
+   */
+  publicBaseUrl: string;
 };
 
 function parsePort(raw: string): number {
@@ -30,11 +36,13 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
 
   const port = parsePort(env.PORT ?? "3000");
   const databaseUrl = env.DATABASE_URL ?? undefined;
+  const publicBaseUrl = (env.PUBLIC_BASE_URL ?? "").trim() || "http://localhost:3000";
 
   return {
     host,
     port,
     databaseUrl,
+    publicBaseUrl,
     requireDatabaseUrl(): string {
       if (databaseUrl === undefined || databaseUrl.trim() === "") {
         throw new Error(

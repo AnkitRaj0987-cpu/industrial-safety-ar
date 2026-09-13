@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 import { getPool as defaultGetPool } from "./db.js";
+import { validateSyncRequest, processSync } from "./sync.js";
 
 export type AppDeps = {
   /**
@@ -10,6 +11,11 @@ export type AppDeps = {
    * Defaults to the lazy singleton from db.ts.
    */
   getPool?: () => Pool;
+  /**
+   * Base URL for certificate verification links, e.g. "http://localhost:3000".
+   * Defaults to that value when not provided (safe for tests / local dev).
+   */
+  publicBaseUrl?: string;
 };
 
 export type ModuleRow = {
@@ -21,6 +27,7 @@ export type ModuleRow = {
 
 export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   const getPool = deps.getPool ?? defaultGetPool;
+  const publicBaseUrl = deps.publicBaseUrl ?? "http://localhost:3000";
 
   const app = Fastify({
     logger: true,
@@ -72,6 +79,51 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
         content_version: r.content_version,
       })),
     });
+  });
+
+  /**
+   * POST /v1/sync
+   *
+   * Accepts a worker's offline-accumulated attempt batch.
+   * Idempotent: re-submitting the same client_attempt_id is safe.
+   *
+   * Always returns HTTP 200 with the structured sync response.
+   * Per-attempt outcomes live in accepted / duplicates / rejected arrays.
+   *
+   * Errors:
+   *   400 — Request body is structurally invalid.
+   *   503 — DATABASE_URL is not configured.
+   */
+  app.post("/v1/sync", async (request, reply) => {
+    // Structural validation — cheap, no DB required
+    const validationError = validateSyncRequest(request.body);
+    if (validationError !== null) {
+      return reply.status(400).send({ error: "bad_request", message: validationError });
+    }
+
+    // Ensure pool is available before we start processing attempts
+    let pool: Pool;
+    try {
+      pool = getPool();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Database not configured";
+      app.log.error({ err }, "getPool() failed in POST /v1/sync");
+      return reply.status(503).send({ error: "service_unavailable", message });
+    }
+
+    try {
+      // processSync takes ownership of pool usage; errors per-attempt are
+      // captured inside the response arrays rather than thrown.
+      const syncResponse = await processSync(
+        // validateSyncRequest already confirmed the shape is correct
+        request.body as Parameters<typeof processSync>[0],
+        { getPool: () => pool, publicBaseUrl },
+      );
+      return reply.status(200).send(syncResponse);
+    } catch (err) {
+      app.log.error({ err }, "Unexpected error in POST /v1/sync");
+      return reply.status(500).send({ error: "internal_server_error", message: "Unexpected error" });
+    }
   });
 
   return app;
