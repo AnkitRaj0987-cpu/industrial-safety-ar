@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 import { getPool as defaultGetPool } from "./db.js";
 import { validateSyncRequest, processSync } from "./sync.js";
+import { lookupCertificate } from "./cert-verify.js";
 
 export type AppDeps = {
   /**
@@ -124,6 +125,47 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
       app.log.error({ err }, "Unexpected error in POST /v1/sync");
       return reply.status(500).send({ error: "internal_server_error", message: "Unexpected error" });
     }
+  });
+
+  /**
+   * GET /v1/certificates/verify/:publicId
+   *
+   * Public certificate verification — no authentication required.
+   * Returns the contract-shaped verification payload from
+   * docs/contracts/certificate-verify.schema.json.
+   *
+   * Responses:
+   *   200 status:"valid"    — active certificate found
+   *   200 status:"revoked"  — revoked certificate found
+   *   404 status:"not_found"— unknown public_id
+   *   503                   — DATABASE_URL not configured
+   *   502                   — database query failed
+   */
+  app.get("/v1/certificates/verify/:publicId", async (request, reply) => {
+    const { publicId } = request.params as { publicId: string };
+
+    let pool: Pool;
+    try {
+      pool = getPool();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Database not configured";
+      app.log.error({ err }, "getPool() failed in GET /v1/certificates/verify");
+      return reply.status(503).send({ error: "service_unavailable", message });
+    }
+
+    let certResponse;
+    try {
+      certResponse = await lookupCertificate(publicId, pool, publicBaseUrl);
+    } catch (err) {
+      app.log.error({ err }, "Failed to query certificate table");
+      return reply.status(502).send({ error: "bad_gateway", message: "Database query failed" });
+    }
+
+    if (certResponse.status === "not_found") {
+      return reply.status(404).send(certResponse);
+    }
+
+    return reply.status(200).send(certResponse);
   });
 
   return app;
