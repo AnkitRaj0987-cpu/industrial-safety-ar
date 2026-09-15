@@ -23,9 +23,12 @@ worker-app/Library/
 worker-app/Temp/
 worker-app/Obj/
 worker-app/Builds/
+worker-app/build/
 worker-app/Logs/
 worker-app/UserSettings/
+worker-app/.utmp/
 
 # Unity build artifacts
+builds/
 *.apk
 *.aab
