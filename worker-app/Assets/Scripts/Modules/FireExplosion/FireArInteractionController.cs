@@ -1,11 +1,14 @@
 // FireArInteractionController.cs
 // Namespace : IndustrialSafetyAR.Modules.FireExplosion
 //
-// Orchestrates the AR tap interaction:
+// Orchestrates the Fire & Explosion Response AR interactions:
 // 1. Plane raycasting to place the Fire Hazard onto a detected surface.
 // 2. Anchoring the placed hazard in the AR world.
 // 3. Physics raycasting to detect worker selection/identification of the hazard.
-// 4. Emitting the domain TrainingEvent (step_detect_hazard / detect_hazard_acknowledged).
+// 4. Emitting domain TrainingEvents for:
+//    - step_detect_hazard / rule_detect_hazard
+//    - step_identify_hazard / rule_identify_hazard
+//    - step_raise_alarm / rule_raise_alarm
 
 using System;
 using IndustrialSafetyAR.AR;
@@ -23,12 +26,17 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         WaitingForTracking,
         ReadyToPlace,
         HazardPlaced,
-        HazardDetected
+        HazardDetected,
+        AwaitingIdentification,
+        HazardIdentified,
+        AwaitingAlarm,
+        AlarmRaised
     }
 
     /// <summary>
-    /// Coordinates AR surface placement and hazard identification for the Fire &amp; Explosion module.
-    /// Bridges input, AR raycasting, hazard marker state, and domain training events.
+    /// Coordinates AR surface placement, hazard identification, and alarm activation
+    /// for the Fire &amp; Explosion module. Bridges input, AR raycasting, hazard marker state,
+    /// and domain training events.
     /// </summary>
     public class FireArInteractionController : MonoBehaviour
     {
@@ -49,21 +57,8 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         [SerializeField]
         private FireHazardMarker _hazardPrefab;
 
-        [Header("Module Configuration")]
-        [SerializeField]
-        private string _moduleId = "fire-explosion-response";
-
-        [SerializeField]
-        private string _contentVersion = "1.0.0";
-
-        [SerializeField]
-        private string _stepId = "step_detect_hazard";
-
-        [SerializeField]
-        private string _actionId = "detect_hazard_acknowledged";
-
-        [SerializeField]
-        private string _targetId = "hazard_electrical_conveyor_fire";
+        // Domain workflow state machine
+        private readonly FireTrainingWorkflow _workflow = new FireTrainingWorkflow();
 
         // Runtime state
         private FireInteractionState _state = FireInteractionState.WaitingForTracking;
@@ -71,11 +66,16 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         private ITrainingEventDispatcher _eventDispatcher;
 
         public FireInteractionState State => _state;
+        public FireWorkflowStage WorkflowStage => _workflow.CurrentStage;
+        public FireTrainingWorkflow Workflow => _workflow;
         public FireHazardMarker ActiveHazard => _activeHazard;
+        public string CurrentStepId => _workflow.CurrentStepId;
 
         public event Action<FireInteractionState> OnStateChanged;
         public event Action<FireHazardMarker> OnHazardPlaced;
         public event Action<FireHazardMarker, TrainingEvent> OnHazardDetected;
+        public event Action<TrainingEvent> OnHazardIdentified;
+        public event Action<TrainingEvent> OnAlarmRaised;
         public event Action<string> OnFeedbackChanged;
 
         private void Awake()
@@ -100,11 +100,20 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             }
 
             _eventDispatcher = TrainingEventBus.Instance;
+
+            _workflow.OnStageChanged += HandleWorkflowStageChanged;
+            _workflow.OnFeedbackChanged += HandleWorkflowFeedbackChanged;
+        }
+
+        private void OnDestroy()
+        {
+            _workflow.OnStageChanged -= HandleWorkflowStageChanged;
+            _workflow.OnFeedbackChanged -= HandleWorkflowFeedbackChanged;
         }
 
         private void Start()
         {
-            UpdateState(FireInteractionState.WaitingForTracking);
+            _workflow.SetStage(FireWorkflowStage.WaitingForTracking);
         }
 
         private void Update()
@@ -122,20 +131,31 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             _eventDispatcher = dispatcher ?? TrainingEventBus.Instance;
         }
 
+        private void HandleWorkflowStageChanged(FireWorkflowStage stage)
+        {
+            _state = (FireInteractionState)stage;
+            OnStateChanged?.Invoke(_state);
+        }
+
+        private void HandleWorkflowFeedbackChanged(string feedback)
+        {
+            OnFeedbackChanged?.Invoke(feedback);
+        }
+
         private void UpdateTrackingStatus()
         {
-            if (_state == FireInteractionState.WaitingForTracking)
+            if (_workflow.CurrentStage == FireWorkflowStage.WaitingForTracking)
             {
                 if (_arSessionFacade != null && _arSessionFacade.IsTrackingAvailable)
                 {
-                    UpdateState(FireInteractionState.ReadyToPlace);
+                    _workflow.SetStage(FireWorkflowStage.ReadyToPlace);
                 }
             }
-            else if (_state == FireInteractionState.ReadyToPlace)
+            else if (_workflow.CurrentStage == FireWorkflowStage.ReadyToPlace)
             {
                 if (_arSessionFacade != null && !_arSessionFacade.IsTrackingAvailable)
                 {
-                    UpdateState(FireInteractionState.WaitingForTracking);
+                    _workflow.SetStage(FireWorkflowStage.WaitingForTracking);
                 }
             }
         }
@@ -148,13 +168,13 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 return;
             }
 
-            switch (_state)
+            switch (_workflow.CurrentStage)
             {
-                case FireInteractionState.ReadyToPlace:
+                case FireWorkflowStage.ReadyToPlace:
                     TryPlaceHazard(screenPosition);
                     break;
 
-                case FireInteractionState.HazardPlaced:
+                case FireWorkflowStage.HazardPlaced:
                     TryIdentifyHazard(screenPosition);
                     break;
             }
@@ -189,7 +209,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                     }
                 }
 
-                UpdateState(FireInteractionState.HazardPlaced);
+                _workflow.SetStage(FireWorkflowStage.HazardPlaced);
                 OnHazardPlaced?.Invoke(_activeHazard);
                 Debug.Log($"[FireArInteractionController] Placed fire hazard marker at {hitPose.position}");
             }
@@ -217,56 +237,49 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         private void ConfirmHazardDetection(FireHazardMarker hazard)
         {
             hazard.AcknowledgeDetection();
-            UpdateState(FireInteractionState.HazardDetected);
 
-            // Construct domain training event matching module and rubric criteria
-            var trainingEvent = new TrainingEvent
+            if (_workflow.ConfirmHazardDetected(_eventDispatcher, out var trainingEvent))
             {
-                ModuleId = _moduleId,
-                ContentVersion = _contentVersion,
-                StepId = _stepId,
-                EventType = "step_completed",
-                ActionId = _actionId,
-                TargetId = _targetId,
-                Outcome = "success",
-                Payload =
-                {
-                    { "rule_id", "rule_detect_hazard" },
-                    { "action_id", _actionId },
-                    { "target_id", _targetId },
-                    { "outcome", "success" }
-                }
-            };
-
-            // Emit through decoupled interface
-            _eventDispatcher?.Dispatch(trainingEvent);
-
-            OnHazardDetected?.Invoke(hazard, trainingEvent);
-        }
-
-        private void UpdateState(FireInteractionState newState)
-        {
-            _state = newState;
-            string feedback = GetFeedbackForState(newState);
-            OnFeedbackChanged?.Invoke(feedback);
-            OnStateChanged?.Invoke(newState);
-        }
-
-        private string GetFeedbackForState(FireInteractionState state)
-        {
-            switch (state)
-            {
-                case FireInteractionState.WaitingForTracking:
-                    return "Searching for surfaces... Move phone slowly.";
-                case FireInteractionState.ReadyToPlace:
-                    return "Tap on a surface to place the Fire Hazard.";
-                case FireInteractionState.HazardPlaced:
-                    return "Hazard Located! Tap the hazard to confirm detection.";
-                case FireInteractionState.HazardDetected:
-                    return "Fire Hazard Detected! Step Complete.";
-                default:
-                    return string.Empty;
+                OnHazardDetected?.Invoke(hazard, trainingEvent);
             }
+        }
+
+        /// <summary>
+        /// Submits the worker's hazard classification selection.
+        /// </summary>
+        /// <param name="targetId">The selected hazard target ID.</param>
+        /// <returns>True if correct classification and advanced; false if invalid.</returns>
+        public bool SubmitHazardIdentification(string targetId)
+        {
+            bool success = _workflow.SubmitHazardIdentification(targetId, _eventDispatcher, out var trainingEvent);
+            if (success)
+            {
+                if (_activeHazard != null)
+                {
+                    _activeHazard.MarkIdentified(FireTrainingWorkflow.HazardClassElectrical);
+                }
+                OnHazardIdentified?.Invoke(trainingEvent);
+            }
+            return success;
+        }
+
+        /// <summary>
+        /// Submits the emergency alarm activation action.
+        /// </summary>
+        /// <param name="actionId">The alarm action ID (defaults to manual_call_point_activated).</param>
+        /// <returns>True if successfully activated; false if invalid.</returns>
+        public bool SubmitRaiseAlarm(string actionId = FireTrainingWorkflow.ActionRaiseAlarm)
+        {
+            bool success = _workflow.SubmitRaiseAlarm(actionId, _eventDispatcher, out var trainingEvent);
+            if (success)
+            {
+                if (_activeHazard != null)
+                {
+                    _activeHazard.TriggerAlarmVisual();
+                }
+                OnAlarmRaised?.Invoke(trainingEvent);
+            }
+            return success;
         }
 
         private bool TryGetScreenTap(out Vector2 position)

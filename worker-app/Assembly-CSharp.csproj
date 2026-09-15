@@ -65,6 +65,7 @@
     <Compile Include="Assets\Scripts\Modules\FireExplosion\IIdentifiableHazard.cs" />
     <Compile Include="Assets\Scripts\Modules\FireExplosion\FireHazardMarker.cs" />
     <Compile Include="Assets\Scripts\Modules\FireExplosion\FireArInteractionController.cs" />
+    <Compile Include="Assets\Scripts\Modules\FireExplosion\FireTrainingWorkflow.cs" />
     <Compile Include="Assets\Scripts\UI\FireInteractionFeedbackUI.cs" />
     <Compile Include="Assets\Scripts\Tests\FireTrainingEventTests.cs" />
   </ItemGroup>

@@ -55,12 +55,30 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             EnsureVisuals();
         }
 
+        private bool _isIdentified;
+        private bool _isAlarmActive;
+
+        public bool IsIdentified => _isIdentified;
+        public bool IsAlarmActive => _isAlarmActive;
+
         private void Update()
         {
+            _pulseTimer += Time.deltaTime * 3.5f;
+
+            if (_isAlarmActive)
+            {
+                // Rapid emergency strobe flashing between red and yellow
+                if (_beaconMaterial != null)
+                {
+                    float strobe = 0.5f + 0.5f * Mathf.Sin(_pulseTimer * 4f);
+                    _beaconMaterial.color = Color.Lerp(new Color(1f, 0.1f, 0.1f), new Color(1f, 0.85f, 0.1f), strobe);
+                }
+                return;
+            }
+
             if (_isDetected) return;
 
-            // Subtle pulsing alert effect on the hazard beacon
-            _pulseTimer += Time.deltaTime * 3.5f;
+            // Subtle pulsing alert effect on the hazard beacon prior to detection
             if (_beaconMaterial != null)
             {
                 float pulse = 0.85f + 0.15f * Mathf.Sin(_pulseTimer);
@@ -94,12 +112,49 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
             if (_labelMesh != null)
             {
-                _labelMesh.text = "HAZARD DETECTED\n(Class E Confirmed)";
+                _labelMesh.text = "HAZARD DETECTED\n(Inspection Required)";
                 _labelMesh.color = ColorDetectedHazard;
             }
 
             Debug.Log($"[FireHazardMarker] Hazard '{_hazardId}' detected & acknowledged by worker.");
             OnDetected?.Invoke(this);
+        }
+
+        /// <summary>
+        /// Updates the hazard marker visual to indicate successful identification.
+        /// </summary>
+        public void MarkIdentified(string hazardClass)
+        {
+            _isIdentified = true;
+
+            if (_labelMesh != null)
+            {
+                _labelMesh.text = "IDENTIFIED HAZARD\nClass E Electrical Fire";
+                _labelMesh.color = new Color(0.2f, 0.9f, 0.95f);
+            }
+
+            if (_beaconMaterial != null)
+            {
+                _beaconMaterial.color = new Color(0.2f, 0.9f, 0.95f);
+            }
+
+            Debug.Log($"[FireHazardMarker] Hazard '{_hazardId}' identified as '{hazardClass}'.");
+        }
+
+        /// <summary>
+        /// Triggers visual siren and alarm indicators on the hazard marker.
+        /// </summary>
+        public void TriggerAlarmVisual()
+        {
+            _isAlarmActive = true;
+
+            if (_labelMesh != null)
+            {
+                _labelMesh.text = "ALARM ACTIVE\nClass E Conveyor Fire";
+                _labelMesh.color = new Color(1f, 0.25f, 0.2f);
+            }
+
+            Debug.Log($"[FireHazardMarker] Emergency alarm visual activated on '{_hazardId}'.");
         }
 
         /// <summary>
