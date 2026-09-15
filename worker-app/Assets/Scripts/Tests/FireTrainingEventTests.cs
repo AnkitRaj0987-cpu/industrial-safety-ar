@@ -40,6 +40,14 @@ namespace IndustrialSafetyAR.Tests
             allPassed &= RunTest("UnsafeTooCloseActionRejected", Test_UnsafeTooCloseActionRejected, logMessages);
             allPassed &= RunTest("PrematureSafeDistanceActionRejected", Test_PrematureSafeDistanceActionRejected, logMessages);
             allPassed &= RunTest("Step4ToStep5EventOrdering", Test_Step4ToStep5EventOrdering, logMessages);
+            allPassed &= RunTest("Step6CannotBeginBeforeStep5", Test_Step6CannotBeginBeforeStep5, logMessages);
+            allPassed &= RunTest("PullPinAccepted", Test_PullPinAccepted, logMessages);
+            allPassed &= RunTest("AimAcceptedOnlyAfterPin", Test_AimAcceptedOnlyAfterPin, logMessages);
+            allPassed &= RunTest("SqueezeAcceptedOnlyAfterAim", Test_SqueezeAcceptedOnlyAfterAim, logMessages);
+            allPassed &= RunTest("SweepAcceptedOnlyAfterSqueeze", Test_SweepAcceptedOnlyAfterSqueeze, logMessages);
+            allPassed &= RunTest("WrongOutOfOrderActionRejected", Test_WrongOutOfOrderActionRejected, logMessages);
+            allPassed &= RunTest("FinalProcedureCompletedEventFields", Test_FinalProcedureCompletedEventFields, logMessages);
+            allPassed &= RunTest("Steps1To6EventOrdering", Test_Steps1To6EventOrdering, logMessages);
 
             return allPassed;
         }
@@ -532,6 +540,290 @@ namespace IndustrialSafetyAR.Tests
 
             // Verify all 5 outcomes are success:
             for (int i = 0; i < 5; i++)
+            {
+                if (events[i].Outcome != "success") throw new Exception($"Event {i} outcome was not success");
+            }
+        }
+
+        public static void Test_Step6CannotBeginBeforeStep5()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+
+            // 1. Cannot perform Step 6 at AwaitingIdentification
+            workflow.SetStage(FireWorkflowStage.AwaitingIdentification);
+            bool s1 = workflow.SubmitExtinguisherAction(FireTrainingWorkflow.ActionPullPin, bus, out var e1);
+            if (s1) throw new Exception("Step 6 action should be rejected at AwaitingIdentification");
+            if (e1 != null) throw new Exception("No event should be emitted for premature Step 6 action");
+            if (workflow.CurrentStage != FireWorkflowStage.AwaitingIdentification)
+                throw new Exception("Stage should remain AwaitingIdentification");
+
+            // 2. Cannot perform Step 6 at AwaitingAlarm
+            workflow.SetStage(FireWorkflowStage.AwaitingAlarm);
+            bool s2 = workflow.SubmitExtinguisherAction(FireTrainingWorkflow.ActionPullPin, bus, out var e2);
+            if (s2) throw new Exception("Step 6 action should be rejected at AwaitingAlarm");
+            if (e2 != null) throw new Exception("No event should be emitted for premature Step 6 action");
+
+            // 3. Cannot perform Step 6 at AwaitingExtinguisherSelection
+            workflow.SetStage(FireWorkflowStage.AwaitingExtinguisherSelection);
+            bool s3 = workflow.SubmitExtinguisherAction(FireTrainingWorkflow.ActionPullPin, bus, out var e3);
+            if (s3) throw new Exception("Step 6 action should be rejected at AwaitingExtinguisherSelection");
+            if (e3 != null) throw new Exception("No event should be emitted for premature Step 6 action");
+
+            // 4. Cannot perform Step 6 at AwaitingSafeDistance (before safe distance confirmed)
+            workflow.SetStage(FireWorkflowStage.AwaitingSafeDistance);
+            bool s4 = workflow.SubmitExtinguisherAction(FireTrainingWorkflow.ActionPullPin, bus, out var e4);
+            if (s4) throw new Exception("Step 6 action should be rejected at AwaitingSafeDistance before safe standoff");
+            if (e4 != null) throw new Exception("No event should be emitted for premature Step 6 action");
+        }
+
+        public static void Test_PullPinAccepted()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.SafeDistanceMaintained);
+
+            bool success = workflow.SubmitPullPin(bus, out var emittedEvent);
+
+            if (!success) throw new Exception("Pull pin should succeed at SafeDistanceMaintained");
+            if (workflow.CurrentStage != FireWorkflowStage.PinPulled)
+                throw new Exception($"Expected PinPulled stage, got {workflow.CurrentStage}");
+            if (workflow.CurrentStepId != FireTrainingWorkflow.StepUseExtinguisher)
+                throw new Exception($"Expected StepId {FireTrainingWorkflow.StepUseExtinguisher}, got {workflow.CurrentStepId}");
+
+            if (emittedEvent == null) throw new Exception("Emitted event was null");
+            if (emittedEvent.StepId != "step_use_extinguisher") throw new Exception("StepId mismatch");
+            if (emittedEvent.ActionId != "pull_pin") throw new Exception("ActionId mismatch");
+            if (emittedEvent.Outcome != "success") throw new Exception("Outcome mismatch");
+            if (emittedEvent.GetPayloadValue("rule_id") != "rule_use_extinguisher") throw new Exception("rule_id mismatch");
+        }
+
+        public static void Test_AimAcceptedOnlyAfterPin()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.SafeDistanceMaintained);
+
+            // Cannot aim before pulling pin
+            bool s1 = workflow.SubmitAim(bus, out var failEvent);
+            if (s1) throw new Exception("Aim should fail before pin is pulled");
+            if (workflow.CurrentStage != FireWorkflowStage.SafeDistanceMaintained)
+                throw new Exception("Stage should not advance after premature aim");
+            if (failEvent == null || failEvent.Outcome != "failure")
+                throw new Exception("Failure event should be emitted for premature aim");
+
+            // Pull pin first
+            bool s2 = workflow.SubmitPullPin(bus, out _);
+            if (!s2 || workflow.CurrentStage != FireWorkflowStage.PinPulled)
+                throw new Exception("Pull pin failed to advance to PinPulled");
+
+            // Now aim should succeed
+            bool s3 = workflow.SubmitAim(bus, out var successEvent);
+            if (!s3) throw new Exception("Aim should succeed after pin is pulled");
+            if (workflow.CurrentStage != FireWorkflowStage.AimConfirmed)
+                throw new Exception($"Expected AimConfirmed stage, got {workflow.CurrentStage}");
+            if (successEvent == null || successEvent.Outcome != "success")
+                throw new Exception("Success event should be emitted for valid aim");
+            if (successEvent.ActionId != "aim") throw new Exception("ActionId should be aim");
+        }
+
+        public static void Test_SqueezeAcceptedOnlyAfterAim()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.PinPulled);
+
+            // Cannot squeeze before aiming
+            bool s1 = workflow.SubmitSqueeze(bus, out var failEvent);
+            if (s1) throw new Exception("Squeeze should fail before aim");
+            if (workflow.CurrentStage != FireWorkflowStage.PinPulled)
+                throw new Exception("Stage should not advance after premature squeeze");
+
+            // Aim first
+            bool s2 = workflow.SubmitAim(bus, out _);
+            if (!s2 || workflow.CurrentStage != FireWorkflowStage.AimConfirmed)
+                throw new Exception("Aim failed to advance to AimConfirmed");
+
+            // Now squeeze should succeed
+            bool s3 = workflow.SubmitSqueeze(bus, out var successEvent);
+            if (!s3) throw new Exception("Squeeze should succeed after aim");
+            if (workflow.CurrentStage != FireWorkflowStage.HandleSqueezed)
+                throw new Exception($"Expected HandleSqueezed stage, got {workflow.CurrentStage}");
+            if (successEvent.ActionId != "squeeze") throw new Exception("ActionId should be squeeze");
+            if (successEvent.Outcome != "success") throw new Exception("Outcome should be success");
+        }
+
+        public static void Test_SweepAcceptedOnlyAfterSqueeze()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.AimConfirmed);
+
+            // Cannot sweep before squeezing
+            bool s1 = workflow.SubmitSweep(bus, out var failEvent);
+            if (s1) throw new Exception("Sweep should fail before squeeze");
+            if (workflow.CurrentStage != FireWorkflowStage.AimConfirmed)
+                throw new Exception("Stage should not advance after premature sweep");
+
+            // Squeeze first
+            bool s2 = workflow.SubmitSqueeze(bus, out _);
+            if (!s2 || workflow.CurrentStage != FireWorkflowStage.HandleSqueezed)
+                throw new Exception("Squeeze failed to advance to HandleSqueezed");
+
+            // Now sweep should succeed
+            bool s3 = workflow.SubmitSweep(bus, out var successEvent);
+            if (!s3) throw new Exception("Sweep should succeed after squeeze");
+            if (workflow.CurrentStage != FireWorkflowStage.ExtinguisherDischarged)
+                throw new Exception($"Expected ExtinguisherDischarged stage, got {workflow.CurrentStage}");
+            if (workflow.CurrentStepId != "step_identify_exit")
+                throw new Exception($"Expected next step step_identify_exit, got {workflow.CurrentStepId}");
+            if (successEvent.ActionId != "sweep") throw new Exception("ActionId should be sweep");
+            if (successEvent.Outcome != "success") throw new Exception("Outcome should be success");
+        }
+
+        public static void Test_WrongOutOfOrderActionRejected()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.SafeDistanceMaintained);
+
+            // Attempting Squeeze while Pin is locked
+            bool s1 = workflow.SubmitExtinguisherAction("squeeze", bus, out var e1);
+            if (s1) throw new Exception("Out-of-order squeeze should be rejected");
+            if (workflow.CurrentStage != FireWorkflowStage.SafeDistanceMaintained)
+                throw new Exception("Stage should remain SafeDistanceMaintained");
+            if (e1 == null || e1.Outcome != "failure")
+                throw new Exception("Failure event should be emitted for out-of-order action");
+
+            // Attempting completely invalid action
+            bool s2 = workflow.SubmitExtinguisherAction("invalid_random_action", bus, out var e2);
+            if (s2) throw new Exception("Invalid action should be rejected");
+            if (workflow.CurrentStage != FireWorkflowStage.SafeDistanceMaintained)
+                throw new Exception("Stage should remain SafeDistanceMaintained");
+            if (e2 == null || e2.Outcome != "failure")
+                throw new Exception("Failure event should be emitted for invalid action");
+
+            // Valid pull pin
+            workflow.SubmitPullPin(bus, out _);
+
+            // Attempting sweep before aim/squeeze
+            bool s3 = workflow.SubmitExtinguisherAction("sweep", bus, out var e3);
+            if (s3) throw new Exception("Sweep should be rejected before aim/squeeze");
+            if (workflow.CurrentStage != FireWorkflowStage.PinPulled)
+                throw new Exception("Stage should remain PinPulled");
+            if (e3 == null || e3.Outcome != "failure")
+                throw new Exception("Failure event should be emitted");
+        }
+
+        public static void Test_FinalProcedureCompletedEventFields()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.SafeDistanceMaintained);
+
+            workflow.SubmitPullPin(bus, out _);
+            workflow.SubmitAim(bus, out _);
+            workflow.SubmitSqueeze(bus, out _);
+            bool success = workflow.SubmitSweep(bus, out var finalEvent);
+
+            if (!success) throw new Exception("Sweep should succeed");
+            if (finalEvent == null) throw new Exception("Final event was null");
+
+            // Canonical Step 6 event requirements:
+            if (finalEvent.StepId != "step_use_extinguisher") throw new Exception($"StepId mismatch: {finalEvent.StepId}");
+            if (finalEvent.EventType != "procedure_completed") throw new Exception($"EventType mismatch: {finalEvent.EventType}");
+            if (finalEvent.ActionId != "sweep") throw new Exception($"ActionId mismatch: {finalEvent.ActionId}");
+            if (finalEvent.TargetId != "extinguisher_procedure") throw new Exception($"TargetId mismatch: {finalEvent.TargetId}");
+            if (finalEvent.Outcome != "success") throw new Exception($"Outcome mismatch: {finalEvent.Outcome}");
+            if (finalEvent.GetPayloadValue("rule_id") != "rule_use_extinguisher") throw new Exception("rule_id mismatch");
+            if (finalEvent.ModuleId != "fire-explosion-response") throw new Exception("ModuleId mismatch");
+            if (finalEvent.ContentVersion != "1.0.0") throw new Exception("ContentVersion mismatch");
+        }
+
+        public static void Test_Steps1To6EventOrdering()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+
+            // Step 1: Detect Hazard
+            bool s1 = workflow.ConfirmHazardDetected(bus, out var e1);
+            if (!s1) throw new Exception("Step 1 detect hazard failed");
+
+            // Step 2: Identify Hazard
+            bool s2 = workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out var e2);
+            if (!s2) throw new Exception("Step 2 identify hazard failed");
+
+            // Step 3: Raise Alarm
+            bool s3 = workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out var e3);
+            if (!s3) throw new Exception("Step 3 raise alarm failed");
+
+            // Step 4: Select Extinguisher
+            bool s4 = workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out var e4);
+            if (!s4) throw new Exception("Step 4 select extinguisher failed");
+
+            // Step 5: Maintain Safe Distance
+            bool s5 = workflow.SubmitDistanceDecision(2.5f, bus, out var e5);
+            if (!s5) throw new Exception("Step 5 maintain safe distance failed");
+
+            // Step 6: Use Extinguisher (PASS Procedure)
+            bool s6a = workflow.SubmitPullPin(bus, out var e6a);
+            if (!s6a) throw new Exception("Step 6a pull pin failed");
+
+            bool s6b = workflow.SubmitAim(bus, out var e6b);
+            if (!s6b) throw new Exception("Step 6b aim failed");
+
+            bool s6c = workflow.SubmitSqueeze(bus, out var e6c);
+            if (!s6c) throw new Exception("Step 6c squeeze failed");
+
+            bool s6d = workflow.SubmitSweep(bus, out var e6d);
+            if (!s6d) throw new Exception("Step 6d sweep failed");
+
+            var events = bus.DispatchedEvents;
+            if (events.Count != 9) throw new Exception($"Expected 9 dispatched events, got {events.Count}");
+
+            // Verify sequential ordering of Step IDs across Steps 1 to 6:
+            if (events[0].StepId != "step_detect_hazard") throw new Exception("Event 0 was not step_detect_hazard");
+            if (events[1].StepId != "step_identify_hazard") throw new Exception("Event 1 was not step_identify_hazard");
+            if (events[2].StepId != "step_raise_alarm") throw new Exception("Event 2 was not step_raise_alarm");
+            if (events[3].StepId != "step_select_extinguisher") throw new Exception("Event 3 was not step_select_extinguisher");
+            if (events[4].StepId != "step_maintain_distance") throw new Exception("Event 4 was not step_maintain_distance");
+            if (events[5].StepId != "step_use_extinguisher") throw new Exception("Event 5 was not step_use_extinguisher");
+            if (events[6].StepId != "step_use_extinguisher") throw new Exception("Event 6 was not step_use_extinguisher");
+            if (events[7].StepId != "step_use_extinguisher") throw new Exception("Event 7 was not step_use_extinguisher");
+            if (events[8].StepId != "step_use_extinguisher") throw new Exception("Event 8 was not step_use_extinguisher");
+
+            // Verify final canonical Step 6 event:
+            if (events[8].EventType != "procedure_completed") throw new Exception("Event 8 EventType mismatch");
+            if (events[8].ActionId != "sweep") throw new Exception("Event 8 ActionId mismatch");
+            if (events[8].TargetId != "extinguisher_procedure") throw new Exception("Event 8 TargetId mismatch");
+
+            // Verify exact rubric Rule IDs across Steps 1 to 6:
+            if (events[0].GetPayloadValue("rule_id") != "rule_detect_hazard") throw new Exception("Rule 1 mismatch");
+            if (events[1].GetPayloadValue("rule_id") != "rule_identify_hazard") throw new Exception("Rule 2 mismatch");
+            if (events[2].GetPayloadValue("rule_id") != "rule_raise_alarm") throw new Exception("Rule 3 mismatch");
+            if (events[3].GetPayloadValue("rule_id") != "rule_select_extinguisher") throw new Exception("Rule 4 mismatch");
+            if (events[4].GetPayloadValue("rule_id") != "rule_maintain_distance") throw new Exception("Rule 5 mismatch");
+            if (events[8].GetPayloadValue("rule_id") != "rule_use_extinguisher") throw new Exception("Rule 6 mismatch");
+
+            // Verify all events are success:
+            for (int i = 0; i < events.Count; i++)
             {
                 if (events[i].Outcome != "success") throw new Exception($"Event {i} outcome was not success");
             }

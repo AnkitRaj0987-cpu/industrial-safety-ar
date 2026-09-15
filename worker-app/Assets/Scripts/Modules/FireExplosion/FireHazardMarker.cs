@@ -58,18 +58,25 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         private bool _isIdentified;
         private bool _isAlarmActive;
         private bool _isSafeDistanceConfirmed;
+        private bool _isExtinguished;
 
         private GameObject _dangerZoneRoot;
         private LineRenderer _dangerZoneLine;
         private Renderer _dangerZoneDiscRenderer;
         private TextMeshPro _dangerZoneLabel;
 
+        private GameObject _aimTargetRoot;
+        private GameObject _dischargeCloudObj;
+
         public bool IsIdentified => _isIdentified;
         public bool IsAlarmActive => _isAlarmActive;
         public bool IsSafeDistanceConfirmed => _isSafeDistanceConfirmed;
+        public bool IsExtinguished => _isExtinguished;
 
         private void Update()
         {
+            if (_isExtinguished) return;
+
             _pulseTimer += Time.deltaTime * 3.5f;
 
             if (_isAlarmActive)
@@ -222,6 +229,48 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         }
 
         /// <summary>
+        /// Shows or hides the AR aim target indicator at the base of the fire.
+        /// </summary>
+        public void ShowAimTarget(bool show)
+        {
+            if (_aimTargetRoot != null)
+            {
+                _aimTargetRoot.SetActive(show);
+            }
+        }
+
+        /// <summary>
+        /// Displays the CO2 discharge visual effect and marks the fire extinguished.
+        /// </summary>
+        public void TriggerExtinguisherDischargeVisual()
+        {
+            _isExtinguished = true;
+
+            if (_aimTargetRoot != null)
+            {
+                _aimTargetRoot.SetActive(false);
+            }
+
+            if (_dischargeCloudObj != null)
+            {
+                _dischargeCloudObj.SetActive(true);
+            }
+
+            if (_beaconMaterial != null)
+            {
+                _beaconMaterial.color = new Color(0.25f, 0.25f, 0.28f); // Extinguished charred/smoke state
+            }
+
+            if (_labelMesh != null)
+            {
+                _labelMesh.text = "FIRE EXTINGUISHED\nClass E Conveyor Suppressed";
+                _labelMesh.color = new Color(0.25f, 0.95f, 0.45f);
+            }
+
+            Debug.Log($"[FireHazardMarker] Fire suppressed on '{_hazardId}' via CO2 discharge.");
+        }
+
+        /// <summary>
         /// Procedurally constructs a recognizable industrial hazard marker if not created from a prefab.
         /// </summary>
         public void EnsureVisuals()
@@ -337,6 +386,55 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             _dangerZoneLabel.rectTransform.sizeDelta = new Vector2(3f, 1f);
 
             _dangerZoneRoot.SetActive(false);
+
+            // 7. Base of Fire Aim Target
+            _aimTargetRoot = new GameObject("AimBaseTarget");
+            _aimTargetRoot.transform.SetParent(transform, false);
+            _aimTargetRoot.transform.localPosition = new Vector3(0f, 0.04f, 0f);
+
+            var aimLine = _aimTargetRoot.AddComponent<LineRenderer>();
+            aimLine.useWorldSpace = false;
+            aimLine.loop = true;
+            aimLine.positionCount = 32;
+            aimLine.startWidth = 0.025f;
+            aimLine.endWidth = 0.025f;
+            aimLine.material = new Material(Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default") ?? Shader.Find("Standard"))
+            {
+                color = new Color(0.0f, 0.9f, 1.0f, 0.95f) // Bright cyan target
+            };
+            for (int i = 0; i < 32; i++)
+            {
+                float a = i * Mathf.PI * 2f / 32f;
+                aimLine.SetPosition(i, new Vector3(Mathf.Cos(a) * 0.28f, 0.01f, Mathf.Sin(a) * 0.28f));
+            }
+
+            GameObject aimLabelObj = new GameObject("AimLabel");
+            aimLabelObj.transform.SetParent(_aimTargetRoot.transform, false);
+            aimLabelObj.transform.localPosition = new Vector3(0f, 0.12f, 0.35f);
+            var aimLabel = aimLabelObj.AddComponent<TextMeshPro>();
+            aimLabel.text = "AIM AT BASE OF FIRE";
+            aimLabel.fontSize = 1.5f;
+            aimLabel.alignment = TextAlignmentOptions.Center;
+            aimLabel.color = new Color(0.0f, 0.9f, 1.0f);
+            aimLabel.rectTransform.sizeDelta = new Vector2(2.5f, 0.8f);
+
+            _aimTargetRoot.SetActive(false);
+
+            // 8. Extinguisher CO2 discharge vapor cone
+            _dischargeCloudObj = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            _dischargeCloudObj.name = "CO2DischargeVapor";
+            _dischargeCloudObj.transform.SetParent(transform, false);
+            _dischargeCloudObj.transform.localPosition = new Vector3(0f, 0.22f, 0f);
+            _dischargeCloudObj.transform.localScale = new Vector3(0.55f, 0.28f, 0.55f);
+            var dischargeCol = _dischargeCloudObj.GetComponent<Collider>();
+            if (dischargeCol != null) Destroy(dischargeCol);
+
+            var vaporMat = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"))
+            {
+                color = new Color(0.85f, 0.95f, 1.0f, 0.45f) // Frosted white CO2 cloud
+            };
+            _dischargeCloudObj.GetComponent<Renderer>().material = vaporMat;
+            _dischargeCloudObj.SetActive(false);
         }
     }
 }

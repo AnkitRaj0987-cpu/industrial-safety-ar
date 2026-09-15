@@ -35,7 +35,13 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         ExtinguisherSelected,
         AwaitingSafeDistance,
         step_maintain_distance = AwaitingSafeDistance,
-        SafeDistanceMaintained
+        SafeDistanceMaintained,
+        step_use_extinguisher = SafeDistanceMaintained,
+        PinPulled,
+        AimConfirmed,
+        HandleSqueezed,
+        ExtinguisherDischarged,
+        ProcedureCompleted = ExtinguisherDischarged
     }
 
     /// <summary>
@@ -83,6 +89,8 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public event Action<TrainingEvent> OnAlarmRaised;
         public event Action<TrainingEvent> OnExtinguisherSelected;
         public event Action<TrainingEvent> OnSafeDistanceDecided;
+        public event Action<TrainingEvent> OnExtinguisherProcedureCompleted;
+        public event Action<string, TrainingEvent> OnExtinguisherActionCompleted;
         public event Action<string> OnFeedbackChanged;
 
         private void Awake()
@@ -187,6 +195,10 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
                 case FireWorkflowStage.AwaitingSafeDistance:
                     TrySelectSafeDistancePosition(screenPosition);
+                    break;
+
+                case FireWorkflowStage.PinPulled:
+                    TryAimAtBase(screenPosition);
                     break;
             }
         }
@@ -379,6 +391,55 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             }
             return success;
         }
+
+        private void TryAimAtBase(Vector2 screenPosition)
+        {
+            if (_activeHazard == null) return;
+
+            if (_arCamera == null)
+            {
+                _arCamera = Camera.main;
+                if (_arCamera == null) return;
+            }
+
+            Ray ray = _arCamera.ScreenPointToRay(screenPosition);
+            if (Physics.Raycast(ray, out RaycastHit hit, 50f))
+            {
+                var hazard = hit.collider.GetComponentInParent<FireHazardMarker>();
+                if (hazard != null && hazard == _activeHazard)
+                {
+                    SubmitAim();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Submits an interactive action for the Step 6 extinguisher PASS procedure.
+        /// </summary>
+        public bool SubmitExtinguisherAction(string actionId)
+        {
+            bool success = _workflow.SubmitExtinguisherAction(actionId, _eventDispatcher, out var trainingEvent);
+            if (success)
+            {
+                if (_workflow.CurrentStage == FireWorkflowStage.PinPulled)
+                {
+                    _activeHazard?.ShowAimTarget(true);
+                }
+                else if (_workflow.CurrentStage == FireWorkflowStage.ExtinguisherDischarged)
+                {
+                    _activeHazard?.TriggerExtinguisherDischargeVisual();
+                    OnExtinguisherProcedureCompleted?.Invoke(trainingEvent);
+                }
+
+                OnExtinguisherActionCompleted?.Invoke(actionId, trainingEvent);
+            }
+            return success;
+        }
+
+        public bool SubmitPullPin() => SubmitExtinguisherAction(FireTrainingWorkflow.ActionPullPin);
+        public bool SubmitAim() => SubmitExtinguisherAction(FireTrainingWorkflow.ActionAim);
+        public bool SubmitSqueeze() => SubmitExtinguisherAction(FireTrainingWorkflow.ActionSqueeze);
+        public bool SubmitSweep() => SubmitExtinguisherAction(FireTrainingWorkflow.ActionSweep);
 
         private bool TryGetScreenTap(out Vector2 position)
         {

@@ -25,7 +25,13 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         ExtinguisherSelected,
         AwaitingSafeDistance,
         step_maintain_distance = AwaitingSafeDistance,
-        SafeDistanceMaintained
+        SafeDistanceMaintained,
+        step_use_extinguisher = SafeDistanceMaintained,
+        PinPulled,
+        AimConfirmed,
+        HandleSqueezed,
+        ExtinguisherDischarged,
+        ProcedureCompleted = ExtinguisherDischarged
     }
 
     /// <summary>
@@ -71,6 +77,22 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public const string DecisionUnsafeTooClose = "standoff_distance_too_close";
         public const float MinimumSafeDistanceMeters = 2.0f;
 
+        // Step 6: Use Extinguisher (PASS Procedure)
+        public const string StepUseExtinguisher = "step_use_extinguisher";
+        public const string RuleUseExtinguisher = "rule_use_extinguisher";
+        public const string TargetExtinguisherProcedure = "extinguisher_procedure";
+        public const string TargetSafetyPin = "safety_pin";
+        public const string TargetHazardBase = "hazard_base";
+        public const string TargetExtinguisherHandle = "extinguisher_handle";
+
+        public const string ActionPullPin = "pull_pin";
+        public const string ActionAim = "aim";
+        public const string ActionSqueeze = "squeeze";
+        public const string ActionSweep = "sweep";
+
+        // Step 7: Identify Exit
+        public const string StepIdentifyExit = "step_identify_exit";
+
         public FireWorkflowStage CurrentStage { get; private set; } = FireWorkflowStage.NotStarted;
         public string CurrentStepId { get; private set; } = StepDetectHazard;
 
@@ -104,7 +126,13 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                     CurrentStepId = StepMaintainDistance;
                     break;
                 case FireWorkflowStage.SafeDistanceMaintained:
-                    CurrentStepId = "step_use_extinguisher";
+                case FireWorkflowStage.PinPulled:
+                case FireWorkflowStage.AimConfirmed:
+                case FireWorkflowStage.HandleSqueezed:
+                    CurrentStepId = StepUseExtinguisher;
+                    break;
+                case FireWorkflowStage.ExtinguisherDischarged:
+                    CurrentStepId = StepIdentifyExit;
                     break;
             }
 
@@ -348,6 +376,170 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             }
         }
 
+        /// <summary>
+        /// Submits an interactive action for the Step 6 extinguisher PASS procedure.
+        /// Validates ordering: pull_pin -> aim -> squeeze -> sweep.
+        /// </summary>
+        public bool SubmitExtinguisherAction(string actionId, ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent)
+        {
+            emittedEvent = null;
+
+            bool isInStep6 = CurrentStage == FireWorkflowStage.SafeDistanceMaintained
+                || CurrentStage == FireWorkflowStage.PinPulled
+                || CurrentStage == FireWorkflowStage.AimConfirmed
+                || CurrentStage == FireWorkflowStage.HandleSqueezed;
+
+            if (!isInStep6)
+            {
+                // Action rejected before Step 5 safe distance confirmation or after completion
+                return false;
+            }
+
+            string rawAction = actionId?.Trim() ?? string.Empty;
+            string normalized = rawAction.ToLowerInvariant();
+            if (normalized == "pull" || normalized == "pull_safety_pin") normalized = ActionPullPin;
+            else if (normalized == "aim_base" || normalized == "aim_nozzle" || normalized == "aim_at_base") normalized = ActionAim;
+            else if (normalized == "squeeze_handle" || normalized == "press_handle") normalized = ActionSqueeze;
+            else if (normalized == "sweep_nozzle" || normalized == "sweep_side_to_side") normalized = ActionSweep;
+
+            string expectedAction;
+            FireWorkflowStage nextStage;
+            string targetId;
+            string passStep;
+            string successFeedback;
+
+            switch (CurrentStage)
+            {
+                case FireWorkflowStage.SafeDistanceMaintained:
+                    expectedAction = ActionPullPin;
+                    nextStage = FireWorkflowStage.PinPulled;
+                    targetId = TargetSafetyPin;
+                    passStep = "pull";
+                    successFeedback = "PASS — PULL: Pin pulled! Extinguisher unlocked. Aim nozzle at base of fire.";
+                    break;
+
+                case FireWorkflowStage.PinPulled:
+                    expectedAction = ActionAim;
+                    nextStage = FireWorkflowStage.AimConfirmed;
+                    targetId = TargetHazardBase;
+                    passStep = "aim";
+                    successFeedback = "PASS — AIM: Aim confirmed at base of fire! Squeeze handle to discharge CO2.";
+                    break;
+
+                case FireWorkflowStage.AimConfirmed:
+                    expectedAction = ActionSqueeze;
+                    nextStage = FireWorkflowStage.HandleSqueezed;
+                    targetId = TargetExtinguisherHandle;
+                    passStep = "squeeze";
+                    successFeedback = "PASS — SQUEEZE: Handle pressed! CO2 discharging. Sweep side to side across fire base.";
+                    break;
+
+                case FireWorkflowStage.HandleSqueezed:
+                    expectedAction = ActionSweep;
+                    nextStage = FireWorkflowStage.ExtinguisherDischarged;
+                    targetId = TargetExtinguisherProcedure;
+                    passStep = "sweep";
+                    successFeedback = "FIRE SUPPRESSED! PASS procedure completed successfully. Proceed to exit.";
+                    break;
+
+                default:
+                    return false;
+            }
+
+            bool isCorrect = string.Equals(normalized, expectedAction, StringComparison.OrdinalIgnoreCase);
+
+            if (isCorrect)
+            {
+                bool isFinalStep = nextStage == FireWorkflowStage.ExtinguisherDischarged;
+
+                emittedEvent = new TrainingEvent
+                {
+                    ModuleId = ModuleId,
+                    ContentVersion = ContentVersion,
+                    StepId = StepUseExtinguisher,
+                    EventType = isFinalStep ? "procedure_completed" : "procedure_progress",
+                    ActionId = isFinalStep ? ActionSweep : normalized,
+                    TargetId = targetId,
+                    Outcome = "success",
+                    Payload =
+                    {
+                        { "rule_id", RuleUseExtinguisher },
+                        { "action_id", isFinalStep ? ActionSweep : normalized },
+                        { "target_id", targetId },
+                        { "pass_step", passStep },
+                        { "outcome", "success" }
+                    }
+                };
+
+                dispatcher?.Dispatch(emittedEvent);
+                SetStage(nextStage);
+                OnFeedbackChanged?.Invoke(successFeedback);
+                return true;
+            }
+            else
+            {
+                // Wrong action or out-of-order action
+                emittedEvent = new TrainingEvent
+                {
+                    ModuleId = ModuleId,
+                    ContentVersion = ContentVersion,
+                    StepId = StepUseExtinguisher,
+                    EventType = "procedure_failed",
+                    ActionId = rawAction,
+                    TargetId = TargetExtinguisherProcedure,
+                    Outcome = "failure",
+                    Payload =
+                    {
+                        { "rule_id", RuleUseExtinguisher },
+                        { "action_id", rawAction },
+                        { "target_id", TargetExtinguisherProcedure },
+                        { "expected_action", expectedAction },
+                        { "error", "out_of_order" },
+                        { "outcome", "failure" }
+                    }
+                };
+
+                dispatcher?.Dispatch(emittedEvent);
+
+                string failFeedback = GetFailureFeedback(expectedAction, normalized);
+                OnFeedbackChanged?.Invoke(failFeedback);
+                return false;
+            }
+        }
+
+        private string GetFailureFeedback(string expectedAction, string actualAction)
+        {
+            if (expectedAction == ActionPullPin)
+            {
+                return "SAFETY PIN LOCKED: You must PULL the safety pin first before aiming or squeezing!";
+            }
+            if (expectedAction == ActionAim)
+            {
+                return "UNSAFE DISCHARGE: You must AIM nozzle at the base of the fire before squeezing handle!";
+            }
+            if (expectedAction == ActionSqueeze)
+            {
+                return "NO DISCHARGE: SQUEEZE the handle to release extinguishing agent before sweeping!";
+            }
+            if (expectedAction == ActionSweep)
+            {
+                return "INCOMPLETE SUPPRESSION: SWEEP side-to-side across the base of the fire to extinguish!";
+            }
+            return "Incorrect action. Follow P.A.S.S. procedure: Pull, Aim, Squeeze, Sweep.";
+        }
+
+        public bool SubmitPullPin(ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent)
+            => SubmitExtinguisherAction(ActionPullPin, dispatcher, out emittedEvent);
+
+        public bool SubmitAim(ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent)
+            => SubmitExtinguisherAction(ActionAim, dispatcher, out emittedEvent);
+
+        public bool SubmitSqueeze(ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent)
+            => SubmitExtinguisherAction(ActionSqueeze, dispatcher, out emittedEvent);
+
+        public bool SubmitSweep(ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent)
+            => SubmitExtinguisherAction(ActionSweep, dispatcher, out emittedEvent);
+
         public string GetFeedbackForStage(FireWorkflowStage stage)
         {
             switch (stage)
@@ -371,7 +563,15 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 case FireWorkflowStage.AwaitingSafeDistance:
                     return "Maintain Safe Distance: Standoff at least 2m outside the red danger zone.";
                 case FireWorkflowStage.SafeDistanceMaintained:
-                    return "Safe Distance Confirmed! 2m standoff maintained. Ready to extinguish.";
+                    return "STEP 6: USE EXTINGUISHER — PASS: Pull the safety pin to unlock handle.";
+                case FireWorkflowStage.PinPulled:
+                    return "STEP 6: USE EXTINGUISHER — AIM: Aim nozzle at the base of the fire.";
+                case FireWorkflowStage.AimConfirmed:
+                    return "STEP 6: USE EXTINGUISHER — SQUEEZE: Press the handle to discharge CO2.";
+                case FireWorkflowStage.HandleSqueezed:
+                    return "STEP 6: USE EXTINGUISHER — SWEEP: Move nozzle side to side across fire base.";
+                case FireWorkflowStage.ExtinguisherDischarged:
+                    return "FIRE SUPPRESSED! PASS procedure successfully completed. Proceed to exit.";
                 default:
                     return string.Empty;
             }

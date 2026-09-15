@@ -166,7 +166,23 @@ namespace IndustrialSafetyAR.UI
                     break;
 
                 case FireInteractionState.SafeDistanceMaintained:
-                    ShowSafeDistanceMaintainedUI();
+                    ShowPassPullPinUI();
+                    break;
+
+                case FireInteractionState.PinPulled:
+                    ShowPassAimUI();
+                    break;
+
+                case FireInteractionState.AimConfirmed:
+                    ShowPassSqueezeUI();
+                    break;
+
+                case FireInteractionState.HandleSqueezed:
+                    ShowPassSweepUI();
+                    break;
+
+                case FireInteractionState.ExtinguisherDischarged:
+                    ShowPassCompletedUI();
                     break;
             }
         }
@@ -326,13 +342,93 @@ namespace IndustrialSafetyAR.UI
             });
         }
 
-        private void ShowSafeDistanceMaintainedUI()
+        private void ShowPassPullPinUI()
+        {
+            ClearActionButtons();
+            if (_actionContainer == null) return;
+
+            if (_promptText != null)
+            {
+                _promptText.text = "<b>STEP 6: USE EXTINGUISHER</b>\nPASS — Pull the pin to unlock extinguisher:";
+                _promptText.color = new Color(1.0f, 0.85f, 0.3f);
+            }
+
+            if (_bannerBg != null)
+            {
+                _bannerBg.color = new Color(0.10f, 0.12f, 0.16f, 0.90f);
+            }
+
+            CreateActionButton("1. PULL Safety Pin (P.A.S.S.)", new Vector2(0f, 0.15f), new Vector2(1f, 0.85f), new Color(0.18f, 0.22f, 0.30f, 0.94f), () =>
+            {
+                _controller?.SubmitPullPin();
+            });
+        }
+
+        private void ShowPassAimUI()
+        {
+            ClearActionButtons();
+            if (_actionContainer == null) return;
+
+            if (_promptText != null)
+            {
+                _promptText.text = "<b>STEP 6: USE EXTINGUISHER</b>\nAim at the base of the fire (tap base target or button):";
+                _promptText.color = new Color(0.0f, 0.9f, 1.0f);
+            }
+
+            // Option 1: Aim at base of fire (Correct)
+            CreateOptionButton("2. AIM at Base of Fire", new Vector2(0f, 0.52f), new Vector2(1f, 0.95f), () =>
+            {
+                _controller?.SubmitAim();
+            });
+
+            // Option 2: Aim into flames (Incorrect)
+            CreateActionButton("Aim into flames (Incorrect)", new Vector2(0f, 0.05f), new Vector2(1f, 0.48f), new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
+            {
+                _controller?.SubmitExtinguisherAction("aim_flames");
+            });
+        }
+
+        private void ShowPassSqueezeUI()
+        {
+            ClearActionButtons();
+            if (_actionContainer == null) return;
+
+            if (_promptText != null)
+            {
+                _promptText.text = "<b>STEP 6: USE EXTINGUISHER</b>\nSQUEEZE — Press the handle to discharge CO2 agent:";
+                _promptText.color = new Color(1.0f, 0.85f, 0.3f);
+            }
+
+            CreateActionButton("3. SQUEEZE Handle / Lever", new Vector2(0f, 0.15f), new Vector2(1f, 0.85f), new Color(0.18f, 0.22f, 0.30f, 0.94f), () =>
+            {
+                _controller?.SubmitSqueeze();
+            });
+        }
+
+        private void ShowPassSweepUI()
+        {
+            ClearActionButtons();
+            if (_actionContainer == null) return;
+
+            if (_promptText != null)
+            {
+                _promptText.text = "<b>STEP 6: USE EXTINGUISHER</b>\nSWEEP — Move side to side across the base of the fire:";
+                _promptText.color = new Color(0.25f, 0.95f, 0.4f);
+            }
+
+            CreateActionButton("4. SWEEP Side-to-Side across Base", new Vector2(0f, 0.15f), new Vector2(1f, 0.85f), new Color(0.15f, 0.32f, 0.20f, 0.94f), () =>
+            {
+                _controller?.SubmitSweep();
+            });
+        }
+
+        private void ShowPassCompletedUI()
         {
             ClearActionButtons();
 
             if (_promptText != null)
             {
-                _promptText.text = "<color=#4CAF50>SAFE DISTANCE CONFIRMED!</color>\n<size=80%>2.0m Standoff Maintained • Outside flashover/shock danger zone</size>";
+                _promptText.text = "<color=#4CAF50>FIRE SUPPRESSED!</color>\n<size=80%>PASS Procedure Completed • Conveyor Fire Extinguished</size>";
                 _promptText.color = new Color(0.25f, 0.95f, 0.4f);
             }
 
