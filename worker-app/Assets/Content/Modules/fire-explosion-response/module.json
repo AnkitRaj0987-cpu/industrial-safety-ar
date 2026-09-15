@@ -1,0 +1,244 @@
+{
+  "schema_version": "1.0.0",
+  "module_id": "fire-explosion-response",
+  "content_version": "1.0.0",
+  "title_key": "module.fire_explosion_response.title",
+  "description_key": "module.fire_explosion_response.description",
+  "domain": "fire_explosion",
+  "pass_percent": 70.00,
+  "estimated_duration_seconds": 300,
+  "initial_step_id": "step_detect_hazard",
+  "steps": [
+    {
+      "step_id": "step_detect_hazard",
+      "sequence": 1,
+      "type": "instruction",
+      "prompt_key": "module.fire_explosion_response.step.detect_hazard",
+      "required": true,
+      "allowed_actions": [
+        "complete_step"
+      ],
+      "vfx_cue": "cue_fire_smoke_detected",
+      "next_step_id": "step_identify_hazard",
+      "failure_next_step_id": null,
+      "timeout_ms": 30000,
+      "is_terminal": false,
+      "success_criteria": {
+        "matcher": "equals",
+        "event_type": "step_completed",
+        "payload_key": "action_id",
+        "expected_value": "detect_hazard_acknowledged"
+      }
+    },
+    {
+      "step_id": "step_identify_hazard",
+      "sequence": 2,
+      "type": "identify_hazard",
+      "prompt_key": "module.fire_explosion_response.step.identify_hazard",
+      "required": true,
+      "allowed_actions": [
+        "identify"
+      ],
+      "vfx_cue": "cue_conveyor_electrical_fire",
+      "next_step_id": "step_raise_alarm",
+      "failure_next_step_id": "step_raise_alarm",
+      "timeout_ms": 45000,
+      "is_terminal": false,
+      "metadata": {
+        "hazard_class": "class_e_electrical"
+      },
+      "success_criteria": {
+        "matcher": "equals",
+        "event_type": "hazard_identified",
+        "payload_key": "target_id",
+        "expected_value": "hazard_electrical_conveyor_fire"
+      }
+    },
+    {
+      "step_id": "step_raise_alarm",
+      "sequence": 3,
+      "type": "raise_alarm",
+      "prompt_key": "module.fire_explosion_response.step.raise_alarm",
+      "required": true,
+      "allowed_actions": [
+        "raise_alarm"
+      ],
+      "vfx_cue": "cue_alarm_siren",
+      "next_step_id": "step_select_extinguisher",
+      "failure_next_step_id": null,
+      "timeout_ms": 30000,
+      "is_terminal": false,
+      "success_criteria": {
+        "matcher": "equals",
+        "event_type": "alarm_raised",
+        "payload_key": "action_id",
+        "expected_value": "manual_call_point_activated"
+      }
+    },
+    {
+      "step_id": "step_select_extinguisher",
+      "sequence": 4,
+      "type": "select_item",
+      "prompt_key": "module.fire_explosion_response.step.select_extinguisher",
+      "required": true,
+      "allowed_actions": [
+        "select"
+      ],
+      "next_step_id": "step_maintain_distance",
+      "failure_next_step_id": null,
+      "timeout_ms": 45000,
+      "is_terminal": false,
+      "metadata": {
+        "tool_class": "co2_extinguisher"
+      },
+      "success_criteria": {
+        "matcher": "equals",
+        "event_type": "extinguisher_selected",
+        "payload_key": "target_id",
+        "expected_value": "extinguisher_co2"
+      }
+    },
+    {
+      "step_id": "step_maintain_distance",
+      "sequence": 5,
+      "type": "make_decision",
+      "prompt_key": "module.fire_explosion_response.step.maintain_distance",
+      "required": true,
+      "allowed_actions": [
+        "decide"
+      ],
+      "next_step_id": "step_use_extinguisher",
+      "failure_next_step_id": null,
+      "timeout_ms": 30000,
+      "is_terminal": false,
+      "success_criteria": {
+        "matcher": "equals",
+        "event_type": "decision_made",
+        "payload_key": "decision_id",
+        "expected_value": "standoff_distance_2m_maintained"
+      }
+    },
+    {
+      "step_id": "step_use_extinguisher",
+      "sequence": 6,
+      "type": "use_item",
+      "prompt_key": "module.fire_explosion_response.step.use_extinguisher",
+      "required": true,
+      "allowed_actions": [
+        "use",
+        "submit_sequence"
+      ],
+      "vfx_cue": "cue_extinguisher_discharge",
+      "next_step_id": "step_identify_exit",
+      "failure_next_step_id": null,
+      "timeout_ms": 60000,
+      "is_terminal": false,
+      "metadata": {
+        "tool_class": "co2_extinguisher"
+      },
+      "success_criteria": {
+        "matcher": "equals",
+        "event_type": "extinguisher_used",
+        "payload_key": "outcome",
+        "expected_value": "success"
+      }
+    },
+    {
+      "step_id": "step_identify_exit",
+      "sequence": 7,
+      "type": "mark_location",
+      "prompt_key": "module.fire_explosion_response.step.identify_exit",
+      "required": true,
+      "allowed_actions": [
+        "mark"
+      ],
+      "vfx_cue": "cue_exit_sign_green",
+      "next_step_id": "step_evacuate_route",
+      "failure_next_step_id": null,
+      "timeout_ms": 30000,
+      "is_terminal": false,
+      "success_criteria": {
+        "matcher": "equals",
+        "event_type": "exit_marked",
+        "payload_key": "target_id",
+        "expected_value": "exit_emergency_sector_b"
+      }
+    },
+    {
+      "step_id": "step_evacuate_route",
+      "sequence": 8,
+      "type": "evacuate",
+      "prompt_key": "module.fire_explosion_response.step.evacuate_route",
+      "required": true,
+      "allowed_actions": [
+        "submit_sequence",
+        "decide"
+      ],
+      "vfx_cue": "cue_smoke_corridor_warning",
+      "next_step_id": "step_reach_assembly",
+      "failure_next_step_id": "step_hazard_reroute",
+      "timeout_ms": 60000,
+      "is_terminal": false,
+      "branches": [
+        {
+          "branch_id": "branch_blocked_corridor_hazard",
+          "when_outcome": "failure",
+          "when_decision_id": "avoid_heavy_smoke_corridor",
+          "next_step_id": "step_hazard_reroute"
+        }
+      ],
+      "success_criteria": {
+        "matcher": "ordered_sequence",
+        "event_type": "evacuation_sequence_submitted",
+        "payload_key": "ordered_ids",
+        "expected_ids": [
+          "waypoint_main_corridor",
+          "waypoint_bypass_crosscut",
+          "waypoint_fire_door_exit"
+        ]
+      }
+    },
+    {
+      "step_id": "step_hazard_reroute",
+      "sequence": 9,
+      "type": "make_decision",
+      "prompt_key": "module.fire_explosion_response.step.hazard_reroute",
+      "required": false,
+      "allowed_actions": [
+        "decide"
+      ],
+      "vfx_cue": "cue_alternate_route_arrow",
+      "next_step_id": "step_reach_assembly",
+      "failure_next_step_id": null,
+      "timeout_ms": 30000,
+      "is_terminal": false,
+      "success_criteria": {
+        "matcher": "equals",
+        "event_type": "decision_made",
+        "payload_key": "decision_id",
+        "expected_value": "reroute_via_secondary_crosscut"
+      }
+    },
+    {
+      "step_id": "step_reach_assembly",
+      "sequence": 10,
+      "type": "assemble",
+      "prompt_key": "module.fire_explosion_response.step.reach_assembly",
+      "required": true,
+      "allowed_actions": [
+        "complete_step"
+      ],
+      "vfx_cue": "cue_assembly_muster_point",
+      "next_step_id": null,
+      "failure_next_step_id": null,
+      "timeout_ms": 45000,
+      "is_terminal": true,
+      "success_criteria": {
+        "matcher": "equals",
+        "event_type": "assembly_reached",
+        "payload_key": "target_id",
+        "expected_value": "assembly_muster_point_alpha"
+      }
+    }
+  ]
+}

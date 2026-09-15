@@ -1,0 +1,141 @@
+{
+  "schema_version": "1.0.0",
+  "module_id": "fire-explosion-response",
+  "content_version": "1.0.0",
+  "pass_percent": 70.00,
+  "max_score": 100.00,
+  "rules": [
+    {
+      "rule_id": "rule_detect_hazard",
+      "step_id": "step_detect_hazard",
+      "required": true,
+      "event_type": "step_completed",
+      "match": {
+        "action_id": "detect_hazard_acknowledged",
+        "outcome": "success"
+      },
+      "points": 5.00,
+      "award_limit": 1,
+      "penalty_points": 0.00
+    },
+    {
+      "rule_id": "rule_identify_hazard",
+      "step_id": "step_identify_hazard",
+      "required": true,
+      "event_type": "hazard_identified",
+      "match": {
+        "target_id": "hazard_electrical_conveyor_fire",
+        "outcome": "success"
+      },
+      "points": 15.00,
+      "award_limit": 1,
+      "penalty_points": 5.00,
+      "penalty_event_type": "hazard_identified",
+      "penalty_match": {
+        "outcome": "failure"
+      }
+    },
+    {
+      "rule_id": "rule_raise_alarm",
+      "step_id": "step_raise_alarm",
+      "required": true,
+      "event_type": "alarm_raised",
+      "match": {
+        "action_id": "manual_call_point_activated",
+        "outcome": "success"
+      },
+      "points": 15.00,
+      "award_limit": 1,
+      "penalty_points": 0.00
+    },
+    {
+      "rule_id": "rule_select_extinguisher",
+      "step_id": "step_select_extinguisher",
+      "required": true,
+      "event_type": "extinguisher_selected",
+      "match": {
+        "target_id": "extinguisher_co2",
+        "outcome": "success"
+      },
+      "points": 15.00,
+      "award_limit": 1,
+      "penalty_points": 5.00,
+      "penalty_event_type": "extinguisher_selected",
+      "penalty_match": {
+        "outcome": "failure"
+      }
+    },
+    {
+      "rule_id": "rule_maintain_distance",
+      "step_id": "step_maintain_distance",
+      "required": true,
+      "event_type": "decision_made",
+      "match": {
+        "decision_id": "standoff_distance_2m_maintained",
+        "outcome": "success"
+      },
+      "points": 10.00,
+      "award_limit": 1,
+      "penalty_points": 0.00
+    },
+    {
+      "rule_id": "rule_use_extinguisher",
+      "step_id": "step_use_extinguisher",
+      "required": true,
+      "event_type": "extinguisher_used",
+      "match": {
+        "action_id": "pass_procedure_completed",
+        "outcome": "success"
+      },
+      "points": 15.00,
+      "award_limit": 1,
+      "penalty_points": 5.00,
+      "penalty_event_type": "extinguisher_used",
+      "penalty_match": {
+        "outcome": "failure"
+      }
+    },
+    {
+      "rule_id": "rule_identify_exit",
+      "step_id": "step_identify_exit",
+      "required": true,
+      "event_type": "exit_marked",
+      "match": {
+        "target_id": "exit_emergency_sector_b",
+        "outcome": "success"
+      },
+      "points": 10.00,
+      "award_limit": 1,
+      "penalty_points": 0.00
+    },
+    {
+      "rule_id": "rule_evacuate_route",
+      "step_id": "step_evacuate_route",
+      "required": true,
+      "event_type": "evacuation_sequence_submitted",
+      "match": {
+        "outcome": "success"
+      },
+      "points": 10.00,
+      "award_limit": 1,
+      "penalty_points": 5.00,
+      "penalty_event_type": "evacuation_sequence_submitted",
+      "penalty_match": {
+        "outcome": "failure"
+      }
+    },
+    {
+      "rule_id": "rule_reach_assembly",
+      "step_id": "step_reach_assembly",
+      "required": true,
+      "event_type": "assembly_reached",
+      "match": {
+        "target_id": "assembly_muster_point_alpha",
+        "outcome": "success"
+      },
+      "points": 5.00,
+      "award_limit": 1,
+      "penalty_points": 0.00
+    }
+  ]
+}
