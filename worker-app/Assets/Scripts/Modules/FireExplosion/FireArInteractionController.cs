@@ -30,7 +30,9 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         AwaitingIdentification,
         HazardIdentified,
         AwaitingAlarm,
-        AlarmRaised
+        AlarmRaised,
+        AwaitingExtinguisherSelection,
+        ExtinguisherSelected
     }
 
     /// <summary>
@@ -76,6 +78,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public event Action<FireHazardMarker, TrainingEvent> OnHazardDetected;
         public event Action<TrainingEvent> OnHazardIdentified;
         public event Action<TrainingEvent> OnAlarmRaised;
+        public event Action<TrainingEvent> OnExtinguisherSelected;
         public event Action<string> OnFeedbackChanged;
 
         private void Awake()
@@ -278,6 +281,25 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                     _activeHazard.TriggerAlarmVisual();
                 }
                 OnAlarmRaised?.Invoke(trainingEvent);
+            }
+            return success;
+        }
+
+        /// <summary>
+        /// Submits the worker's fire extinguisher selection.
+        /// </summary>
+        /// <param name="targetId">The selected extinguisher ID (e.g. extinguisher_co2).</param>
+        /// <returns>True if correct extinguisher and advanced; false if invalid.</returns>
+        public bool SubmitExtinguisherSelection(string targetId)
+        {
+            bool success = _workflow.SubmitSelectExtinguisher(targetId, _eventDispatcher, out var trainingEvent);
+            if (success)
+            {
+                if (_activeHazard != null)
+                {
+                    _activeHazard.MarkExtinguisherSelected(FireTrainingWorkflow.TargetExtinguisherCO2);
+                }
+                OnExtinguisherSelected?.Invoke(trainingEvent);
             }
             return success;
         }

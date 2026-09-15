@@ -20,7 +20,9 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         AwaitingIdentification,
         HazardIdentified,
         AwaitingAlarm,
-        AlarmRaised
+        AlarmRaised,
+        AwaitingExtinguisherSelection,
+        ExtinguisherSelected
     }
 
     /// <summary>
@@ -49,6 +51,15 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public const string ActionRaiseAlarm = "manual_call_point_activated";
         public const string RuleRaiseAlarm = "rule_raise_alarm";
 
+        // Step 4: Select Extinguisher
+        public const string StepSelectExtinguisher = "step_select_extinguisher";
+        public const string ActionSelectExtinguisher = "select";
+        public const string RuleSelectExtinguisher = "rule_select_extinguisher";
+        public const string TargetExtinguisherCO2 = "extinguisher_co2";
+        public const string TargetExtinguisherWater = "extinguisher_water";
+        public const string TargetExtinguisherFoam = "extinguisher_foam";
+        public const string ToolClassCO2 = "co2_extinguisher";
+
         public FireWorkflowStage CurrentStage { get; private set; } = FireWorkflowStage.NotStarted;
         public string CurrentStepId { get; private set; } = StepDetectHazard;
 
@@ -73,6 +84,10 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 case FireWorkflowStage.AwaitingAlarm:
                 case FireWorkflowStage.AlarmRaised:
                     CurrentStepId = StepRaiseAlarm;
+                    break;
+                case FireWorkflowStage.AwaitingExtinguisherSelection:
+                case FireWorkflowStage.ExtinguisherSelected:
+                    CurrentStepId = StepSelectExtinguisher;
                     break;
             }
 
@@ -200,7 +215,60 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
             dispatcher?.Dispatch(emittedEvent);
             SetStage(FireWorkflowStage.AlarmRaised);
+            CurrentStepId = StepSelectExtinguisher;
+            SetStage(FireWorkflowStage.AwaitingExtinguisherSelection);
             return true;
+        }
+
+        /// <summary>
+        /// Submits extinguisher selection. Advances only on selecting the correct CO2 extinguisher.
+        /// </summary>
+        public bool SubmitSelectExtinguisher(string targetId, ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent)
+        {
+            emittedEvent = null;
+            if (CurrentStage != FireWorkflowStage.AwaitingExtinguisherSelection && CurrentStage != FireWorkflowStage.AlarmRaised)
+            {
+                return false;
+            }
+
+            bool isCorrect = string.Equals(targetId, TargetExtinguisherCO2, StringComparison.OrdinalIgnoreCase);
+            string outcome = isCorrect ? "success" : "failure";
+
+            emittedEvent = new TrainingEvent
+            {
+                ModuleId = ModuleId,
+                ContentVersion = ContentVersion,
+                StepId = StepSelectExtinguisher,
+                EventType = "extinguisher_selected",
+                ActionId = ActionSelectExtinguisher,
+                TargetId = targetId,
+                Outcome = outcome,
+                Payload =
+                {
+                    { "rule_id", RuleSelectExtinguisher },
+                    { "action_id", ActionSelectExtinguisher },
+                    { "target_id", targetId },
+                    { "tool_class", ToolClassCO2 },
+                    { "outcome", outcome }
+                }
+            };
+
+            dispatcher?.Dispatch(emittedEvent);
+
+            if (isCorrect)
+            {
+                CurrentStepId = "step_maintain_distance";
+                SetStage(FireWorkflowStage.ExtinguisherSelected);
+                return true;
+            }
+            else
+            {
+                string feedback = string.Equals(targetId, TargetExtinguisherWater, StringComparison.OrdinalIgnoreCase)
+                    ? "DANGER: Water conducts electricity! Risk of fatal electrocution on electrical fires."
+                    : "INCORRECT: Foam is not safe for energized electrical equipment. Select CO2.";
+                OnFeedbackChanged?.Invoke(feedback);
+                return false;
+            }
         }
 
         public string GetFeedbackForStage(FireWorkflowStage stage)
@@ -220,7 +288,10 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 case FireWorkflowStage.AwaitingAlarm:
                     return "Hazard Identified: Class E Electrical Fire. Raise the emergency alarm!";
                 case FireWorkflowStage.AlarmRaised:
-                    return "Emergency Alarm Activated! Siren sounding, response team alerted.";
+                case FireWorkflowStage.AwaitingExtinguisherSelection:
+                    return "Alarm Active! Select the appropriate extinguisher for this Class E electrical fire.";
+                case FireWorkflowStage.ExtinguisherSelected:
+                    return "CO2 Extinguisher Selected! (Safe for energized electrical fires)";
                 default:
                     return string.Empty;
             }

@@ -152,6 +152,14 @@ namespace IndustrialSafetyAR.UI
                 case FireInteractionState.AlarmRaised:
                     ShowAlarmActivatedUI();
                     break;
+
+                case FireInteractionState.AwaitingExtinguisherSelection:
+                    ShowExtinguisherSelectionUI();
+                    break;
+
+                case FireInteractionState.ExtinguisherSelected:
+                    ShowExtinguisherSelectedUI();
+                    break;
             }
         }
 
@@ -232,6 +240,52 @@ namespace IndustrialSafetyAR.UI
             if (_bannerBg != null)
             {
                 _bannerBg.color = new Color(0.4f, 0.08f, 0.08f, 0.94f);
+            }
+        }
+
+        private void ShowExtinguisherSelectionUI()
+        {
+            ClearActionButtons();
+            if (_actionContainer == null) return;
+
+            if (_promptText != null)
+            {
+                _promptText.text = "Alarm Active! Select extinguisher for Class E electrical fire:";
+                _promptText.color = new Color(1.0f, 0.85f, 0.3f);
+            }
+
+            // Option 1: CO2 Extinguisher (Correct)
+            CreateOptionButton("1. CO2 Extinguisher (Carbon Dioxide) - Class E", new Vector2(0f, 0.68f), new Vector2(1f, 0.98f), () =>
+            {
+                _controller?.SubmitExtinguisherSelection(FireTrainingWorkflow.TargetExtinguisherCO2);
+            });
+
+            // Option 2: Water Extinguisher (Incorrect)
+            CreateOptionButton("2. Water Extinguisher (H2O)", new Vector2(0f, 0.35f), new Vector2(1f, 0.65f), () =>
+            {
+                _controller?.SubmitExtinguisherSelection(FireTrainingWorkflow.TargetExtinguisherWater);
+            });
+
+            // Option 3: Foam Extinguisher (Incorrect)
+            CreateOptionButton("3. Foam Extinguisher (AFFF)", new Vector2(0f, 0.02f), new Vector2(1f, 0.32f), () =>
+            {
+                _controller?.SubmitExtinguisherSelection(FireTrainingWorkflow.TargetExtinguisherFoam);
+            });
+        }
+
+        private void ShowExtinguisherSelectedUI()
+        {
+            ClearActionButtons();
+
+            if (_promptText != null)
+            {
+                _promptText.text = "CORRECT: CO2 Extinguisher Selected!\n<size=80%>Non-conductive agent safe for energized electrical fires</size>";
+                _promptText.color = new Color(0.25f, 0.95f, 0.4f);
+            }
+
+            if (_bannerBg != null)
+            {
+                _bannerBg.color = new Color(0.12f, 0.28f, 0.16f, 0.94f);
             }
         }
 

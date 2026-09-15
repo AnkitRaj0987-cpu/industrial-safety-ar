@@ -158,6 +158,20 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         }
 
         /// <summary>
+        /// Updates the hazard marker visual when the worker selects the CO2 extinguisher.
+        /// </summary>
+        public void MarkExtinguisherSelected(string extinguisherId)
+        {
+            if (_labelMesh != null)
+            {
+                _labelMesh.text = "CO2 EXTINGUISHER SELECTED\nMaintain 2m Distance";
+                _labelMesh.color = new Color(0.25f, 0.95f, 0.4f);
+            }
+
+            Debug.Log($"[FireHazardMarker] Extinguisher '{extinguisherId}' selected for '{_hazardId}'.");
+        }
+
+        /// <summary>
         /// Procedurally constructs a recognizable industrial hazard marker if not created from a prefab.
         /// </summary>
         public void EnsureVisuals()
