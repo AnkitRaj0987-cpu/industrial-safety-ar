@@ -57,6 +57,16 @@
     <Compile Include="Assets\Scripts\AR\ArSessionFacade.cs" />
     <Compile Include="Assets\TutorialInfo\Readme.cs" />
     <Compile Include="Assets\Scripts\AR\ARTrackingStatusUI.cs" />
+    <Compile Include="Assets\Scripts\Core\Events\TrainingEvent.cs" />
+    <Compile Include="Assets\Scripts\Core\Events\ITrainingEventDispatcher.cs" />
+    <Compile Include="Assets\Scripts\Core\Events\TrainingEventBus.cs" />
+    <Compile Include="Assets\Scripts\AR\IArRaycastService.cs" />
+    <Compile Include="Assets\Scripts\AR\ArPlaneRaycastService.cs" />
+    <Compile Include="Assets\Scripts\Modules\FireExplosion\IIdentifiableHazard.cs" />
+    <Compile Include="Assets\Scripts\Modules\FireExplosion\FireHazardMarker.cs" />
+    <Compile Include="Assets\Scripts\Modules\FireExplosion\FireArInteractionController.cs" />
+    <Compile Include="Assets\Scripts\UI\FireInteractionFeedbackUI.cs" />
+    <Compile Include="Assets\Scripts\Tests\FireTrainingEventTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\TutorialInfo\StyleSheets\ReadmeEditor.uss" />
