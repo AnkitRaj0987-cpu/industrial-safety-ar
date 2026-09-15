@@ -22,7 +22,10 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         AwaitingAlarm,
         AlarmRaised,
         AwaitingExtinguisherSelection,
-        ExtinguisherSelected
+        ExtinguisherSelected,
+        AwaitingSafeDistance,
+        step_maintain_distance = AwaitingSafeDistance,
+        SafeDistanceMaintained
     }
 
     /// <summary>
@@ -60,6 +63,14 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public const string TargetExtinguisherFoam = "extinguisher_foam";
         public const string ToolClassCO2 = "co2_extinguisher";
 
+        // Step 5: Maintain Safe Distance
+        public const string StepMaintainDistance = "step_maintain_distance";
+        public const string ActionDecide = "decide";
+        public const string RuleMaintainDistance = "rule_maintain_distance";
+        public const string DecisionSafeDistance2m = "standoff_distance_2m_maintained";
+        public const string DecisionUnsafeTooClose = "standoff_distance_too_close";
+        public const float MinimumSafeDistanceMeters = 2.0f;
+
         public FireWorkflowStage CurrentStage { get; private set; } = FireWorkflowStage.NotStarted;
         public string CurrentStepId { get; private set; } = StepDetectHazard;
 
@@ -88,6 +99,12 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 case FireWorkflowStage.AwaitingExtinguisherSelection:
                 case FireWorkflowStage.ExtinguisherSelected:
                     CurrentStepId = StepSelectExtinguisher;
+                    break;
+                case FireWorkflowStage.AwaitingSafeDistance:
+                    CurrentStepId = StepMaintainDistance;
+                    break;
+                case FireWorkflowStage.SafeDistanceMaintained:
+                    CurrentStepId = "step_use_extinguisher";
                     break;
             }
 
@@ -257,8 +274,9 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
             if (isCorrect)
             {
-                CurrentStepId = "step_maintain_distance";
+                CurrentStepId = StepMaintainDistance;
                 SetStage(FireWorkflowStage.ExtinguisherSelected);
+                SetStage(FireWorkflowStage.AwaitingSafeDistance);
                 return true;
             }
             else
@@ -267,6 +285,65 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                     ? "DANGER: Water conducts electricity! Risk of fatal electrocution on electrical fires."
                     : "INCORRECT: Foam is not safe for energized electrical equipment. Select CO2.";
                 OnFeedbackChanged?.Invoke(feedback);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Submits the safe distance decision based on a standoff distance in meters.
+        /// </summary>
+        public bool SubmitDistanceDecision(float standoffDistanceMeters, ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent)
+        {
+            string decisionId = standoffDistanceMeters >= MinimumSafeDistanceMeters
+                ? DecisionSafeDistance2m
+                : DecisionUnsafeTooClose;
+
+            return SubmitDistanceDecision(decisionId, dispatcher, out emittedEvent);
+        }
+
+        /// <summary>
+        /// Submits a safe distance decision by decision identifier.
+        /// </summary>
+        public bool SubmitDistanceDecision(string decisionId, ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent)
+        {
+            emittedEvent = null;
+            if (CurrentStage != FireWorkflowStage.AwaitingSafeDistance && CurrentStage != FireWorkflowStage.ExtinguisherSelected)
+            {
+                return false;
+            }
+
+            bool isCorrect = string.Equals(decisionId, DecisionSafeDistance2m, StringComparison.OrdinalIgnoreCase);
+            string outcome = isCorrect ? "success" : "failure";
+
+            emittedEvent = new TrainingEvent
+            {
+                ModuleId = ModuleId,
+                ContentVersion = ContentVersion,
+                StepId = StepMaintainDistance,
+                EventType = "decision_made",
+                ActionId = ActionDecide,
+                TargetId = decisionId,
+                Outcome = outcome,
+                Payload =
+                {
+                    { "rule_id", RuleMaintainDistance },
+                    { "action_id", ActionDecide },
+                    { "decision_id", decisionId },
+                    { "outcome", outcome }
+                }
+            };
+
+            dispatcher?.Dispatch(emittedEvent);
+
+            if (isCorrect)
+            {
+                CurrentStepId = "step_use_extinguisher";
+                SetStage(FireWorkflowStage.SafeDistanceMaintained);
+                return true;
+            }
+            else
+            {
+                OnFeedbackChanged?.Invoke("UNSAFE DISTANCE: Inside 2m flashover/shock zone! Back up to maintain safe standoff distance.");
                 return false;
             }
         }
@@ -291,7 +368,10 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 case FireWorkflowStage.AwaitingExtinguisherSelection:
                     return "Alarm Active! Select the appropriate extinguisher for this Class E electrical fire.";
                 case FireWorkflowStage.ExtinguisherSelected:
-                    return "CO2 Extinguisher Selected! (Safe for energized electrical fires)";
+                case FireWorkflowStage.AwaitingSafeDistance:
+                    return "Maintain Safe Distance: Standoff at least 2m outside the red danger zone.";
+                case FireWorkflowStage.SafeDistanceMaintained:
+                    return "Safe Distance Confirmed! 2m standoff maintained. Ready to extinguish.";
                 default:
                     return string.Empty;
             }

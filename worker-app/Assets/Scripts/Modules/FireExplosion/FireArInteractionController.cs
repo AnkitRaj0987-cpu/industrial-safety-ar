@@ -32,7 +32,10 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         AwaitingAlarm,
         AlarmRaised,
         AwaitingExtinguisherSelection,
-        ExtinguisherSelected
+        ExtinguisherSelected,
+        AwaitingSafeDistance,
+        step_maintain_distance = AwaitingSafeDistance,
+        SafeDistanceMaintained
     }
 
     /// <summary>
@@ -79,6 +82,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public event Action<TrainingEvent> OnHazardIdentified;
         public event Action<TrainingEvent> OnAlarmRaised;
         public event Action<TrainingEvent> OnExtinguisherSelected;
+        public event Action<TrainingEvent> OnSafeDistanceDecided;
         public event Action<string> OnFeedbackChanged;
 
         private void Awake()
@@ -179,6 +183,10 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
                 case FireWorkflowStage.HazardPlaced:
                     TryIdentifyHazard(screenPosition);
+                    break;
+
+                case FireWorkflowStage.AwaitingSafeDistance:
+                    TrySelectSafeDistancePosition(screenPosition);
                     break;
             }
         }
@@ -298,8 +306,76 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 if (_activeHazard != null)
                 {
                     _activeHazard.MarkExtinguisherSelected(FireTrainingWorkflow.TargetExtinguisherCO2);
+                    _activeHazard.ShowDistanceZoneRing(true);
                 }
                 OnExtinguisherSelected?.Invoke(trainingEvent);
+            }
+            return success;
+        }
+
+        private void TrySelectSafeDistancePosition(Vector2 screenPosition)
+        {
+            if (_activeHazard == null) return;
+
+            // 1. Raycast onto detected AR plane if available
+            if (_raycastService != null && _raycastService.TryRaycastPlane(screenPosition, out Pose hitPose))
+            {
+                Vector3 hazardPos = _activeHazard.transform.position;
+                Vector3 tapPos = hitPose.position;
+                float distance = Vector2.Distance(new Vector2(tapPos.x, tapPos.z), new Vector2(hazardPos.x, hazardPos.z));
+                SubmitDistanceDecision(distance);
+                return;
+            }
+
+            // 2. Fallback ground plane raycast if camera exists
+            if (_arCamera != null)
+            {
+                Ray ray = _arCamera.ScreenPointToRay(screenPosition);
+                Plane groundPlane = new Plane(Vector3.up, _activeHazard.transform.position);
+                if (groundPlane.Raycast(ray, out float enter))
+                {
+                    Vector3 worldHit = ray.GetPoint(enter);
+                    Vector3 hazardPos = _activeHazard.transform.position;
+                    float distance = Vector2.Distance(new Vector2(worldHit.x, worldHit.z), new Vector2(hazardPos.x, hazardPos.z));
+                    SubmitDistanceDecision(distance);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Submits the safe distance decision based on a standoff distance in meters.
+        /// </summary>
+        /// <param name="distanceMeters">The distance in meters from the hazard.</param>
+        /// <returns>True if distance >= 2.0m (safe); false if too close.</returns>
+        public bool SubmitDistanceDecision(float distanceMeters)
+        {
+            bool success = _workflow.SubmitDistanceDecision(distanceMeters, _eventDispatcher, out var trainingEvent);
+            if (success)
+            {
+                if (_activeHazard != null)
+                {
+                    _activeHazard.MarkSafeDistanceConfirmed();
+                }
+                OnSafeDistanceDecided?.Invoke(trainingEvent);
+            }
+            return success;
+        }
+
+        /// <summary>
+        /// Submits the safe distance decision using a decision identifier.
+        /// </summary>
+        /// <param name="decisionId">The decision identifier (e.g. standoff_distance_2m_maintained).</param>
+        /// <returns>True if correct safe distance; false if unsafe.</returns>
+        public bool SubmitDistanceDecision(string decisionId)
+        {
+            bool success = _workflow.SubmitDistanceDecision(decisionId, _eventDispatcher, out var trainingEvent);
+            if (success)
+            {
+                if (_activeHazard != null)
+                {
+                    _activeHazard.MarkSafeDistanceConfirmed();
+                }
+                OnSafeDistanceDecided?.Invoke(trainingEvent);
             }
             return success;
         }

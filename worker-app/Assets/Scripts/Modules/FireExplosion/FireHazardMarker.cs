@@ -57,9 +57,16 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
         private bool _isIdentified;
         private bool _isAlarmActive;
+        private bool _isSafeDistanceConfirmed;
+
+        private GameObject _dangerZoneRoot;
+        private LineRenderer _dangerZoneLine;
+        private Renderer _dangerZoneDiscRenderer;
+        private TextMeshPro _dangerZoneLabel;
 
         public bool IsIdentified => _isIdentified;
         public bool IsAlarmActive => _isAlarmActive;
+        public bool IsSafeDistanceConfirmed => _isSafeDistanceConfirmed;
 
         private void Update()
         {
@@ -172,6 +179,49 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         }
 
         /// <summary>
+        /// Shows or hides the 2.0m standoff distance ring in AR space.
+        /// </summary>
+        public void ShowDistanceZoneRing(bool show)
+        {
+            if (_dangerZoneRoot != null)
+            {
+                _dangerZoneRoot.SetActive(show);
+            }
+        }
+
+        /// <summary>
+        /// Updates the danger zone visuals to confirmed safe standoff status (turns green).
+        /// </summary>
+        public void MarkSafeDistanceConfirmed()
+        {
+            _isSafeDistanceConfirmed = true;
+
+            if (_dangerZoneLine != null && _dangerZoneLine.material != null)
+            {
+                _dangerZoneLine.material.color = new Color(0.2f, 0.88f, 0.35f, 0.95f);
+            }
+
+            if (_dangerZoneDiscRenderer != null && _dangerZoneDiscRenderer.material != null)
+            {
+                _dangerZoneDiscRenderer.material.color = new Color(0.2f, 0.88f, 0.35f, 0.15f);
+            }
+
+            if (_dangerZoneLabel != null)
+            {
+                _dangerZoneLabel.text = "SAFE STANDOFF MAINTAINED\n(>= 2.0m Verified)";
+                _dangerZoneLabel.color = new Color(0.2f, 0.88f, 0.35f);
+            }
+
+            if (_labelMesh != null)
+            {
+                _labelMesh.text = "SAFE DISTANCE CONFIRMED\nReady to Extinguish";
+                _labelMesh.color = new Color(0.2f, 0.88f, 0.35f);
+            }
+
+            Debug.Log($"[FireHazardMarker] Safe distance confirmed on '{_hazardId}'.");
+        }
+
+        /// <summary>
         /// Procedurally constructs a recognizable industrial hazard marker if not created from a prefab.
         /// </summary>
         public void EnsureVisuals()
@@ -237,6 +287,56 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             }
             boxCol.center = new Vector3(0f, 0.22f, 0f);
             boxCol.size = new Vector3(0.5f, 0.46f, 0.5f);
+
+            // 6. 2.0m Standoff Danger Zone Ring
+            _dangerZoneRoot = new GameObject("DangerZoneRing");
+            _dangerZoneRoot.transform.SetParent(transform, false);
+            _dangerZoneRoot.transform.localPosition = Vector3.zero;
+
+            _dangerZoneLine = _dangerZoneRoot.AddComponent<LineRenderer>();
+            _dangerZoneLine.useWorldSpace = false;
+            _dangerZoneLine.loop = true;
+            _dangerZoneLine.positionCount = 48;
+            _dangerZoneLine.startWidth = 0.04f;
+            _dangerZoneLine.endWidth = 0.04f;
+            var lineMat = new Material(Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default") ?? Shader.Find("Standard"))
+            {
+                color = new Color(1.0f, 0.22f, 0.18f, 0.9f)
+            };
+            _dangerZoneLine.material = lineMat;
+
+            for (int i = 0; i < 48; i++)
+            {
+                float angle = i * Mathf.PI * 2f / 48f;
+                _dangerZoneLine.SetPosition(i, new Vector3(Mathf.Cos(angle) * 2.0f, 0.015f, Mathf.Sin(angle) * 2.0f));
+            }
+
+            GameObject discObj = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            discObj.name = "DangerZoneDisc";
+            discObj.transform.SetParent(_dangerZoneRoot.transform, false);
+            discObj.transform.localPosition = new Vector3(0f, 0.005f, 0f);
+            discObj.transform.localScale = new Vector3(4.0f, 0.002f, 4.0f);
+            var col = discObj.GetComponent<Collider>();
+            if (col != null) Destroy(col);
+
+            var discMat = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"))
+            {
+                color = new Color(1.0f, 0.2f, 0.1f, 0.15f)
+            };
+            _dangerZoneDiscRenderer = discObj.GetComponent<Renderer>();
+            _dangerZoneDiscRenderer.material = discMat;
+
+            GameObject zoneLabelObj = new GameObject("ZoneLabel");
+            zoneLabelObj.transform.SetParent(_dangerZoneRoot.transform, false);
+            zoneLabelObj.transform.localPosition = new Vector3(0f, 0.2f, 2.05f);
+            _dangerZoneLabel = zoneLabelObj.AddComponent<TextMeshPro>();
+            _dangerZoneLabel.text = "2.0m DANGER ZONE BOUNDARY\n(Do Not Approach)";
+            _dangerZoneLabel.fontSize = 1.8f;
+            _dangerZoneLabel.alignment = TextAlignmentOptions.Center;
+            _dangerZoneLabel.color = new Color(1.0f, 0.3f, 0.2f);
+            _dangerZoneLabel.rectTransform.sizeDelta = new Vector2(3f, 1f);
+
+            _dangerZoneRoot.SetActive(false);
         }
     }
 }

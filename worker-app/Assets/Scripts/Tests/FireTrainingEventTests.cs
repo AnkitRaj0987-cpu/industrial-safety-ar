@@ -36,6 +36,10 @@ namespace IndustrialSafetyAR.Tests
             allPassed &= RunTest("IncorrectFoamExtinguisherSelection", Test_IncorrectFoamExtinguisherSelection, logMessages);
             allPassed &= RunTest("PrematureExtinguisherSelectionRejected", Test_PrematureExtinguisherSelectionRejected, logMessages);
             allPassed &= RunTest("Step3ToStep4EventOrdering", Test_Step3ToStep4EventOrdering, logMessages);
+            allPassed &= RunTest("SuccessfulSafeDistanceAction", Test_SuccessfulSafeDistanceAction, logMessages);
+            allPassed &= RunTest("UnsafeTooCloseActionRejected", Test_UnsafeTooCloseActionRejected, logMessages);
+            allPassed &= RunTest("PrematureSafeDistanceActionRejected", Test_PrematureSafeDistanceActionRejected, logMessages);
+            allPassed &= RunTest("Step4ToStep5EventOrdering", Test_Step4ToStep5EventOrdering, logMessages);
 
             return allPassed;
         }
@@ -264,8 +268,8 @@ namespace IndustrialSafetyAR.Tests
                 out var emittedEvent);
 
             if (!success) throw new Exception("CO2 selection should succeed");
-            if (workflow.CurrentStage != FireWorkflowStage.ExtinguisherSelected)
-                throw new Exception($"Expected ExtinguisherSelected stage, got {workflow.CurrentStage}");
+            if (workflow.CurrentStage != FireWorkflowStage.AwaitingSafeDistance && workflow.CurrentStage != FireWorkflowStage.ExtinguisherSelected)
+                throw new Exception($"Expected AwaitingSafeDistance stage, got {workflow.CurrentStage}");
 
             if (emittedEvent == null) throw new Exception("Emitted event was null");
             if (emittedEvent.ModuleId != "fire-explosion-response") throw new Exception("ModuleId mismatch");
@@ -389,6 +393,145 @@ namespace IndustrialSafetyAR.Tests
 
             // Verify all outcomes are success:
             for (int i = 0; i < 4; i++)
+            {
+                if (events[i].Outcome != "success") throw new Exception($"Event {i} outcome was not success");
+            }
+        }
+
+        public static void Test_SuccessfulSafeDistanceAction()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.AwaitingSafeDistance);
+
+            // Standoff distance of 2.5m (>= 2.0m minimum safe distance)
+            bool success = workflow.SubmitDistanceDecision(2.5f, bus, out var emittedEvent);
+
+            if (!success) throw new Exception("Safe distance decision should succeed for 2.5m");
+            if (workflow.CurrentStage != FireWorkflowStage.SafeDistanceMaintained)
+                throw new Exception($"Expected SafeDistanceMaintained stage, got {workflow.CurrentStage}");
+            if (workflow.CurrentStepId != "step_use_extinguisher")
+                throw new Exception($"Expected next step step_use_extinguisher, got {workflow.CurrentStepId}");
+
+            if (emittedEvent == null) throw new Exception("Emitted event was null");
+            if (emittedEvent.ModuleId != "fire-explosion-response") throw new Exception("ModuleId mismatch");
+            if (emittedEvent.ContentVersion != "1.0.0") throw new Exception("ContentVersion mismatch");
+            if (emittedEvent.StepId != "step_maintain_distance") throw new Exception("StepId mismatch");
+            if (emittedEvent.EventType != "decision_made") throw new Exception("EventType mismatch");
+            if (emittedEvent.ActionId != "decide") throw new Exception("ActionId mismatch");
+            if (emittedEvent.TargetId != "standoff_distance_2m_maintained") throw new Exception("TargetId mismatch");
+            if (emittedEvent.Outcome != "success") throw new Exception("Outcome mismatch");
+            if (emittedEvent.GetPayloadValue("rule_id") != "rule_maintain_distance") throw new Exception("rule_id mismatch");
+            if (emittedEvent.GetPayloadValue("decision_id") != "standoff_distance_2m_maintained") throw new Exception("decision_id mismatch");
+        }
+
+        public static void Test_UnsafeTooCloseActionRejected()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.AwaitingSafeDistance);
+
+            // Standoff distance of 1.2m (< 2.0m minimum safe distance)
+            bool success = workflow.SubmitDistanceDecision(1.2f, bus, out var emittedEvent);
+
+            if (success) throw new Exception("Unsafe too-close action should be rejected");
+            if (workflow.CurrentStage != FireWorkflowStage.AwaitingSafeDistance)
+                throw new Exception("Workflow stage should not advance after unsafe distance decision");
+            if (workflow.CurrentStepId != FireTrainingWorkflow.StepMaintainDistance)
+                throw new Exception($"CurrentStepId should remain step_maintain_distance, got {workflow.CurrentStepId}");
+
+            if (emittedEvent == null) throw new Exception("Failure event should be emitted");
+            if (emittedEvent.StepId != "step_maintain_distance") throw new Exception("StepId mismatch");
+            if (emittedEvent.EventType != "decision_made") throw new Exception("EventType mismatch");
+            if (emittedEvent.TargetId != "standoff_distance_too_close") throw new Exception("TargetId mismatch");
+            if (emittedEvent.Outcome != "failure") throw new Exception("Outcome should be failure");
+            if (emittedEvent.GetPayloadValue("rule_id") != "rule_maintain_distance") throw new Exception("rule_id mismatch");
+            if (emittedEvent.GetPayloadValue("decision_id") != "standoff_distance_too_close") throw new Exception("decision_id mismatch");
+        }
+
+        public static void Test_PrematureSafeDistanceActionRejected()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+
+            // 1. Cannot submit distance decision during AwaitingIdentification
+            workflow.SetStage(FireWorkflowStage.AwaitingIdentification);
+            bool s1 = workflow.SubmitDistanceDecision(2.5f, bus, out var e1);
+            if (s1) throw new Exception("Premature distance decision during AwaitingIdentification should return false");
+            if (e1 != null) throw new Exception("No event should be emitted for premature action");
+            if (workflow.CurrentStage != FireWorkflowStage.AwaitingIdentification)
+                throw new Exception("Stage should remain AwaitingIdentification");
+
+            // 2. Cannot submit distance decision during AwaitingAlarm
+            workflow.SetStage(FireWorkflowStage.AwaitingAlarm);
+            bool s2 = workflow.SubmitDistanceDecision(2.5f, bus, out var e2);
+            if (s2) throw new Exception("Premature distance decision during AwaitingAlarm should return false");
+            if (e2 != null) throw new Exception("No event should be emitted for premature action");
+            if (workflow.CurrentStage != FireWorkflowStage.AwaitingAlarm)
+                throw new Exception("Stage should remain AwaitingAlarm");
+
+            // 3. Cannot submit distance decision during AwaitingExtinguisherSelection
+            workflow.SetStage(FireWorkflowStage.AwaitingExtinguisherSelection);
+            bool s3 = workflow.SubmitDistanceDecision(2.5f, bus, out var e3);
+            if (s3) throw new Exception("Premature distance decision during AwaitingExtinguisherSelection should return false");
+            if (e3 != null) throw new Exception("No event should be emitted for premature action");
+            if (workflow.CurrentStage != FireWorkflowStage.AwaitingExtinguisherSelection)
+                throw new Exception("Stage should remain AwaitingExtinguisherSelection");
+        }
+
+        public static void Test_Step4ToStep5EventOrdering()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+
+            // Step 1: Detect Hazard
+            bool s1 = workflow.ConfirmHazardDetected(bus, out var e1);
+            if (!s1) throw new Exception("Step 1 detect hazard failed");
+
+            // Step 2: Identify Hazard
+            bool s2 = workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out var e2);
+            if (!s2) throw new Exception("Step 2 identify hazard failed");
+
+            // Step 3: Raise Alarm
+            bool s3 = workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out var e3);
+            if (!s3) throw new Exception("Step 3 raise alarm failed");
+
+            // Step 4: Select Extinguisher
+            bool s4 = workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out var e4);
+            if (!s4) throw new Exception("Step 4 select extinguisher failed");
+
+            // Step 5: Maintain Safe Distance
+            bool s5 = workflow.SubmitDistanceDecision(2.5f, bus, out var e5);
+            if (!s5) throw new Exception("Step 5 maintain safe distance failed");
+
+            var events = bus.DispatchedEvents;
+            if (events.Count != 5) throw new Exception($"Expected 5 events, got {events.Count}");
+
+            // Verify sequential ordering of Step IDs across Steps 1 to 5:
+            if (events[0].StepId != "step_detect_hazard") throw new Exception("First event was not step_detect_hazard");
+            if (events[1].StepId != "step_identify_hazard") throw new Exception("Second event was not step_identify_hazard");
+            if (events[2].StepId != "step_raise_alarm") throw new Exception("Third event was not step_raise_alarm");
+            if (events[3].StepId != "step_select_extinguisher") throw new Exception("Fourth event was not step_select_extinguisher");
+            if (events[4].StepId != "step_maintain_distance") throw new Exception("Fifth event was not step_maintain_distance");
+
+            // Verify exact rubric Rule IDs across Steps 1 to 5:
+            if (events[0].GetPayloadValue("rule_id") != "rule_detect_hazard") throw new Exception("Rule 1 mismatch");
+            if (events[1].GetPayloadValue("rule_id") != "rule_identify_hazard") throw new Exception("Rule 2 mismatch");
+            if (events[2].GetPayloadValue("rule_id") != "rule_raise_alarm") throw new Exception("Rule 3 mismatch");
+            if (events[3].GetPayloadValue("rule_id") != "rule_select_extinguisher") throw new Exception("Rule 4 mismatch");
+            if (events[4].GetPayloadValue("rule_id") != "rule_maintain_distance") throw new Exception("Rule 5 mismatch");
+
+            // Verify all 5 outcomes are success:
+            for (int i = 0; i < 5; i++)
             {
                 if (events[i].Outcome != "success") throw new Exception($"Event {i} outcome was not success");
             }

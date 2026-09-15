@@ -160,6 +160,14 @@ namespace IndustrialSafetyAR.UI
                 case FireInteractionState.ExtinguisherSelected:
                     ShowExtinguisherSelectedUI();
                     break;
+
+                case FireInteractionState.AwaitingSafeDistance:
+                    ShowSafeDistanceUI();
+                    break;
+
+                case FireInteractionState.SafeDistanceMaintained:
+                    ShowSafeDistanceMaintainedUI();
+                    break;
             }
         }
 
@@ -280,6 +288,51 @@ namespace IndustrialSafetyAR.UI
             if (_promptText != null)
             {
                 _promptText.text = "CORRECT: CO2 Extinguisher Selected!\n<size=80%>Non-conductive agent safe for energized electrical fires</size>";
+                _promptText.color = new Color(0.25f, 0.95f, 0.4f);
+            }
+
+            if (_bannerBg != null)
+            {
+                _bannerBg.color = new Color(0.12f, 0.28f, 0.16f, 0.94f);
+            }
+        }
+
+        private void ShowSafeDistanceUI()
+        {
+            ClearActionButtons();
+            if (_actionContainer == null) return;
+
+            if (_promptText != null)
+            {
+                _promptText.text = "<b>STEP 5: MAINTAIN SAFE DISTANCE</b>\nTap floor outside the 2m RED circle, or select position:";
+                _promptText.color = new Color(1.0f, 0.85f, 0.3f);
+            }
+
+            if (_bannerBg != null)
+            {
+                _bannerBg.color = new Color(0.10f, 0.12f, 0.16f, 0.90f);
+            }
+
+            // Option 1: Maintain safe 2.5m standoff (Correct)
+            CreateOptionButton("1. Stand at Safe Distance (2.5m Standoff)", new Vector2(0f, 0.52f), new Vector2(1f, 0.95f), () =>
+            {
+                _controller?.SubmitDistanceDecision(2.5f);
+            });
+
+            // Option 2: Move closer < 1.5m (Unsafe)
+            CreateActionButton("2. Approach Fire (1.2m - Danger Zone)", new Vector2(0f, 0.05f), new Vector2(1f, 0.48f), new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
+            {
+                _controller?.SubmitDistanceDecision(1.2f);
+            });
+        }
+
+        private void ShowSafeDistanceMaintainedUI()
+        {
+            ClearActionButtons();
+
+            if (_promptText != null)
+            {
+                _promptText.text = "<color=#4CAF50>SAFE DISTANCE CONFIRMED!</color>\n<size=80%>2.0m Standoff Maintained • Outside flashover/shock danger zone</size>";
                 _promptText.color = new Color(0.25f, 0.95f, 0.4f);
             }
 
