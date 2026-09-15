@@ -48,6 +48,12 @@ namespace IndustrialSafetyAR.Tests
             allPassed &= RunTest("WrongOutOfOrderActionRejected", Test_WrongOutOfOrderActionRejected, logMessages);
             allPassed &= RunTest("FinalProcedureCompletedEventFields", Test_FinalProcedureCompletedEventFields, logMessages);
             allPassed &= RunTest("Steps1To6EventOrdering", Test_Steps1To6EventOrdering, logMessages);
+            allPassed &= RunTest("Step7CannotBeginBeforeStep6", Test_Step7CannotBeginBeforeStep6, logMessages);
+            allPassed &= RunTest("SuccessfulEmergencyExitIdentification", Test_SuccessfulEmergencyExitIdentification, logMessages);
+            allPassed &= RunTest("IncorrectElevatorExitRejected", Test_IncorrectElevatorExitRejected, logMessages);
+            allPassed &= RunTest("IncorrectBlockedCorridorExitRejected", Test_IncorrectBlockedCorridorExitRejected, logMessages);
+            allPassed &= RunTest("EmergencyExitEventMatchesRubricSchema", Test_EmergencyExitEventMatchesRubricSchema, logMessages);
+            allPassed &= RunTest("Steps1To7EventOrdering", Test_Steps1To7EventOrdering, logMessages);
 
             return allPassed;
         }
@@ -827,6 +833,211 @@ namespace IndustrialSafetyAR.Tests
             {
                 if (events[i].Outcome != "success") throw new Exception($"Event {i} outcome was not success");
             }
+        }
+
+        public static void Test_Step7CannotBeginBeforeStep6()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.SafeDistanceMaintained);
+
+            bool success = workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out var evt);
+
+            if (success) throw new Exception("Step 7 identify exit should not succeed before Step 6 completes");
+            if (evt != null) throw new Exception("Emitted event should be null for premature Step 7 action");
+            if (bus.DispatchedEvents.Count != 0) throw new Exception("No events should be dispatched for premature action");
+            if (workflow.CurrentStage != FireWorkflowStage.SafeDistanceMaintained)
+                throw new Exception("Workflow stage should not change on premature Step 7 action");
+        }
+
+        public static void Test_SuccessfulEmergencyExitIdentification()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.ExtinguisherDischarged);
+
+            bool success = workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out var evt);
+
+            if (!success) throw new Exception("Emergency exit identification should succeed");
+            if (workflow.CurrentStage != FireWorkflowStage.ExitIdentified)
+                throw new Exception($"Expected ExitIdentified stage, got {workflow.CurrentStage}");
+            if (workflow.CurrentStepId != "step_evacuate_route")
+                throw new Exception($"Expected CurrentStepId step_evacuate_route, got {workflow.CurrentStepId}");
+
+            if (evt == null) throw new Exception("Emitted event was null");
+            if (evt.Outcome != "success") throw new Exception("Expected success outcome");
+            if (bus.DispatchedEvents.Count != 1) throw new Exception($"Expected 1 dispatched event, got {bus.DispatchedEvents.Count}");
+
+            // Duplicate call must be rejected and generate no duplicate completion event
+            bool duplicate = workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out var dupEvt);
+            if (duplicate) throw new Exception("Duplicate identification should be rejected");
+            if (dupEvt != null) throw new Exception("Duplicate call should not emit an event");
+            if (bus.DispatchedEvents.Count != 1) throw new Exception("Duplicate call should not add events to event bus");
+        }
+
+        public static void Test_IncorrectElevatorExitRejected()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.AwaitingExitIdentification);
+
+            string feedbackReceived = null;
+            workflow.OnFeedbackChanged += (fb) => feedbackReceived = fb;
+
+            bool success = workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitFreightElevator, bus, out var evt);
+
+            if (success) throw new Exception("Freight elevator exit should be rejected");
+            if (workflow.CurrentStage != FireWorkflowStage.AwaitingExitIdentification)
+                throw new Exception($"Workflow should remain in AwaitingExitIdentification, got {workflow.CurrentStage}");
+            if (workflow.CurrentStepId != "step_identify_exit")
+                throw new Exception($"Expected CurrentStepId step_identify_exit, got {workflow.CurrentStepId}");
+
+            if (evt == null) throw new Exception("Failure event should be emitted for incorrect choice");
+            if (evt.Outcome != "failure") throw new Exception("Expected failure outcome");
+            if (evt.TargetId != FireTrainingWorkflow.TargetExitFreightElevator)
+                throw new Exception($"TargetId mismatch: expected {FireTrainingWorkflow.TargetExitFreightElevator}, got {evt.TargetId}");
+            if (evt.StepId != "step_identify_exit") throw new Exception("StepId mismatch");
+            if (evt.EventType != "exit_marked") throw new Exception("EventType mismatch");
+            if (evt.GetPayloadValue("rule_id") != "rule_identify_exit") throw new Exception("rule_id mismatch");
+
+            if (feedbackReceived == null || !feedbackReceived.Contains("CRITICAL HAZARD: Do NOT use elevators"))
+                throw new Exception($"Expected elevator warning feedback, got: {feedbackReceived}");
+        }
+
+        public static void Test_IncorrectBlockedCorridorExitRejected()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.AwaitingExitIdentification);
+
+            string feedbackReceived = null;
+            workflow.OnFeedbackChanged += (fb) => feedbackReceived = fb;
+
+            bool success = workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitBlockedCorridor, bus, out var evt);
+
+            if (success) throw new Exception("Blocked corridor exit should be rejected");
+            if (workflow.CurrentStage != FireWorkflowStage.AwaitingExitIdentification)
+                throw new Exception($"Workflow should remain in AwaitingExitIdentification, got {workflow.CurrentStage}");
+
+            if (evt == null) throw new Exception("Failure event should be emitted for blocked corridor");
+            if (evt.Outcome != "failure") throw new Exception("Expected failure outcome");
+            if (evt.TargetId != FireTrainingWorkflow.TargetExitBlockedCorridor)
+                throw new Exception($"TargetId mismatch: expected {FireTrainingWorkflow.TargetExitBlockedCorridor}, got {evt.TargetId}");
+
+            if (feedbackReceived == null || !feedbackReceived.Contains("UNSAFE ROUTE"))
+                throw new Exception($"Expected corridor warning feedback, got: {feedbackReceived}");
+        }
+
+        public static void Test_EmergencyExitEventMatchesRubricSchema()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.ExtinguisherDischarged);
+
+            bool success = workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, "mark", bus, out var evt);
+
+            if (!success) throw new Exception("SubmitIdentifyExit failed");
+            if (evt.ModuleId != "fire-explosion-response") throw new Exception("ModuleId mismatch");
+            if (evt.ContentVersion != "1.0.0") throw new Exception("ContentVersion mismatch");
+            if (evt.StepId != "step_identify_exit") throw new Exception("StepId mismatch");
+            if (evt.EventType != "exit_marked") throw new Exception("EventType mismatch");
+            if (evt.ActionId != "mark") throw new Exception("ActionId mismatch");
+            if (evt.TargetId != "exit_emergency_sector_b") throw new Exception("TargetId mismatch");
+            if (evt.Outcome != "success") throw new Exception("Outcome mismatch");
+            if (evt.GetPayloadValue("rule_id") != "rule_identify_exit") throw new Exception("rule_id mismatch");
+            if (evt.GetPayloadValue("action_id") != "mark") throw new Exception("action_id mismatch");
+            if (evt.GetPayloadValue("target_id") != "exit_emergency_sector_b") throw new Exception("target_id mismatch");
+            if (evt.GetPayloadValue("location_type") != "emergency_exit") throw new Exception("location_type mismatch");
+            if (evt.GetPayloadValue("outcome") != "success") throw new Exception("outcome mismatch");
+        }
+
+        public static void Test_Steps1To7EventOrdering()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+
+            // Step 1: Detect Hazard
+            bool s1 = workflow.ConfirmHazardDetected(bus, out _);
+            if (!s1) throw new Exception("Step 1 detect hazard failed");
+
+            // Step 2: Identify Hazard
+            bool s2 = workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            if (!s2) throw new Exception("Step 2 identify hazard failed");
+
+            // Step 3: Raise Alarm
+            bool s3 = workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            if (!s3) throw new Exception("Step 3 raise alarm failed");
+
+            // Step 4: Select Extinguisher
+            bool s4 = workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            if (!s4) throw new Exception("Step 4 select extinguisher failed");
+
+            // Step 5: Maintain Safe Distance
+            bool s5 = workflow.SubmitDistanceDecision(2.5f, bus, out _);
+            if (!s5) throw new Exception("Step 5 maintain safe distance failed");
+
+            // Step 6: PASS Procedure
+            bool s6a = workflow.SubmitPullPin(bus, out _);
+            if (!s6a) throw new Exception("Step 6a pull pin failed");
+
+            bool s6b = workflow.SubmitAim(bus, out _);
+            if (!s6b) throw new Exception("Step 6b aim failed");
+
+            bool s6c = workflow.SubmitSqueeze(bus, out _);
+            if (!s6c) throw new Exception("Step 6c squeeze failed");
+
+            bool s6d = workflow.SubmitSweep(bus, out _);
+            if (!s6d) throw new Exception("Step 6d sweep failed");
+
+            // Step 7: Identify Emergency Exit
+            bool s7 = workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out var e7);
+            if (!s7) throw new Exception("Step 7 identify emergency exit failed");
+
+            var events = bus.DispatchedEvents;
+            if (events.Count != 10) throw new Exception($"Expected 10 dispatched events, got {events.Count}");
+
+            // Verify sequential ordering of Step IDs across Steps 1 to 7:
+            if (events[0].StepId != "step_detect_hazard") throw new Exception("Event 0 was not step_detect_hazard");
+            if (events[1].StepId != "step_identify_hazard") throw new Exception("Event 1 was not step_identify_hazard");
+            if (events[2].StepId != "step_raise_alarm") throw new Exception("Event 2 was not step_raise_alarm");
+            if (events[3].StepId != "step_select_extinguisher") throw new Exception("Event 3 was not step_select_extinguisher");
+            if (events[4].StepId != "step_maintain_distance") throw new Exception("Event 4 was not step_maintain_distance");
+            if (events[5].StepId != "step_use_extinguisher") throw new Exception("Event 5 was not step_use_extinguisher");
+            if (events[6].StepId != "step_use_extinguisher") throw new Exception("Event 6 was not step_use_extinguisher");
+            if (events[7].StepId != "step_use_extinguisher") throw new Exception("Event 7 was not step_use_extinguisher");
+            if (events[8].StepId != "step_use_extinguisher") throw new Exception("Event 8 was not step_use_extinguisher");
+            if (events[9].StepId != "step_identify_exit") throw new Exception("Event 9 was not step_identify_exit");
+
+            // Verify final canonical Step 7 event:
+            if (events[9].EventType != "exit_marked") throw new Exception("Event 9 EventType mismatch");
+            if (events[9].ActionId != "mark") throw new Exception("Event 9 ActionId mismatch");
+            if (events[9].TargetId != "exit_emergency_sector_b") throw new Exception("Event 9 TargetId mismatch");
+            if (events[9].GetPayloadValue("rule_id") != "rule_identify_exit") throw new Exception("Event 9 rule_id mismatch");
+
+            // Verify all events are success:
+            for (int i = 0; i < events.Count; i++)
+            {
+                if (events[i].Outcome != "success") throw new Exception($"Event {i} outcome was not success");
+            }
+
+            // Verify workflow state is ready for Step 8:
+            if (workflow.CurrentStage != FireWorkflowStage.ExitIdentified)
+                throw new Exception($"Expected ExitIdentified stage, got {workflow.CurrentStage}");
+            if (workflow.CurrentStepId != "step_evacuate_route")
+                throw new Exception($"Expected CurrentStepId step_evacuate_route, got {workflow.CurrentStepId}");
         }
     }
 }

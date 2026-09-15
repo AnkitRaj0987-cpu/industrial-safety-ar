@@ -41,7 +41,10 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         AimConfirmed,
         HandleSqueezed,
         ExtinguisherDischarged,
-        ProcedureCompleted = ExtinguisherDischarged
+        ProcedureCompleted = ExtinguisherDischarged,
+        AwaitingExitIdentification,
+        step_identify_exit = AwaitingExitIdentification,
+        ExitIdentified
     }
 
     /// <summary>
@@ -74,12 +77,14 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         // Runtime state
         private FireInteractionState _state = FireInteractionState.WaitingForTracking;
         private FireHazardMarker _activeHazard;
+        private readonly System.Collections.Generic.List<EmergencyExitMarker> _activeExitMarkers = new System.Collections.Generic.List<EmergencyExitMarker>();
         private ITrainingEventDispatcher _eventDispatcher;
 
         public FireInteractionState State => _state;
         public FireWorkflowStage WorkflowStage => _workflow.CurrentStage;
         public FireTrainingWorkflow Workflow => _workflow;
         public FireHazardMarker ActiveHazard => _activeHazard;
+        public System.Collections.Generic.IReadOnlyList<EmergencyExitMarker> ActiveExitMarkers => _activeExitMarkers;
         public string CurrentStepId => _workflow.CurrentStepId;
 
         public event Action<FireInteractionState> OnStateChanged;
@@ -91,6 +96,8 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public event Action<TrainingEvent> OnSafeDistanceDecided;
         public event Action<TrainingEvent> OnExtinguisherProcedureCompleted;
         public event Action<string, TrainingEvent> OnExtinguisherActionCompleted;
+        public event Action<TrainingEvent> OnExitIdentified;
+        public event Action<string, TrainingEvent> OnExitMarked;
         public event Action<string> OnFeedbackChanged;
 
         private void Awake()
@@ -149,6 +156,10 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         private void HandleWorkflowStageChanged(FireWorkflowStage stage)
         {
             _state = (FireInteractionState)stage;
+            if (stage == FireWorkflowStage.ExtinguisherDischarged || stage == FireWorkflowStage.AwaitingExitIdentification)
+            {
+                SpawnExitMarkersIfNeeded();
+            }
             OnStateChanged?.Invoke(_state);
         }
 
@@ -199,6 +210,11 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
                 case FireWorkflowStage.PinPulled:
                     TryAimAtBase(screenPosition);
+                    break;
+
+                case FireWorkflowStage.ExtinguisherDischarged:
+                case FireWorkflowStage.AwaitingExitIdentification:
+                    TrySelectEmergencyExit(screenPosition);
                     break;
             }
         }
@@ -440,6 +456,95 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public bool SubmitAim() => SubmitExtinguisherAction(FireTrainingWorkflow.ActionAim);
         public bool SubmitSqueeze() => SubmitExtinguisherAction(FireTrainingWorkflow.ActionSqueeze);
         public bool SubmitSweep() => SubmitExtinguisherAction(FireTrainingWorkflow.ActionSweep);
+
+        private void TrySelectEmergencyExit(Vector2 screenPosition)
+        {
+            if (_arCamera == null)
+            {
+                _arCamera = Camera.main;
+                if (_arCamera == null) return;
+            }
+
+            Ray ray = _arCamera.ScreenPointToRay(screenPosition);
+            if (Physics.Raycast(ray, out RaycastHit hit, 50f))
+            {
+                var marker = hit.collider.GetComponentInParent<EmergencyExitMarker>();
+                if (marker != null)
+                {
+                    SubmitIdentifyExit(marker.ExitId);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Submits the emergency exit identification action.
+        /// </summary>
+        /// <param name="targetId">The selected exit marker ID (e.g. exit_emergency_sector_b).</param>
+        /// <param name="actionId">The action identifier (defaults to mark).</param>
+        /// <returns>True if correct exit identified; false if incorrect or premature.</returns>
+        public bool SubmitIdentifyExit(string targetId, string actionId = FireTrainingWorkflow.ActionMark)
+        {
+            bool success = _workflow.SubmitIdentifyExit(targetId, actionId, _eventDispatcher, out var trainingEvent);
+            if (success)
+            {
+                if (_activeExitMarkers != null)
+                {
+                    foreach (var marker in _activeExitMarkers)
+                    {
+                        if (marker != null && marker.ExitId == targetId)
+                        {
+                            marker.AcknowledgeIdentification();
+                        }
+                    }
+                }
+                OnExitIdentified?.Invoke(trainingEvent);
+            }
+            OnExitMarked?.Invoke(targetId, trainingEvent);
+            return success;
+        }
+
+        /// <summary>
+        /// Spawns procedural 3D emergency exit markers in AR space along clear egress routes.
+        /// </summary>
+        public void SpawnExitMarkersIfNeeded()
+        {
+            if (_activeExitMarkers != null && _activeExitMarkers.Count > 0)
+            {
+                return;
+            }
+
+            Vector3 basePos = _activeHazard != null ? _activeHazard.transform.position : Vector3.zero;
+            Quaternion baseRot = _activeHazard != null ? _activeHazard.transform.rotation : Quaternion.identity;
+
+            // 1. Sector B Emergency Exit (Primary / Designated Safe Exit)
+            Vector3 sectorBPos = basePos + baseRot * new Vector3(2.5f, 0f, 2.0f);
+            var sectorBObj = new GameObject("Marker_ExitEmergencySectorB");
+            sectorBObj.transform.position = sectorBPos;
+            sectorBObj.transform.rotation = baseRot;
+            var sectorBMarker = sectorBObj.AddComponent<EmergencyExitMarker>();
+            sectorBMarker.ConfigureExit(FireTrainingWorkflow.TargetExitEmergencySectorB, "Sector B Emergency Exit", true);
+            _activeExitMarkers.Add(sectorBMarker);
+
+            // 2. Freight Elevator (Prohibited during fire)
+            Vector3 elevatorPos = basePos + baseRot * new Vector3(-2.8f, 0f, 1.2f);
+            var elevatorObj = new GameObject("Marker_ExitFreightElevator");
+            elevatorObj.transform.position = elevatorPos;
+            elevatorObj.transform.rotation = baseRot;
+            var elevatorMarker = elevatorObj.AddComponent<EmergencyExitMarker>();
+            elevatorMarker.ConfigureExit(FireTrainingWorkflow.TargetExitFreightElevator, "Freight Elevator (Unsafe)", false);
+            _activeExitMarkers.Add(elevatorMarker);
+
+            // 3. Corridor Sector A (Blocked by smoke)
+            Vector3 corridorPos = basePos + baseRot * new Vector3(0.0f, 0f, 3.8f);
+            var corridorObj = new GameObject("Marker_ExitBlockedCorridor");
+            corridorObj.transform.position = corridorPos;
+            corridorObj.transform.rotation = baseRot;
+            var corridorMarker = corridorObj.AddComponent<EmergencyExitMarker>();
+            corridorMarker.ConfigureExit(FireTrainingWorkflow.TargetExitBlockedCorridor, "Sector A Route (Smoke Blocked)", false);
+            _activeExitMarkers.Add(corridorMarker);
+
+            Debug.Log("[FireArInteractionController] Procedural emergency exit markers spawned in AR space.");
+        }
 
         private bool TryGetScreenTap(out Vector2 position)
         {

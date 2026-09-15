@@ -182,7 +182,12 @@ namespace IndustrialSafetyAR.UI
                     break;
 
                 case FireInteractionState.ExtinguisherDischarged:
-                    ShowPassCompletedUI();
+                case FireInteractionState.AwaitingExitIdentification:
+                    ShowExitIdentificationUI();
+                    break;
+
+                case FireInteractionState.ExitIdentified:
+                    ShowExitIdentifiedUI();
                     break;
             }
         }
@@ -429,6 +434,57 @@ namespace IndustrialSafetyAR.UI
             if (_promptText != null)
             {
                 _promptText.text = "<color=#4CAF50>FIRE SUPPRESSED!</color>\n<size=80%>PASS Procedure Completed • Conveyor Fire Extinguished</size>";
+                _promptText.color = new Color(0.25f, 0.95f, 0.4f);
+            }
+
+            if (_bannerBg != null)
+            {
+                _bannerBg.color = new Color(0.12f, 0.28f, 0.16f, 0.94f);
+            }
+        }
+
+        private void ShowExitIdentificationUI()
+        {
+            ClearActionButtons();
+            if (_actionContainer == null) return;
+
+            if (_promptText != null)
+            {
+                _promptText.text = "<b>STEP 7: IDENTIFY EMERGENCY EXIT</b>\nLocate and tap the green illuminated Emergency Exit sign in AR space.";
+                _promptText.color = new Color(0.25f, 0.95f, 0.4f);
+            }
+
+            if (_bannerBg != null)
+            {
+                _bannerBg.color = new Color(0.10f, 0.12f, 0.16f, 0.90f);
+            }
+
+            // 1. Sector B Emergency Exit (Green Sign) - Correct
+            CreateOptionButton("1. MARK: Sector B Emergency Exit (Green Sign)", new Vector2(0f, 0.68f), new Vector2(1f, 0.98f), () =>
+            {
+                _controller?.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB);
+            });
+
+            // 2. Freight Elevator (Elevator Shaft - Unsafe) - Incorrect
+            CreateActionButton("2. MARK: Freight Elevator (Elevator Shaft - Unsafe)", new Vector2(0f, 0.35f), new Vector2(1f, 0.65f), new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
+            {
+                _controller?.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitFreightElevator);
+            });
+
+            // 3. Sector A Route (Smoke Blocked - Unsafe) - Incorrect
+            CreateActionButton("3. MARK: Sector A Route (Smoke Blocked - Unsafe)", new Vector2(0f, 0.02f), new Vector2(1f, 0.32f), new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
+            {
+                _controller?.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitBlockedCorridor);
+            });
+        }
+
+        private void ShowExitIdentifiedUI()
+        {
+            ClearActionButtons();
+
+            if (_promptText != null)
+            {
+                _promptText.text = "<color=#4CAF50>EMERGENCY EXIT IDENTIFIED!</color>\n<size=80%>Sector B Exit Marked • Clear egress route verified.</size>";
                 _promptText.color = new Color(0.25f, 0.95f, 0.4f);
             }
 

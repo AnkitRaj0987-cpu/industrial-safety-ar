@@ -31,7 +31,10 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         AimConfirmed,
         HandleSqueezed,
         ExtinguisherDischarged,
-        ProcedureCompleted = ExtinguisherDischarged
+        ProcedureCompleted = ExtinguisherDischarged,
+        AwaitingExitIdentification,
+        step_identify_exit = AwaitingExitIdentification,
+        ExitIdentified
     }
 
     /// <summary>
@@ -92,6 +95,15 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
         // Step 7: Identify Exit
         public const string StepIdentifyExit = "step_identify_exit";
+        public const string ActionMark = "mark";
+        public const string RuleIdentifyExit = "rule_identify_exit";
+        public const string TargetExitEmergencySectorB = "exit_emergency_sector_b";
+        public const string TargetExitFreightElevator = "exit_freight_elevator";
+        public const string TargetExitBlockedCorridor = "exit_blocked_corridor_a";
+        public const string LocationTypeEmergencyExit = "emergency_exit";
+
+        // Step 8: Evacuate Route
+        public const string StepEvacuateRoute = "step_evacuate_route";
 
         public FireWorkflowStage CurrentStage { get; private set; } = FireWorkflowStage.NotStarted;
         public string CurrentStepId { get; private set; } = StepDetectHazard;
@@ -132,7 +144,11 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                     CurrentStepId = StepUseExtinguisher;
                     break;
                 case FireWorkflowStage.ExtinguisherDischarged:
+                case FireWorkflowStage.AwaitingExitIdentification:
                     CurrentStepId = StepIdentifyExit;
+                    break;
+                case FireWorkflowStage.ExitIdentified:
+                    CurrentStepId = StepEvacuateRoute;
                     break;
             }
 
@@ -540,6 +556,92 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public bool SubmitSweep(ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent)
             => SubmitExtinguisherAction(ActionSweep, dispatcher, out emittedEvent);
 
+        /// <summary>
+        /// Submits the emergency exit identification action.
+        /// </summary>
+        public bool SubmitIdentifyExit(string targetId, ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent)
+            => SubmitIdentifyExit(targetId, ActionMark, dispatcher, out emittedEvent);
+
+        /// <summary>
+        /// Submits the emergency exit identification action with explicit action ID.
+        /// Validates that Step 6 is complete and target matches designated safe exit.
+        /// Advances workflow on success; emits failure event and remains in stage on incorrect target.
+        /// Prevents duplicate completion events.
+        /// </summary>
+        public bool SubmitIdentifyExit(string targetId, string actionId, ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent)
+        {
+            emittedEvent = null;
+
+            bool isStep6Complete = CurrentStage == FireWorkflowStage.ExtinguisherDischarged
+                || CurrentStage == FireWorkflowStage.AwaitingExitIdentification;
+
+            if (!isStep6Complete)
+            {
+                // Premature action or duplicate completion rejected; emit no event
+                return false;
+            }
+
+            string rawAction = actionId?.Trim() ?? string.Empty;
+            string normalizedAction = rawAction.ToLowerInvariant();
+            if (string.IsNullOrEmpty(normalizedAction)) normalizedAction = ActionMark;
+
+            bool isCorrectAction = string.Equals(normalizedAction, ActionMark, StringComparison.OrdinalIgnoreCase);
+            bool isCorrectTarget = string.Equals(targetId, TargetExitEmergencySectorB, StringComparison.OrdinalIgnoreCase);
+            bool isSuccess = isCorrectAction && isCorrectTarget;
+
+            string outcome = isSuccess ? "success" : "failure";
+
+            emittedEvent = new TrainingEvent
+            {
+                ModuleId = ModuleId,
+                ContentVersion = ContentVersion,
+                StepId = StepIdentifyExit,
+                EventType = "exit_marked",
+                ActionId = isCorrectAction ? ActionMark : normalizedAction,
+                TargetId = targetId,
+                Outcome = outcome,
+                Payload =
+                {
+                    { "rule_id", RuleIdentifyExit },
+                    { "action_id", isCorrectAction ? ActionMark : normalizedAction },
+                    { "target_id", targetId },
+                    { "location_type", LocationTypeEmergencyExit },
+                    { "outcome", outcome }
+                }
+            };
+
+            if (!isSuccess)
+            {
+                string warning;
+                if (string.Equals(targetId, TargetExitFreightElevator, StringComparison.OrdinalIgnoreCase))
+                {
+                    warning = "CRITICAL HAZARD: Do NOT use elevators during a fire! Power failure or shaft chimney entrapment risk.";
+                    emittedEvent.Payload["hazard_warning"] = "elevator_entrapment_risk";
+                }
+                else if (string.Equals(targetId, TargetExitBlockedCorridor, StringComparison.OrdinalIgnoreCase))
+                {
+                    warning = "UNSAFE ROUTE: This corridor is compromised by smoke and heat. Seek the designated emergency exit.";
+                    emittedEvent.Payload["hazard_warning"] = "smoke_blocked_corridor";
+                }
+                else
+                {
+                    warning = "INCORRECT ROUTE: Locate and mark the designated illuminated green Emergency Exit.";
+                    emittedEvent.Payload["hazard_warning"] = "unmarked_or_invalid_exit";
+                }
+
+                dispatcher?.Dispatch(emittedEvent);
+                SetStage(FireWorkflowStage.AwaitingExitIdentification);
+                OnFeedbackChanged?.Invoke(warning);
+                return false;
+            }
+
+            // Success case: advance to ExitIdentified (CurrentStepId automatically sets to step_evacuate_route)
+            dispatcher?.Dispatch(emittedEvent);
+            SetStage(FireWorkflowStage.ExitIdentified);
+            OnFeedbackChanged?.Invoke("EMERGENCY EXIT IDENTIFIED!\nSector B Exit Marked. Clear egress route verified.");
+            return true;
+        }
+
         public string GetFeedbackForStage(FireWorkflowStage stage)
         {
             switch (stage)
@@ -571,7 +673,10 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 case FireWorkflowStage.HandleSqueezed:
                     return "STEP 6: USE EXTINGUISHER — SWEEP: Move nozzle side to side across fire base.";
                 case FireWorkflowStage.ExtinguisherDischarged:
-                    return "FIRE SUPPRESSED! PASS procedure successfully completed. Proceed to exit.";
+                case FireWorkflowStage.AwaitingExitIdentification:
+                    return "STEP 7: IDENTIFY EMERGENCY EXIT\nLocate and tap the green illuminated Emergency Exit sign in AR space.";
+                case FireWorkflowStage.ExitIdentified:
+                    return "EMERGENCY EXIT IDENTIFIED!\nSector B Exit Marked. Clear egress route verified.";
                 default:
                     return string.Empty;
             }
