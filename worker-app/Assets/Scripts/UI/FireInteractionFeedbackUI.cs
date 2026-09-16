@@ -157,6 +157,10 @@ namespace IndustrialSafetyAR.UI
         {
             switch (state)
             {
+                case FireInteractionState.HazardPlaced:
+                    ShowHazardPlacedUI();
+                    break;
+
                 case FireInteractionState.AwaitingIdentification:
                     ShowIdentificationUI();
                     break;
@@ -227,6 +231,31 @@ namespace IndustrialSafetyAR.UI
             for (int i = _actionContainer.transform.childCount - 1; i >= 0; i--)
             {
                 Destroy(_actionContainer.transform.GetChild(i).gameObject);
+            }
+        }
+
+        private void ShowHazardPlacedUI()
+        {
+            ClearActionButtons();
+            if (_actionContainer == null) return;
+
+            if (_promptText != null)
+            {
+                _promptText.text = "Fire Hazard Located! Tap the 3D marker in AR or click below to confirm detection:";
+                _promptText.color = new Color(0.95f, 0.95f, 0.95f);
+            }
+
+            var confirmBtn = CreateActionButton("CONFIRM HAZARD DETECTION", new Vector2(0f, 0.15f), new Vector2(1f, 0.85f),
+                new Color(0.15f, 0.65f, 0.35f), () =>
+            {
+                _controller?.ConfirmHazardDetected();
+            });
+
+            var btnText = confirmBtn.GetComponentInChildren<TextMeshProUGUI>();
+            if (btnText != null)
+            {
+                btnText.fontSize = 30;
+                btnText.fontStyle = FontStyles.Bold;
             }
         }
 

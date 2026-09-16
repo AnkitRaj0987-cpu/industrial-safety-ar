@@ -1,4 +1,4 @@
-﻿<Project>
+<Project>
   <!-- Generated file, do not modify, your changes will be overwritten (use AssetPostprocessor.OnGeneratedCSProject) -->
   <PropertyGroup>
     <BaseIntermediateOutputPath>Temp\obj\$(MSBuildProjectName)</BaseIntermediateOutputPath>
@@ -74,6 +74,7 @@
     <Compile Include="Assets\Scripts\Core\Events\ITrainingEventDispatcher.cs" />
     <Compile Include="Assets\Scripts\AR\IArRaycastService.cs" />
     <Compile Include="Assets\Scripts\Modules\FireExplosion\FireHazardMarker.cs" />
+    <Compile Include="Assets\Scripts\Modules\FireExplosion\ExtinguisherMarker.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\TutorialInfo\StyleSheets\ReadmeEditor.uss" />

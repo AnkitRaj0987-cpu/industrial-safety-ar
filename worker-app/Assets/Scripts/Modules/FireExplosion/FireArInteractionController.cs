@@ -92,6 +92,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         private readonly System.Collections.Generic.List<EmergencyExitMarker> _activeExitMarkers = new System.Collections.Generic.List<EmergencyExitMarker>();
         private readonly System.Collections.Generic.List<EvacuationRouteMarker> _activeRouteMarkers = new System.Collections.Generic.List<EvacuationRouteMarker>();
         private readonly System.Collections.Generic.List<AssemblyPointMarker> _activeAssemblyMarkers = new System.Collections.Generic.List<AssemblyPointMarker>();
+        private readonly System.Collections.Generic.List<ExtinguisherMarker> _activeExtinguisherMarkers = new System.Collections.Generic.List<ExtinguisherMarker>();
         private ITrainingEventDispatcher _eventDispatcher;
 
         public FireInteractionState State => _state;
@@ -101,6 +102,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public System.Collections.Generic.IReadOnlyList<EmergencyExitMarker> ActiveExitMarkers => _activeExitMarkers;
         public System.Collections.Generic.IReadOnlyList<EvacuationRouteMarker> ActiveRouteMarkers => _activeRouteMarkers;
         public System.Collections.Generic.IReadOnlyList<AssemblyPointMarker> ActiveAssemblyMarkers => _activeAssemblyMarkers;
+        public System.Collections.Generic.IReadOnlyList<ExtinguisherMarker> ActiveExtinguisherMarkers => _activeExtinguisherMarkers;
         public string CurrentStepId => _workflow.CurrentStepId;
 
         public TrainingAttempt LatestAttempt => _workflow.LatestAttempt;
@@ -226,7 +228,252 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             }
         }
 
-        private void HandleTap(Vector2 screenPosition)
+        /// <summary>
+        /// Explicitly assigns the active fire hazard marker (useful for testing and programmatic initialization).
+        /// </summary>
+        public void SetActiveHazard(FireHazardMarker hazard)
+        {
+            _activeHazard = hazard;
+        }
+
+        public void RegisterExtinguisherMarker(ExtinguisherMarker marker)
+        {
+            if (marker != null && !_activeExtinguisherMarkers.Contains(marker))
+            {
+                _activeExtinguisherMarkers.Add(marker);
+            }
+        }
+
+        public void RegisterExitMarker(EmergencyExitMarker marker)
+        {
+            if (marker != null && !_activeExitMarkers.Contains(marker))
+            {
+                _activeExitMarkers.Add(marker);
+            }
+        }
+
+        public void RegisterRouteMarker(EvacuationRouteMarker marker)
+        {
+            if (marker != null && !_activeRouteMarkers.Contains(marker))
+            {
+                _activeRouteMarkers.Add(marker);
+            }
+        }
+
+        public void RegisterAssemblyMarker(AssemblyPointMarker marker)
+        {
+            if (marker != null && !_activeAssemblyMarkers.Contains(marker))
+            {
+                _activeAssemblyMarkers.Add(marker);
+            }
+        }
+
+        /// <summary>
+        /// Confirms detection of the active placed fire hazard marker.
+        /// Can be invoked directly by UI button or after AR surface inspection.
+        /// </summary>
+        public bool ConfirmHazardDetected() => ConfirmHazardDetection(_activeHazard);
+
+        /// <summary>
+        /// Confirms detection of the specified or active fire hazard marker.
+        /// Advances workflow to AwaitingIdentification and emits domain step_completed event.
+        /// Prevents duplicate completions.
+        /// </summary>
+        public bool ConfirmHazardDetection(FireHazardMarker hazard = null)
+        {
+            var targetHazard = hazard ?? _activeHazard;
+            if (targetHazard == null) return false;
+            if (targetHazard.IsDetected) return false;
+            if (_workflow.CurrentStage != FireWorkflowStage.HazardPlaced) return false;
+
+            targetHazard.AcknowledgeDetection();
+
+            if (_workflow.ConfirmHazardDetected(_eventDispatcher, out var trainingEvent))
+            {
+                OnHazardDetected?.Invoke(targetHazard, trainingEvent);
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Processes an AR 3D marker or scene object selection from physical raycasting.
+        /// Unifies physical AR marker interaction across all 9 training steps.
+        /// Prevents invalid markers from advancing workflow and prevents duplicate completions.
+        /// </summary>
+        public bool Process3DMarkerHit(GameObject hitObject)
+        {
+            if (hitObject == null) return false;
+
+            switch (_workflow.CurrentStage)
+            {
+                // Step 1: Detect Hazard (Confirmation)
+                case FireWorkflowStage.HazardPlaced:
+                {
+                    var hazard = hitObject.GetComponentInParent<FireHazardMarker>();
+                    if (hazard != null && (hazard == _activeHazard || _activeHazard == null) && !hazard.IsDetected)
+                    {
+                        return ConfirmHazardDetection(hazard);
+                    }
+                    return false;
+                }
+
+                // Step 2: Identify Hazard (Classification)
+                case FireWorkflowStage.HazardDetected:
+                case FireWorkflowStage.AwaitingIdentification:
+                {
+                    var hazard = hitObject.GetComponentInParent<FireHazardMarker>();
+                    if (hazard != null)
+                    {
+                        return SubmitHazardIdentification(hazard.HazardId);
+                    }
+                    var identifiable = hitObject.GetComponentInParent<IIdentifiableHazard>();
+                    if (identifiable != null)
+                    {
+                        return SubmitHazardIdentification(identifiable.HazardId);
+                    }
+                    return false;
+                }
+
+                // Step 3: Raise Emergency Alarm
+                case FireWorkflowStage.HazardIdentified:
+                case FireWorkflowStage.AwaitingAlarm:
+                {
+                    var hazard = hitObject.GetComponentInParent<FireHazardMarker>();
+                    if (hazard != null)
+                    {
+                        return SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm);
+                    }
+                    return false;
+                }
+
+                // Step 4: Select Extinguisher
+                case FireWorkflowStage.AlarmRaised:
+                case FireWorkflowStage.AwaitingExtinguisherSelection:
+                {
+                    var extMarker = hitObject.GetComponentInParent<ExtinguisherMarker>();
+                    if (extMarker != null)
+                    {
+                        bool selected = SubmitExtinguisherSelection(extMarker.ExtinguisherId);
+                        if (selected) extMarker.MarkSelected();
+                        return selected;
+                    }
+                    var hazard = hitObject.GetComponentInParent<FireHazardMarker>();
+                    if (hazard != null)
+                    {
+                        return SubmitExtinguisherSelection(FireTrainingWorkflow.TargetExtinguisherCO2);
+                    }
+                    return false;
+                }
+
+                // Step 5: Safe Distance Decision
+                case FireWorkflowStage.ExtinguisherSelected:
+                case FireWorkflowStage.AwaitingSafeDistance:
+                {
+                    if (_activeHazard != null)
+                    {
+                        Vector3 hazardPos = _activeHazard.transform.position;
+                        Vector3 hitPos = hitObject.transform.position;
+                        float distance = Vector2.Distance(new Vector2(hitPos.x, hitPos.z), new Vector2(hazardPos.x, hazardPos.z));
+                        return SubmitDistanceDecision(distance);
+                    }
+                    return false;
+                }
+
+                // Step 6: PASS Extinguisher Procedure
+                case FireWorkflowStage.SafeDistanceMaintained:
+                {
+                    // PASS: P - Pull Pin
+                    var hazard = hitObject.GetComponentInParent<FireHazardMarker>();
+                    var extMarker = hitObject.GetComponentInParent<ExtinguisherMarker>();
+                    if (hazard != null || extMarker != null)
+                    {
+                        return SubmitPullPin();
+                    }
+                    return false;
+                }
+
+                case FireWorkflowStage.PinPulled:
+                {
+                    // PASS: A - Aim at base of fire
+                    var hazard = hitObject.GetComponentInParent<FireHazardMarker>();
+                    if (hazard != null)
+                    {
+                        return SubmitAim();
+                    }
+                    return false;
+                }
+
+                case FireWorkflowStage.AimConfirmed:
+                {
+                    // PASS: S - Squeeze handle
+                    var hazard = hitObject.GetComponentInParent<FireHazardMarker>();
+                    var extMarker = hitObject.GetComponentInParent<ExtinguisherMarker>();
+                    if (hazard != null || extMarker != null)
+                    {
+                        return SubmitSqueeze();
+                    }
+                    return false;
+                }
+
+                case FireWorkflowStage.HandleSqueezed:
+                {
+                    // PASS: S - Sweep side to side
+                    var hazard = hitObject.GetComponentInParent<FireHazardMarker>();
+                    if (hazard != null)
+                    {
+                        return SubmitSweep();
+                    }
+                    return false;
+                }
+
+                // Step 7: Identify Emergency Exit
+                case FireWorkflowStage.ExtinguisherDischarged:
+                case FireWorkflowStage.AwaitingExitIdentification:
+                {
+                    var exitMarker = hitObject.GetComponentInParent<EmergencyExitMarker>();
+                    if (exitMarker != null)
+                    {
+                        if (exitMarker.IsIdentified) return false;
+                        return SubmitIdentifyExit(exitMarker.ExitId);
+                    }
+                    return false;
+                }
+
+                // Step 8: Evacuate Route Waypoints
+                case FireWorkflowStage.ExitIdentified:
+                case FireWorkflowStage.AwaitingEvacuationRoute:
+                case FireWorkflowStage.WaypointMainCorridorReached:
+                case FireWorkflowStage.WaypointBypassCrosscutReached:
+                {
+                    var routeMarker = hitObject.GetComponentInParent<EvacuationRouteMarker>();
+                    if (routeMarker != null)
+                    {
+                        if (routeMarker.IsTraversed) return false;
+                        return SubmitEvacuationWaypoint(routeMarker.WaypointId);
+                    }
+                    return false;
+                }
+
+                // Step 9: Reach Assembly Point
+                case FireWorkflowStage.RouteEvacuated:
+                case FireWorkflowStage.AwaitingAssemblyPoint:
+                {
+                    var assemblyMarker = hitObject.GetComponentInParent<AssemblyPointMarker>();
+                    if (assemblyMarker != null)
+                    {
+                        if (assemblyMarker.IsReached) return false;
+                        return SubmitReachAssemblyPoint(assemblyMarker.PointId);
+                    }
+                    return false;
+                }
+
+                default:
+                    return false;
+            }
+        }
+
+        public void HandleTap(Vector2 screenPosition)
         {
             // Do not process taps over UI elements
             if (IsPointerOverUI(screenPosition))
@@ -234,41 +481,40 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 return;
             }
 
-            switch (_workflow.CurrentStage)
+            if (_workflow.CurrentStage == FireWorkflowStage.ReadyToPlace)
             {
-                case FireWorkflowStage.ReadyToPlace:
-                    TryPlaceHazard(screenPosition);
-                    break;
-
-                case FireWorkflowStage.HazardPlaced:
-                    TryIdentifyHazard(screenPosition);
-                    break;
-
-                case FireWorkflowStage.AwaitingSafeDistance:
-                    TrySelectSafeDistancePosition(screenPosition);
-                    break;
-
-                case FireWorkflowStage.PinPulled:
-                    TryAimAtBase(screenPosition);
-                    break;
-
-                case FireWorkflowStage.ExtinguisherDischarged:
-                case FireWorkflowStage.AwaitingExitIdentification:
-                    TrySelectEmergencyExit(screenPosition);
-                    break;
-
-                case FireWorkflowStage.ExitIdentified:
-                case FireWorkflowStage.AwaitingEvacuationRoute:
-                case FireWorkflowStage.WaypointMainCorridorReached:
-                case FireWorkflowStage.WaypointBypassCrosscutReached:
-                    TrySelectEvacuationWaypoint(screenPosition);
-                    break;
-
-                case FireWorkflowStage.RouteEvacuated:
-                case FireWorkflowStage.AwaitingAssemblyPoint:
-                    TrySelectAssemblyPoint(screenPosition);
-                    break;
+                TryPlaceHazard(screenPosition);
+                return;
             }
+
+            if (_workflow.CurrentStage == FireWorkflowStage.AwaitingSafeDistance)
+            {
+                TrySelectSafeDistancePosition(screenPosition);
+                return;
+            }
+
+            if (_arCamera == null)
+            {
+                _arCamera = Camera.main;
+                if (_arCamera == null) return;
+            }
+
+            Ray ray = _arCamera.ScreenPointToRay(screenPosition);
+            if (Physics.Raycast(ray, out RaycastHit hit, 50f))
+            {
+                Process3DMarkerHit(hit.collider.gameObject);
+            }
+        }
+
+        public void ProcessScreenTap(Vector2 screenPosition) => HandleTap(screenPosition);
+
+        public bool RaycastAndProcessHit(Ray ray, float maxDistance = 50f)
+        {
+            if (Physics.Raycast(ray, out RaycastHit hit, maxDistance))
+            {
+                return Process3DMarkerHit(hit.collider.gameObject);
+            }
+            return false;
         }
 
         private void TryPlaceHazard(Vector2 screenPosition)
@@ -303,35 +549,6 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 _workflow.SetStage(FireWorkflowStage.HazardPlaced);
                 OnHazardPlaced?.Invoke(_activeHazard);
                 Debug.Log($"[FireArInteractionController] Placed fire hazard marker at {hitPose.position}");
-            }
-        }
-
-        private void TryIdentifyHazard(Vector2 screenPosition)
-        {
-            if (_arCamera == null)
-            {
-                _arCamera = Camera.main;
-                if (_arCamera == null) return;
-            }
-
-            Ray ray = _arCamera.ScreenPointToRay(screenPosition);
-            if (Physics.Raycast(ray, out RaycastHit hit, 50f))
-            {
-                var hazard = hit.collider.GetComponentInParent<FireHazardMarker>();
-                if (hazard != null && hazard == _activeHazard && !hazard.IsDetected)
-                {
-                    ConfirmHazardDetection(hazard);
-                }
-            }
-        }
-
-        private void ConfirmHazardDetection(FireHazardMarker hazard)
-        {
-            hazard.AcknowledgeDetection();
-
-            if (_workflow.ConfirmHazardDetected(_eventDispatcher, out var trainingEvent))
-            {
-                OnHazardDetected?.Invoke(hazard, trainingEvent);
             }
         }
 
@@ -396,6 +613,24 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         private void TrySelectSafeDistancePosition(Vector2 screenPosition)
         {
             if (_activeHazard == null) return;
+
+            if (_arCamera == null)
+            {
+                _arCamera = Camera.main;
+            }
+
+            // 0. Check physical 3D marker or collider hit first
+            if (_arCamera != null)
+            {
+                Ray screenRay = _arCamera.ScreenPointToRay(screenPosition);
+                if (Physics.Raycast(screenRay, out RaycastHit markerHit, 50f))
+                {
+                    if (Process3DMarkerHit(markerHit.collider.gameObject))
+                    {
+                        return;
+                    }
+                }
+            }
 
             // 1. Raycast onto detected AR plane if available
             if (_raycastService != null && _raycastService.TryRaycastPlane(screenPosition, out Pose hitPose))
@@ -923,6 +1158,15 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                     if (marker != null) Destroy(marker.gameObject);
                 }
                 _activeAssemblyMarkers.Clear();
+            }
+
+            if (_activeExtinguisherMarkers != null)
+            {
+                foreach (var marker in _activeExtinguisherMarkers)
+                {
+                    if (marker != null) Destroy(marker.gameObject);
+                }
+                _activeExtinguisherMarkers.Clear();
             }
 
             if (_eventDispatcher is TrainingEventBus bus)

@@ -98,6 +98,11 @@ namespace IndustrialSafetyAR.Tests
             allPassed &= RunTest("LoadedFireRubric_IdentityAndVersion", Test_LoadedFireRubric_IdentityAndVersion, logMessages);
             allPassed &= RunTest("LoadedFireRubric_AllNineRulesAvailableAndConfigured", Test_LoadedFireRubric_AllNineRulesAvailableAndConfigured, logMessages);
             allPassed &= RunTest("Workflow_UsesLoadedRubricForEvaluation", Test_Workflow_UsesLoadedRubricForEvaluation, logMessages);
+            allPassed &= RunTest("DualInput_Step1ToStep9Equivalence", Test_DualInput_Step1ToStep9Equivalence, logMessages);
+            allPassed &= RunTest("DualInput_InvalidInteractionsDoNotAdvanceWorkflow", Test_DualInput_InvalidInteractionsDoNotAdvanceWorkflow, logMessages);
+            allPassed &= RunTest("DualInput_DuplicateTapsPreventDuplicateEvents", Test_DualInput_DuplicateTapsPreventDuplicateEvents, logMessages);
+            allPassed &= RunTest("DualInput_FullScenarioMixedARAndUI_Scores100AndPasses", Test_DualInput_FullScenarioMixedARAndUI_Scores100AndPasses, logMessages);
+            allPassed &= RunTest("DualInput_InvalidMarker_IncursPenaltyAndAllowsRecovery", Test_DualInput_InvalidMarker_IncursPenaltyAndAllowsRecovery, logMessages);
 
             return allPassed;
         }
@@ -3001,6 +3006,431 @@ namespace IndustrialSafetyAR.Tests
 
             if (attempt.ContentVersion != loadedRubric.ContentVersion)
                 throw new Exception($"Attempt ContentVersion '{attempt.ContentVersion}' != rubric '{loadedRubric.ContentVersion}'");
+        }
+
+        public static void Test_DualInput_Step1ToStep9Equivalence()
+        {
+            var busA = new TrainingEventBus();
+            var busB = new TrainingEventBus();
+
+            var wfA = new FireTrainingWorkflow();
+            var wfB = new FireTrainingWorkflow();
+
+            // Step 1: Detect hazard
+            // Path A: Physical AR Marker tap
+            wfA.SetStage(FireWorkflowStage.HazardPlaced);
+            bool okA1 = wfA.ConfirmHazardDetected(busA, out var evtA1);
+            // Path B: UI Button tap
+            wfB.SetStage(FireWorkflowStage.HazardPlaced);
+            bool okB1 = wfB.ConfirmHazardDetected(busB, out var evtB1);
+
+            if (!okA1 || !okB1) throw new Exception("Step 1 confirmation failed");
+            AssertEventsEqual(evtA1, evtB1, "Step 1");
+
+            // Step 2: Identify hazard
+            // Path A: Physical AR Marker tap (hazard target ID)
+            bool okA2 = wfA.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, busA, out var evtA2);
+            // Path B: UI Button tap
+            bool okB2 = wfB.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, busB, out var evtB2);
+
+            if (!okA2 || !okB2) throw new Exception("Step 2 identification failed");
+            AssertEventsEqual(evtA2, evtB2, "Step 2");
+
+            // Step 3: Raise alarm
+            // Path A: Physical AR Marker tap
+            bool okA3 = wfA.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, busA, out var evtA3);
+            // Path B: UI Button tap
+            bool okB3 = wfB.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, busB, out var evtB3);
+
+            if (!okA3 || !okB3) throw new Exception("Step 3 alarm failed");
+            AssertEventsEqual(evtA3, evtB3, "Step 3");
+
+            // Step 4: Select extinguisher
+            // Path A: Physical AR Marker tap (CO2)
+            bool okA4 = wfA.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, busA, out var evtA4);
+            // Path B: UI Button tap
+            bool okB4 = wfB.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, busB, out var evtB4);
+
+            if (!okA4 || !okB4) throw new Exception("Step 4 extinguisher failed");
+            AssertEventsEqual(evtA4, evtB4, "Step 4");
+
+            // Step 5: Safe distance
+            // Path A: Physical AR raycast ground distance (2.5m)
+            bool okA5 = wfA.SubmitDistanceDecision(2.5f, busA, out var evtA5);
+            // Path B: UI Button tap (DecisionSafeDistance2m)
+            bool okB5 = wfB.SubmitDistanceDecision(FireTrainingWorkflow.DecisionSafeDistance2m, busB, out var evtB5);
+
+            if (!okA5 || !okB5) throw new Exception("Step 5 safe distance failed");
+            AssertEventsEqual(evtA5, evtB5, "Step 5");
+
+            // Step 6: PASS procedure
+            // 6.1 Pull Pin
+            bool okA6_1 = wfA.SubmitPullPin(busA, out var evtA6_1);
+            bool okB6_1 = wfB.SubmitPullPin(busB, out var evtB6_1);
+            if (!okA6_1 || !okB6_1) throw new Exception("Step 6.1 pull pin failed");
+            AssertEventsEqual(evtA6_1, evtB6_1, "Step 6.1");
+
+            // 6.2 Aim
+            bool okA6_2 = wfA.SubmitAim(busA, out var evtA6_2);
+            bool okB6_2 = wfB.SubmitAim(busB, out var evtB6_2);
+            if (!okA6_2 || !okB6_2) throw new Exception("Step 6.2 aim failed");
+            AssertEventsEqual(evtA6_2, evtB6_2, "Step 6.2");
+
+            // 6.3 Squeeze
+            bool okA6_3 = wfA.SubmitSqueeze(busA, out var evtA6_3);
+            bool okB6_3 = wfB.SubmitSqueeze(busB, out var evtB6_3);
+            if (!okA6_3 || !okB6_3) throw new Exception("Step 6.3 squeeze failed");
+            AssertEventsEqual(evtA6_3, evtB6_3, "Step 6.3");
+
+            // 6.4 Sweep
+            bool okA6_4 = wfA.SubmitSweep(busA, out var evtA6_4);
+            bool okB6_4 = wfB.SubmitSweep(busB, out var evtB6_4);
+            if (!okA6_4 || !okB6_4) throw new Exception("Step 6.4 sweep failed");
+            AssertEventsEqual(evtA6_4, evtB6_4, "Step 6.4");
+
+            // Step 7: Emergency exit
+            // Path A: Physical AR Marker tap
+            bool okA7 = wfA.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, busA, out var evtA7);
+            // Path B: UI Button tap
+            bool okB7 = wfB.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, busB, out var evtB7);
+
+            if (!okA7 || !okB7) throw new Exception("Step 7 exit failed");
+            AssertEventsEqual(evtA7, evtB7, "Step 7");
+
+            // Step 8: Evacuation route waypoints
+            // Waypoint 1
+            bool okA8_1 = wfA.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, busA, out var evtA8_1);
+            bool okB8_1 = wfB.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, busB, out var evtB8_1);
+            if (!okA8_1 || !okB8_1) throw new Exception("Step 8.1 waypoint failed");
+            AssertEventsEqual(evtA8_1, evtB8_1, "Step 8.1");
+
+            // Waypoint 2
+            bool okA8_2 = wfA.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, busA, out var evtA8_2);
+            bool okB8_2 = wfB.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, busB, out var evtB8_2);
+            if (!okA8_2 || !okB8_2) throw new Exception("Step 8.2 waypoint failed");
+            AssertEventsEqual(evtA8_2, evtB8_2, "Step 8.2");
+
+            // Waypoint 3
+            bool okA8_3 = wfA.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, busA, out var evtA8_3);
+            bool okB8_3 = wfB.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, busB, out var evtB8_3);
+            if (!okA8_3 || !okB8_3) throw new Exception("Step 8.3 waypoint failed");
+            AssertEventsEqual(evtA8_3, evtB8_3, "Step 8.3");
+
+            // Step 9: Reach assembly point
+            // Path A: Physical AR Marker tap
+            bool okA9 = wfA.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, busA, out var evtA9);
+            // Path B: UI Button tap
+            bool okB9 = wfB.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, busB, out var evtB9);
+
+            if (!okA9 || !okB9) throw new Exception("Step 9 assembly failed");
+            AssertEventsEqual(evtA9, evtB9, "Step 9");
+
+            // Verify both produced identical 100% PASS scores
+            if (Math.Abs(wfA.LatestAssessment.ClientScore - wfB.LatestAssessment.ClientScore) > 0.001f)
+                throw new Exception("Assessment scores between AR marker and UI path differ");
+
+            if (wfA.LatestAssessment.Passed != wfB.LatestAssessment.Passed || !wfA.LatestAssessment.Passed)
+                throw new Exception("Both paths must be PASSED");
+        }
+
+        private static void AssertEventsEqual(TrainingEvent a, TrainingEvent b, string stepName)
+        {
+            if (a == null || b == null) throw new Exception($"{stepName}: Event was null");
+            if (a.StepId != b.StepId) throw new Exception($"{stepName}: StepId mismatch ({a.StepId} vs {b.StepId})");
+            if (a.EventType != b.EventType) throw new Exception($"{stepName}: EventType mismatch ({a.EventType} vs {b.EventType})");
+            if (a.ActionId != b.ActionId) throw new Exception($"{stepName}: ActionId mismatch ({a.ActionId} vs {b.ActionId})");
+            if (a.TargetId != b.TargetId) throw new Exception($"{stepName}: TargetId mismatch ({a.TargetId} vs {b.TargetId})");
+            if (a.Outcome != b.Outcome) throw new Exception($"{stepName}: Outcome mismatch ({a.Outcome} vs {b.Outcome})");
+        }
+
+        public static void Test_DualInput_InvalidInteractionsDoNotAdvanceWorkflow()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var wf = new FireTrainingWorkflow();
+
+            // 1. ReadyToPlace: cannot identify hazard or confirm
+            if (wf.ConfirmHazardDetected(bus, out _))
+                throw new Exception("Cannot confirm hazard detection before hazard is placed");
+
+            wf.SetStage(FireWorkflowStage.HazardPlaced);
+
+            // 2. HazardPlaced: cannot jump to identification or alarm
+            if (wf.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _))
+                throw new Exception("Cannot identify hazard before detection is acknowledged");
+
+            // Confirm detection to advance to AwaitingIdentification
+            wf.ConfirmHazardDetected(bus, out _);
+            if (wf.CurrentStage != FireWorkflowStage.AwaitingIdentification)
+                throw new Exception("Expected AwaitingIdentification");
+
+            // 3. AwaitingIdentification: wrong hazard does not advance
+            int countBefore = bus.DispatchedEvents.Count;
+            bool badIdent = wf.SubmitHazardIdentification("hazard_chemical_spill", bus, out _);
+            if (badIdent) throw new Exception("Wrong hazard identification must return false");
+            if (wf.CurrentStage != FireWorkflowStage.AwaitingIdentification)
+                throw new Exception("Wrong hazard must NOT advance workflow stage");
+            if (bus.DispatchedEvents.Count != countBefore + 1)
+                throw new Exception("Wrong hazard must emit penalty failure event");
+
+            // Advance correctly
+            wf.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+
+            // 4. AwaitingAlarm: invalid action does not advance
+            if (wf.SubmitRaiseAlarm("invalid_scream", bus, out _))
+                throw new Exception("Invalid alarm action must return false");
+            if (wf.CurrentStage != FireWorkflowStage.AwaitingAlarm)
+                throw new Exception("Invalid alarm action must NOT advance workflow stage");
+
+            wf.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+
+            // 5. AwaitingExtinguisherSelection: wrong extinguishers do not advance
+            bool badExt1 = wf.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherWater, bus, out _);
+            if (badExt1) throw new Exception("Water extinguisher must return false");
+            if (wf.CurrentStage != FireWorkflowStage.AwaitingExtinguisherSelection)
+                throw new Exception("Wrong extinguisher must NOT advance stage");
+
+            bool badExt2 = wf.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherFoam, bus, out _);
+            if (badExt2) throw new Exception("Foam extinguisher must return false");
+
+            wf.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+
+            // 6. AwaitingSafeDistance: unsafe distance (< 2.0m) does not advance
+            bool badDist = wf.SubmitDistanceDecision(1.2f, bus, out _);
+            if (badDist) throw new Exception("Distance < 2.0m must return false");
+            if (wf.CurrentStage != FireWorkflowStage.AwaitingSafeDistance)
+                throw new Exception("Unsafe distance must NOT advance stage");
+
+            wf.SubmitDistanceDecision(2.5f, bus, out _);
+
+            // 7. SafeDistanceMaintained: out-of-order PASS action does not advance
+            bool badPass = wf.SubmitExtinguisherAction("squeeze", bus, out _);
+            if (badPass) throw new Exception("Squeezing before pulling pin must return false");
+            if (wf.CurrentStage != FireWorkflowStage.SafeDistanceMaintained)
+                throw new Exception("Out-of-order PASS action must NOT advance stage");
+
+            wf.SubmitPullPin(bus, out _);
+            wf.SubmitAim(bus, out _);
+            wf.SubmitSqueeze(bus, out _);
+            wf.SubmitSweep(bus, out _);
+
+            // 8. AwaitingExitIdentification: wrong exit does not advance
+            bool badExit1 = wf.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitFreightElevator, bus, out _);
+            if (badExit1) throw new Exception("Elevator exit must return false");
+            if (wf.CurrentStage != FireWorkflowStage.AwaitingExitIdentification)
+                throw new Exception("Wrong exit must NOT advance stage");
+
+            bool badExit2 = wf.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitBlockedCorridor, bus, out _);
+            if (badExit2) throw new Exception("Blocked corridor exit must return false");
+
+            wf.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+
+            // 9. AwaitingEvacuationRoute: smoke corridor or out-of-order waypoint does not advance
+            bool badWp1 = wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.HazardSmokeCorridor, bus, out _);
+            if (badWp1) throw new Exception("Smoke corridor must return false");
+
+            bool badWp2 = wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            if (badWp2) throw new Exception("Waypoint 2 before Waypoint 1 must return false");
+
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+
+            // 10. AwaitingAssemblyPoint: wrong assembly point does not advance
+            bool badAssembly = wf.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyPointBeta, bus, out _);
+            if (badAssembly) throw new Exception("Wrong assembly point must return false");
+            if (wf.CurrentStage != FireWorkflowStage.AwaitingAssemblyPoint && wf.CurrentStage != FireWorkflowStage.RouteEvacuated)
+                throw new Exception("Wrong assembly point must NOT complete training");
+        }
+
+        public static void Test_DualInput_DuplicateTapsPreventDuplicateEvents()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var wf = new FireTrainingWorkflow();
+
+            wf.SetStage(FireWorkflowStage.HazardPlaced);
+
+            // Step 1
+            if (!wf.ConfirmHazardDetected(bus, out _)) throw new Exception("Step 1 initial confirm failed");
+            int count1 = bus.DispatchedEvents.Count;
+            if (wf.ConfirmHazardDetected(bus, out _)) throw new Exception("Duplicate Step 1 confirm must return false");
+            if (bus.DispatchedEvents.Count != count1) throw new Exception("Duplicate Step 1 emitted extra event");
+
+            // Step 2
+            if (!wf.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _)) throw new Exception("Step 2 failed");
+            int count2 = bus.DispatchedEvents.Count;
+            if (wf.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _)) throw new Exception("Duplicate Step 2 must return false");
+            if (bus.DispatchedEvents.Count != count2) throw new Exception("Duplicate Step 2 emitted extra event");
+
+            // Step 3
+            if (!wf.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _)) throw new Exception("Step 3 failed");
+            int count3 = bus.DispatchedEvents.Count;
+            if (wf.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _)) throw new Exception("Duplicate Step 3 must return false");
+            if (bus.DispatchedEvents.Count != count3) throw new Exception("Duplicate Step 3 emitted extra event");
+
+            // Step 4
+            if (!wf.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _)) throw new Exception("Step 4 failed");
+            int count4 = bus.DispatchedEvents.Count;
+            if (wf.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _)) throw new Exception("Duplicate Step 4 must return false");
+            if (bus.DispatchedEvents.Count != count4) throw new Exception("Duplicate Step 4 emitted extra event");
+
+            // Step 5
+            if (!wf.SubmitDistanceDecision(2.5f, bus, out _)) throw new Exception("Step 5 failed");
+            int count5 = bus.DispatchedEvents.Count;
+            if (wf.SubmitDistanceDecision(2.5f, bus, out _)) throw new Exception("Duplicate Step 5 must return false");
+            if (bus.DispatchedEvents.Count != count5) throw new Exception("Duplicate Step 5 emitted extra event");
+
+            // Step 6: PASS
+            wf.SubmitPullPin(bus, out _);
+            wf.SubmitAim(bus, out _);
+            wf.SubmitSqueeze(bus, out _);
+            wf.SubmitSweep(bus, out _);
+            int count6 = bus.DispatchedEvents.Count;
+            if (wf.SubmitPullPin(bus, out _)) throw new Exception("Duplicate pull pin after PASS completed must return false");
+            if (wf.SubmitAim(bus, out _)) throw new Exception("Duplicate aim after PASS completed must return false");
+            if (wf.SubmitSqueeze(bus, out _)) throw new Exception("Duplicate squeeze after PASS completed must return false");
+            if (wf.SubmitSweep(bus, out _)) throw new Exception("Duplicate sweep after PASS completed must return false");
+            if (bus.DispatchedEvents.Count != count6) throw new Exception("Duplicate PASS actions emitted extra events");
+
+            // Step 7
+            if (!wf.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _)) throw new Exception("Step 7 failed");
+            int count7 = bus.DispatchedEvents.Count;
+            if (wf.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _)) throw new Exception("Duplicate Step 7 must return false");
+            if (bus.DispatchedEvents.Count != count7) throw new Exception("Duplicate Step 7 emitted extra event");
+
+            // Step 8
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            int count8 = bus.DispatchedEvents.Count;
+            if (wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _)) throw new Exception("Duplicate Step 8 must return false");
+            if (wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _)) throw new Exception("Duplicate Step 8 must return false");
+            if (bus.DispatchedEvents.Count != count8) throw new Exception("Duplicate Step 8 emitted extra event");
+
+            // Step 9
+            if (!wf.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _)) throw new Exception("Step 9 failed");
+            int count9 = bus.DispatchedEvents.Count;
+            if (wf.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _)) throw new Exception("Duplicate Step 9 must return false");
+            if (bus.DispatchedEvents.Count != count9) throw new Exception("Duplicate Step 9 emitted extra event");
+
+            // Exactly 14 events across 9 steps (Step 1: 1, Step 2: 1, Step 3: 1, Step 4: 1, Step 5: 1, Step 6: 4, Step 7: 1, Step 8: 3, Step 9: 1 = 14)
+            if (bus.DispatchedEvents.Count != 14)
+                throw new Exception($"Expected exactly 14 events, got {bus.DispatchedEvents.Count}");
+        }
+
+        public static void Test_DualInput_FullScenarioMixedARAndUI_Scores100AndPasses()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var wf = new FireTrainingWorkflow();
+
+            // Step 1: AR Marker tap -> ConfirmHazardDetected
+            wf.SetStage(FireWorkflowStage.HazardPlaced);
+            if (!wf.ConfirmHazardDetected(bus, out _)) throw new Exception("Step 1 failed");
+
+            // Step 2: UI button -> SubmitHazardIdentification
+            if (!wf.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _)) throw new Exception("Step 2 failed");
+
+            // Step 3: AR Marker tap -> SubmitRaiseAlarm
+            if (!wf.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _)) throw new Exception("Step 3 failed");
+
+            // Step 4: UI button -> SubmitSelectExtinguisher
+            if (!wf.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _)) throw new Exception("Step 4 failed");
+
+            // Step 5: AR ground tap -> SubmitDistanceDecision
+            if (!wf.SubmitDistanceDecision(2.8f, bus, out _)) throw new Exception("Step 5 failed");
+
+            // Step 6: Mixed PASS inputs
+            // P - AR Marker tap
+            if (!wf.SubmitPullPin(bus, out _)) throw new Exception("Step 6 P failed");
+            // A - UI button
+            if (!wf.SubmitAim(bus, out _)) throw new Exception("Step 6 A failed");
+            // S - AR Marker tap
+            if (!wf.SubmitSqueeze(bus, out _)) throw new Exception("Step 6 S failed");
+            // S - UI button
+            if (!wf.SubmitSweep(bus, out _)) throw new Exception("Step 6 S2 failed");
+
+            // Step 7: AR Exit Marker tap
+            if (!wf.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _)) throw new Exception("Step 7 failed");
+
+            // Step 8: Mixed Waypoint inputs
+            // WP1 - UI button
+            if (!wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _)) throw new Exception("Step 8 WP1 failed");
+            // WP2 - AR Marker tap
+            if (!wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _)) throw new Exception("Step 8 WP2 failed");
+            // WP3 - AR Marker tap
+            if (!wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _)) throw new Exception("Step 8 WP3 failed");
+
+            // Step 9: UI button
+            if (!wf.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _)) throw new Exception("Step 9 failed");
+
+            // Verification
+            if (!wf.IsAssessmentCompleted) throw new Exception("Assessment should be completed");
+            var assessment = wf.LatestAssessment;
+            if (assessment == null) throw new Exception("AssessmentResult is null");
+            if (Math.Abs(assessment.ClientScore - 100.0f) > 0.001f)
+                throw new Exception($"Score was {assessment.ClientScore}, expected 100.00");
+            if (!assessment.Passed) throw new Exception("Assessment must be PASSED");
+            if (assessment.TotalPenalties != 0f) throw new Exception($"TotalPenalties was {assessment.TotalPenalties}, expected 0");
+
+            var attempt = wf.LatestAttempt;
+            if (attempt == null) throw new Exception("TrainingAttempt is null");
+            if (attempt.Passed != true) throw new Exception("Attempt Passed was false");
+            if (attempt.ClientScore != 100.0f) throw new Exception($"Attempt ClientScore was {attempt.ClientScore}");
+        }
+
+        public static void Test_DualInput_InvalidMarker_IncursPenaltyAndAllowsRecovery()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var wf = new FireTrainingWorkflow();
+
+            // Step 1: Confirm hazard
+            wf.SetStage(FireWorkflowStage.HazardPlaced);
+            wf.ConfirmHazardDetected(bus, out _);
+
+            // Step 2: Invalid marker tap (chemical spill -> penalty -5)
+            wf.SubmitHazardIdentification("hazard_chemical_spill", bus, out _);
+            // Recover: tap correct marker or UI button
+            wf.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+
+            // Step 3: Alarm
+            wf.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+
+            // Step 4: Invalid marker tap (water extinguisher -> penalty -5)
+            wf.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherWater, bus, out _);
+            // Recover: tap correct CO2 marker or UI button
+            wf.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+
+            // Step 5: Safe distance
+            wf.SubmitDistanceDecision(2.5f, bus, out _);
+
+            // Step 6: PASS
+            wf.SubmitPullPin(bus, out _);
+            wf.SubmitAim(bus, out _);
+            wf.SubmitSqueeze(bus, out _);
+            wf.SubmitSweep(bus, out _);
+
+            // Step 7: Exit
+            wf.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+
+            // Step 8: Route
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+
+            // Step 9: Assembly Point
+            wf.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            // Verification: 100 - 5 - 5 = 90.00 => PASS
+            var assessment = wf.LatestAssessment;
+            if (assessment == null) throw new Exception("Assessment was null");
+            if (Math.Abs(assessment.ClientScore - 90.00f) > 0.001f)
+                throw new Exception($"Score was {assessment.ClientScore}, expected 90.00");
+            if (!assessment.Passed) throw new Exception("Assessment must be PASSED with 90.00");
+            if (Math.Abs(assessment.TotalPenalties - 10.00f) > 0.001f)
+                throw new Exception($"Total penalties was {assessment.TotalPenalties}, expected 10.00");
         }
     }
 }
