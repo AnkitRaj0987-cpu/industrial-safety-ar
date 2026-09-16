@@ -34,8 +34,16 @@ namespace IndustrialSafetyAR.UI
         private Image _badgeBackground;
         private GameObject _breakdownContainer;
         private bool _isBreakdownVisible;
+        private Button _finishButton;
+        private TextMeshProUGUI _finishButtonText;
 
         private AssessmentSummaryViewModel _currentViewModel;
+
+        public FireArInteractionController Controller
+        {
+            get => _controller;
+            set => _controller = value;
+        }
 
         public AssessmentSummaryViewModel CurrentViewModel => _currentViewModel;
         public bool IsSummaryVisible => _modalRoot != null && _modalRoot.activeSelf;
@@ -53,6 +61,7 @@ namespace IndustrialSafetyAR.UI
             if (_controller != null)
             {
                 _controller.OnAssessmentCompleted += HandleAssessmentCompleted;
+                _controller.OnAttemptFinalizedForOutbox += HandleAttemptFinalizedForOutbox;
             }
         }
 
@@ -61,6 +70,25 @@ namespace IndustrialSafetyAR.UI
             if (_controller != null)
             {
                 _controller.OnAssessmentCompleted -= HandleAssessmentCompleted;
+                _controller.OnAttemptFinalizedForOutbox -= HandleAttemptFinalizedForOutbox;
+            }
+        }
+
+        public void HandleAttemptFinalizedForOutbox(TrainingAttempt attempt)
+        {
+            if (_currentViewModel != null)
+            {
+                _currentViewModel.SyncPrepared = true;
+                UpdateUIContents();
+            }
+
+            if (_finishButton != null)
+            {
+                _finishButton.interactable = false;
+            }
+            if (_finishButtonText != null)
+            {
+                _finishButtonText.text = "✓ Finalized for Sync";
             }
         }
 
@@ -77,6 +105,19 @@ namespace IndustrialSafetyAR.UI
         {
             _currentViewModel = viewModel ?? new AssessmentSummaryViewModel();
             EnsureSummaryModal();
+
+            bool isFinalized = (_controller != null && _controller.IsAttemptFinalizedForOutbox) || _currentViewModel.SyncPrepared;
+            if (isFinalized)
+            {
+                _currentViewModel.SyncPrepared = true;
+                if (_finishButton != null) _finishButton.interactable = false;
+                if (_finishButtonText != null) _finishButtonText.text = "✓ Finalized for Sync";
+            }
+            else
+            {
+                if (_finishButton != null) _finishButton.interactable = true;
+                if (_finishButtonText != null) _finishButtonText.text = "2. Finish / Prepare Sync";
+            }
 
             if (_modalRoot != null)
             {
@@ -345,10 +386,11 @@ namespace IndustrialSafetyAR.UI
             });
 
             // Button 2: Finish Session / Prepare Outbox Sync
-            CreateButton("2. Finish / Prepare Sync", new Vector2(0.36f, 0.11f), new Vector2(0.64f, 0.16f), new Color(0.22f, 0.48f, 0.30f, 0.95f), () =>
+            _finishButton = CreateButton("2. Finish / Prepare Sync", new Vector2(0.36f, 0.11f), new Vector2(0.64f, 0.16f), new Color(0.22f, 0.48f, 0.30f, 0.95f), () =>
             {
                 OnFinishSessionClicked();
             });
+            _finishButtonText = _finishButton.GetComponentInChildren<TextMeshProUGUI>();
 
             // Button 3: Retake Training
             CreateButton("3. Retake Training", new Vector2(0.66f, 0.11f), new Vector2(0.94f, 0.16f), new Color(0.65f, 0.25f, 0.20f, 0.95f), () =>
@@ -368,17 +410,64 @@ namespace IndustrialSafetyAR.UI
 
         public void OnFinishSessionClicked()
         {
-            if (_currentViewModel != null)
+            if (_controller != null)
+            {
+                if (_controller.IsAttemptFinalizedForOutbox)
+                {
+                    Debug.LogWarning("[FireAssessmentSummaryUI] Attempt is already finalized for outbox sync.");
+                    return;
+                }
+
+                bool success = _controller.FinalizeAttemptForOutbox(out var attempt);
+                if (success)
+                {
+                    if (_currentViewModel != null)
+                    {
+                        _currentViewModel.SyncPrepared = true;
+                    }
+                    if (_finishButton != null)
+                    {
+                        _finishButton.interactable = false;
+                    }
+                    if (_finishButtonText != null)
+                    {
+                        _finishButtonText.text = "✓ Finalized for Sync";
+                    }
+                    UpdateUIContents();
+                    Debug.Log($"[FireAssessmentSummaryUI] Finish Session: Attempt {attempt?.ClientAttemptId} finalized and prepared for offline outbox sync.");
+                }
+                else
+                {
+                    Debug.LogWarning("[FireAssessmentSummaryUI] Finalization rejected: attempt already finalized, null, or training incomplete.");
+                }
+            }
+            else if (_currentViewModel != null && !_currentViewModel.SyncPrepared)
             {
                 _currentViewModel.SyncPrepared = true;
+                if (_finishButton != null)
+                {
+                    _finishButton.interactable = false;
+                }
+                if (_finishButtonText != null)
+                {
+                    _finishButtonText.text = "✓ Finalized for Sync";
+                }
                 UpdateUIContents();
-                Debug.Log($"[FireAssessmentSummaryUI] Finish Session: Attempt {_currentViewModel.ClientAttemptId} prepared for offline outbox sync.");
+                Debug.Log($"[FireAssessmentSummaryUI] Finish Session (standalone): Attempt {_currentViewModel.ClientAttemptId} prepared for offline outbox sync.");
             }
         }
 
         public void OnRetakeTrainingClicked()
         {
             HideSummary();
+            if (_finishButton != null)
+            {
+                _finishButton.interactable = true;
+            }
+            if (_finishButtonText != null)
+            {
+                _finishButtonText.text = "2. Finish / Prepare Sync";
+            }
             if (_controller != null)
             {
                 _controller.RetakeTraining();

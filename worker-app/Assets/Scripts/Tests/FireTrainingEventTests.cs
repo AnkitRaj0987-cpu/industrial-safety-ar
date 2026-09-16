@@ -103,6 +103,12 @@ namespace IndustrialSafetyAR.Tests
             allPassed &= RunTest("DualInput_DuplicateTapsPreventDuplicateEvents", Test_DualInput_DuplicateTapsPreventDuplicateEvents, logMessages);
             allPassed &= RunTest("DualInput_FullScenarioMixedARAndUI_Scores100AndPasses", Test_DualInput_FullScenarioMixedARAndUI_Scores100AndPasses, logMessages);
             allPassed &= RunTest("DualInput_InvalidMarker_IncursPenaltyAndAllowsRecovery", Test_DualInput_InvalidMarker_IncursPenaltyAndAllowsRecovery, logMessages);
+            allPassed &= RunTest("Workflow_FinalizeAttempt_CompletedAttempt_EmitsEventAndExposesAttempt", Test_Workflow_FinalizeAttempt_CompletedAttempt_EmitsEventAndExposesAttempt, logMessages);
+            allPassed &= RunTest("Workflow_FinalizeAttempt_PrematureCall_Rejected", Test_Workflow_FinalizeAttempt_PrematureCall_Rejected, logMessages);
+            allPassed &= RunTest("Workflow_FinalizeAttempt_DuplicateCall_RejectedAndZeroDuplicateEvents", Test_Workflow_FinalizeAttempt_DuplicateCall_RejectedAndZeroDuplicateEvents, logMessages);
+            allPassed &= RunTest("Workflow_FinalizeAttempt_NullOrResetAttempt_RejectedSafely", Test_Workflow_FinalizeAttempt_NullOrResetAttempt_RejectedSafely, logMessages);
+            allPassed &= RunTest("Workflow_FinalizeAttempt_PreservesScoreAndOutcomeUnchanged", Test_Workflow_FinalizeAttempt_PreservesScoreAndOutcomeUnchanged, logMessages);
+            allPassed &= RunTest("SummaryViewModel_SyncPreparedFlag_UpdatesOnFinalization", Test_SummaryViewModel_SyncPreparedFlag_UpdatesOnFinalization, logMessages);
 
             return allPassed;
         }
@@ -3431,6 +3437,348 @@ namespace IndustrialSafetyAR.Tests
             if (!assessment.Passed) throw new Exception("Assessment must be PASSED with 90.00");
             if (Math.Abs(assessment.TotalPenalties - 10.00f) > 0.001f)
                 throw new Exception($"Total penalties was {assessment.TotalPenalties}, expected 10.00");
+        }
+
+        public static void Test_Workflow_FinalizeAttempt_CompletedAttempt_EmitsEventAndExposesAttempt()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var wf = new FireTrainingWorkflow();
+
+            // Run complete 9-step scenario
+            wf.SetStage(FireWorkflowStage.HazardPlaced);
+            wf.ConfirmHazardDetected(bus, out _);
+            wf.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            wf.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            wf.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            wf.SubmitDistanceDecision(2.5f, bus, out _);
+            wf.SubmitPullPin(bus, out _);
+            wf.SubmitAim(bus, out _);
+            wf.SubmitSqueeze(bus, out _);
+            wf.SubmitSweep(bus, out _);
+            wf.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            wf.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            if (!wf.IsAssessmentCompleted)
+                throw new Exception("Assessment should be completed after Step 9");
+            if (wf.IsAttemptFinalizedForOutbox)
+                throw new Exception("IsAttemptFinalizedForOutbox should be false before finalization");
+
+            // Subscribe to domain hook
+            TrainingAttempt hookAttempt = null;
+            int hookCallCount = 0;
+            wf.OnAttemptFinalizedForOutbox += att =>
+            {
+                hookAttempt = att;
+                hookCallCount++;
+            };
+
+            // Finalize attempt
+            bool finalized = wf.FinalizeAttemptForOutbox(bus, out var finalizedAttempt);
+
+            if (!finalized)
+                throw new Exception("FinalizeAttemptForOutbox should succeed for completed attempt");
+            if (finalizedAttempt == null)
+                throw new Exception("Finalized attempt out parameter must not be null");
+            if (finalizedAttempt != wf.LatestAttempt)
+                throw new Exception("Finalized attempt must match wf.LatestAttempt exactly");
+            if (hookAttempt != wf.LatestAttempt)
+                throw new Exception("OnAttemptFinalizedForOutbox hook must receive wf.LatestAttempt");
+            if (hookCallCount != 1)
+                throw new Exception($"Hook call count was {hookCallCount}, expected 1");
+            if (!wf.IsAttemptFinalizedForOutbox)
+                throw new Exception("IsAttemptFinalizedForOutbox should be true after finalization");
+            if (finalizedAttempt.Status != TrainingAttempt.StatusCompleted)
+                throw new Exception($"Attempt status was '{finalizedAttempt.Status}', expected '{TrainingAttempt.StatusCompleted}'");
+            if (string.IsNullOrEmpty(finalizedAttempt.CompletedAt))
+                throw new Exception("CompletedAt timestamp should be populated");
+
+            // Verify event dispatched to bus
+            TrainingEvent outboxEvent = null;
+            foreach (var evt in bus.DispatchedEvents)
+            {
+                if (evt.EventType == FireTrainingWorkflow.EventTypeAttemptFinalized)
+                {
+                    outboxEvent = evt;
+                    break;
+                }
+            }
+
+            if (outboxEvent == null)
+                throw new Exception($"No event with EventType '{FireTrainingWorkflow.EventTypeAttemptFinalized}' was dispatched");
+            if (outboxEvent.TargetId != finalizedAttempt.ClientAttemptId)
+                throw new Exception($"Event TargetId was '{outboxEvent.TargetId}', expected client_attempt_id '{finalizedAttempt.ClientAttemptId}'");
+            if (outboxEvent.ActionId != FireTrainingWorkflow.ActionFinalizeSession)
+                throw new Exception($"Event ActionId was '{outboxEvent.ActionId}', expected '{FireTrainingWorkflow.ActionFinalizeSession}'");
+            if (outboxEvent.GetPayloadValue("client_attempt_id") != finalizedAttempt.ClientAttemptId)
+                throw new Exception("Event payload missing or mismatched client_attempt_id");
+            if (outboxEvent.GetPayloadValue("worker_id") != finalizedAttempt.WorkerId)
+                throw new Exception("Event payload missing or mismatched worker_id");
+            if (outboxEvent.GetPayloadValue("score") != "100.00")
+                throw new Exception($"Event payload score was '{outboxEvent.GetPayloadValue("score")}', expected '100.00'");
+            if (outboxEvent.GetPayloadValue("passed") != "true")
+                throw new Exception($"Event payload passed was '{outboxEvent.GetPayloadValue("passed")}', expected 'true'");
+            if (outboxEvent.GetPayloadValue("status") != TrainingAttempt.StatusCompleted)
+                throw new Exception($"Event payload status was '{outboxEvent.GetPayloadValue("status")}', expected '{TrainingAttempt.StatusCompleted}'");
+        }
+
+        public static void Test_Workflow_FinalizeAttempt_PrematureCall_Rejected()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var wf = new FireTrainingWorkflow();
+
+            int hookCount = 0;
+            wf.OnAttemptFinalizedForOutbox += _ => hookCount++;
+
+            // 1. Premature at NotStarted stage
+            bool res1 = wf.FinalizeAttemptForOutbox(bus, out var att1);
+            if (res1) throw new Exception("FinalizeAttemptForOutbox should fail when training is NotStarted");
+            if (att1 != null) throw new Exception("Attempt out parameter should be null on premature rejection");
+            if (wf.IsAttemptFinalizedForOutbox) throw new Exception("IsAttemptFinalizedForOutbox must remain false");
+            if (hookCount != 0) throw new Exception("Hook must not be invoked on premature rejection");
+
+            // 2. Premature at intermediate stage (Step 3: AlarmRaised)
+            wf.SetStage(FireWorkflowStage.HazardPlaced);
+            wf.ConfirmHazardDetected(bus, out _);
+            wf.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            wf.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+
+            int eventsBefore = bus.DispatchedEvents.Count;
+            bool res2 = wf.FinalizeAttemptForOutbox(bus, out var att2);
+            if (res2) throw new Exception("FinalizeAttemptForOutbox should fail when training is at Step 3");
+            if (att2 != null) throw new Exception("Attempt out parameter should be null at Step 3");
+            if (wf.IsAttemptFinalizedForOutbox) throw new Exception("IsAttemptFinalizedForOutbox must remain false");
+            if (hookCount != 0) throw new Exception("Hook must not be invoked");
+            if (bus.DispatchedEvents.Count != eventsBefore)
+                throw new Exception("No event should be dispatched on premature rejection");
+        }
+
+        public static void Test_Workflow_FinalizeAttempt_DuplicateCall_RejectedAndZeroDuplicateEvents()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var wf = new FireTrainingWorkflow();
+
+            // Run to completion
+            wf.SetStage(FireWorkflowStage.HazardPlaced);
+            wf.ConfirmHazardDetected(bus, out _);
+            wf.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            wf.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            wf.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            wf.SubmitDistanceDecision(2.5f, bus, out _);
+            wf.SubmitPullPin(bus, out _);
+            wf.SubmitAim(bus, out _);
+            wf.SubmitSqueeze(bus, out _);
+            wf.SubmitSweep(bus, out _);
+            wf.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            wf.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            int hookCalls = 0;
+            wf.OnAttemptFinalizedForOutbox += _ => hookCalls++;
+
+            // Call 1: First finalization succeeds
+            bool first = wf.FinalizeAttemptForOutbox(bus, out var firstAttempt);
+            if (!first) throw new Exception("First finalization must succeed");
+            if (firstAttempt == null) throw new Exception("First attempt should not be null");
+            if (hookCalls != 1) throw new Exception($"Hook calls after call 1 was {hookCalls}, expected 1");
+
+            // Count outbox events in bus
+            int outboxEventsCount = 0;
+            foreach (var e in bus.DispatchedEvents)
+            {
+                if (e.EventType == FireTrainingWorkflow.EventTypeAttemptFinalized) outboxEventsCount++;
+            }
+            if (outboxEventsCount != 1)
+                throw new Exception($"Expected 1 outbox event in bus, got {outboxEventsCount}");
+
+            // Call 2: Duplicate finalization must be rejected
+            bool second = wf.FinalizeAttemptForOutbox(bus, out var secondAttempt);
+            if (second) throw new Exception("Duplicate finalization (call 2) must return false");
+            if (secondAttempt != null) throw new Exception("Duplicate finalization must output null attempt");
+            if (hookCalls != 1) throw new Exception("Hook must NOT be called on duplicate finalization");
+
+            // Call 3: Repeated duplicate finalization must also be rejected
+            bool third = wf.FinalizeAttemptForOutbox(bus, out var thirdAttempt);
+            if (third) throw new Exception("Duplicate finalization (call 3) must return false");
+            if (thirdAttempt != null) throw new Exception("Duplicate finalization must output null attempt");
+            if (hookCalls != 1) throw new Exception("Hook must NOT be called on repeated duplicate finalization");
+
+            // Re-verify no duplicate outbox events were emitted to bus
+            int finalOutboxEventsCount = 0;
+            foreach (var e in bus.DispatchedEvents)
+            {
+                if (e.EventType == FireTrainingWorkflow.EventTypeAttemptFinalized) finalOutboxEventsCount++;
+            }
+            if (finalOutboxEventsCount != 1)
+                throw new Exception($"Duplicate finalization emitted duplicate events! Expected 1, found {finalOutboxEventsCount}");
+        }
+
+        public static void Test_Workflow_FinalizeAttempt_NullOrResetAttempt_RejectedSafely()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var wf = new FireTrainingWorkflow();
+
+            // Run to completion and finalize
+            wf.SetStage(FireWorkflowStage.HazardPlaced);
+            wf.ConfirmHazardDetected(bus, out _);
+            wf.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            wf.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            wf.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            wf.SubmitDistanceDecision(2.5f, bus, out _);
+            wf.SubmitPullPin(bus, out _);
+            wf.SubmitAim(bus, out _);
+            wf.SubmitSqueeze(bus, out _);
+            wf.SubmitSweep(bus, out _);
+            wf.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            wf.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+            wf.FinalizeAttemptForOutbox(bus, out _);
+
+            if (!wf.IsAttemptFinalizedForOutbox)
+                throw new Exception("Expected IsAttemptFinalizedForOutbox to be true");
+
+            // Reset workflow for retake
+            wf.Reset();
+
+            if (wf.LatestAttempt != null)
+                throw new Exception("LatestAttempt should be null after Reset()");
+            if (wf.LatestAssessment != null)
+                throw new Exception("LatestAssessment should be null after Reset()");
+            if (wf.IsAssessmentCompleted)
+                throw new Exception("IsAssessmentCompleted should be false after Reset()");
+            if (wf.IsAttemptFinalizedForOutbox)
+                throw new Exception("IsAttemptFinalizedForOutbox must be reset to false after Reset()");
+
+            // FinalizeAttempt on null / reset attempt must be safely rejected
+            bool res = wf.FinalizeAttemptForOutbox(bus, out var att);
+            if (res) throw new Exception("FinalizeAttemptForOutbox should fail on reset / null attempt");
+            if (att != null) throw new Exception("Attempt out parameter should be null on failed call");
+
+            // Null dispatcher test
+            bool resNullDispatcher = wf.FinalizeAttemptForOutbox(null, out var attNull);
+            if (resNullDispatcher) throw new Exception("Should fail when attempt is null even with null dispatcher");
+            if (attNull != null) throw new Exception("Attempt out parameter should be null");
+        }
+
+        public static void Test_Workflow_FinalizeAttempt_PreservesScoreAndOutcomeUnchanged()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var wf = new FireTrainingWorkflow();
+
+            // Scenario with deductions: Step 2 wrong hazard (-5), Step 4 wrong extinguisher (-5) => 90.00, PASS
+            wf.SetStage(FireWorkflowStage.HazardPlaced);
+            wf.ConfirmHazardDetected(bus, out _);
+            wf.SubmitHazardIdentification("hazard_chemical_spill", bus, out _);
+            wf.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            wf.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            wf.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherWater, bus, out _);
+            wf.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            wf.SubmitDistanceDecision(2.5f, bus, out _);
+            wf.SubmitPullPin(bus, out _);
+            wf.SubmitAim(bus, out _);
+            wf.SubmitSqueeze(bus, out _);
+            wf.SubmitSweep(bus, out _);
+            wf.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            wf.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            float initialAttemptScore = wf.LatestAttempt.ClientScore;
+            bool initialAttemptPass = wf.LatestAttempt.Passed;
+            string initialAttemptStatus = wf.LatestAttempt.Status;
+            string initialAttemptId = wf.LatestAttempt.ClientAttemptId;
+
+            float initialAssessmentScore = wf.LatestAssessment.ClientScore;
+            bool initialAssessmentPass = wf.LatestAssessment.Passed;
+
+            if (Math.Abs(initialAttemptScore - 90.00f) > 0.001f)
+                throw new Exception($"Expected initial attempt score 90.00, got {initialAttemptScore}");
+            if (!initialAttemptPass)
+                throw new Exception("Expected initial attempt to pass with 90.00");
+
+            // Finalize
+            bool success = wf.FinalizeAttemptForOutbox(bus, out var finalized);
+            if (!success) throw new Exception("Finalization should succeed");
+
+            // Verify completed-attempt state, score, pass/fail outcome are completely unchanged
+            if (Math.Abs(finalized.ClientScore - initialAttemptScore) > 0.0001f)
+                throw new Exception($"Finalized attempt score changed from {initialAttemptScore} to {finalized.ClientScore}");
+            if (finalized.Passed != initialAttemptPass)
+                throw new Exception($"Finalized attempt passed changed from {initialAttemptPass} to {finalized.Passed}");
+            if (finalized.Status != initialAttemptStatus)
+                throw new Exception($"Finalized attempt status changed from {initialAttemptStatus} to {finalized.Status}");
+            if (finalized.ClientAttemptId != initialAttemptId)
+                throw new Exception($"Finalized attempt ID changed from {initialAttemptId} to {finalized.ClientAttemptId}");
+
+            // Verify LatestAttempt and LatestAssessment on workflow remain unchanged
+            if (Math.Abs(wf.LatestAttempt.ClientScore - initialAttemptScore) > 0.0001f)
+                throw new Exception("wf.LatestAttempt score changed");
+            if (wf.LatestAttempt.Passed != initialAttemptPass)
+                throw new Exception("wf.LatestAttempt passed changed");
+            if (Math.Abs(wf.LatestAssessment.ClientScore - initialAssessmentScore) > 0.0001f)
+                throw new Exception("wf.LatestAssessment score changed");
+            if (wf.LatestAssessment.Passed != initialAssessmentPass)
+                throw new Exception("wf.LatestAssessment passed changed");
+        }
+
+        public static void Test_SummaryViewModel_SyncPreparedFlag_UpdatesOnFinalization()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var wf = new FireTrainingWorkflow();
+
+            wf.SetStage(FireWorkflowStage.HazardPlaced);
+            wf.ConfirmHazardDetected(bus, out _);
+            wf.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            wf.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            wf.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            wf.SubmitDistanceDecision(2.5f, bus, out _);
+            wf.SubmitPullPin(bus, out _);
+            wf.SubmitAim(bus, out _);
+            wf.SubmitSqueeze(bus, out _);
+            wf.SubmitSweep(bus, out _);
+            wf.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            wf.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            var vm = AssessmentSummaryViewModel.Build(wf.LatestAttempt, wf.LatestAssessment);
+
+            if (vm.SyncPrepared)
+                throw new Exception("SyncPrepared should be false before finalization");
+            if (vm.ClientScore != 100.00f)
+                throw new Exception($"Score was {vm.ClientScore}, expected 100.00");
+            if (!vm.Passed)
+                throw new Exception("Attempt should be marked Passed");
+
+            // Finalize workflow attempt
+            bool finalized = wf.FinalizeAttemptForOutbox(bus, out var attempt);
+            if (!finalized) throw new Exception("Finalization failed");
+
+            // Mark view model sync prepared
+            vm.SyncPrepared = true;
+
+            if (!vm.SyncPrepared)
+                throw new Exception("SyncPrepared should be true after finalization");
+            if (vm.ClientScore != 100.00f)
+                throw new Exception("Score must remain 100.00 after finalization");
+            if (!vm.Passed)
+                throw new Exception("Passed status must remain true after finalization");
+            if (vm.StepSummaries.Count != 9)
+                throw new Exception($"Step summaries count changed to {vm.StepSummaries.Count}");
         }
     }
 }

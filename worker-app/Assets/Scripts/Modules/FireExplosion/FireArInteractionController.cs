@@ -108,6 +108,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public TrainingAttempt LatestAttempt => _workflow.LatestAttempt;
         public AssessmentResult LatestAssessment => _workflow.LatestAssessment;
         public bool IsAssessmentCompleted => _workflow.IsAssessmentCompleted;
+        public bool IsAttemptFinalizedForOutbox => _workflow.IsAttemptFinalizedForOutbox;
 
         public event Action<FireInteractionState> OnStateChanged;
         public event Action<FireHazardMarker> OnHazardPlaced;
@@ -125,6 +126,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public event Action<TrainingEvent> OnAssemblyPointReached;
         public event Action<TrainingEvent> OnTrainingCompleted;
         public event Action<TrainingAttempt, AssessmentResult> OnAssessmentCompleted;
+        public event Action<TrainingAttempt> OnAttemptFinalizedForOutbox;
         public event Action<string> OnFeedbackChanged;
 
         private void Awake()
@@ -153,6 +155,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             _workflow.OnStageChanged += HandleWorkflowStageChanged;
             _workflow.OnFeedbackChanged += HandleWorkflowFeedbackChanged;
             _workflow.OnAssessmentCompleted += HandleWorkflowAssessmentCompleted;
+            _workflow.OnAttemptFinalizedForOutbox += HandleWorkflowAttemptFinalizedForOutbox;
         }
 
         private void OnDestroy()
@@ -160,11 +163,17 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             _workflow.OnStageChanged -= HandleWorkflowStageChanged;
             _workflow.OnFeedbackChanged -= HandleWorkflowFeedbackChanged;
             _workflow.OnAssessmentCompleted -= HandleWorkflowAssessmentCompleted;
+            _workflow.OnAttemptFinalizedForOutbox -= HandleWorkflowAttemptFinalizedForOutbox;
         }
 
         private void HandleWorkflowAssessmentCompleted(TrainingAttempt attempt, AssessmentResult assessment)
         {
             OnAssessmentCompleted?.Invoke(attempt, assessment);
+        }
+
+        private void HandleWorkflowAttemptFinalizedForOutbox(TrainingAttempt attempt)
+        {
+            OnAttemptFinalizedForOutbox?.Invoke(attempt);
         }
 
         private void Start()
@@ -1022,6 +1031,25 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             }
 
             return success;
+        }
+
+        /// <summary>
+        /// Finalizes the active completed training attempt for outbox storage and offline synchronization.
+        /// Invokes the OnAttemptFinalizedForOutbox domain hook.
+        /// Safe against premature calls and duplicate invocations.
+        /// </summary>
+        /// <returns>True if finalized successfully; false if premature, null, or already finalized.</returns>
+        public bool FinalizeAttemptForOutbox()
+        {
+            return _workflow.FinalizeAttemptForOutbox(_eventDispatcher, out _);
+        }
+
+        /// <summary>
+        /// Finalizes the active completed training attempt and outputs the finalized TrainingAttempt instance.
+        /// </summary>
+        public bool FinalizeAttemptForOutbox(out TrainingAttempt attempt)
+        {
+            return _workflow.FinalizeAttemptForOutbox(_eventDispatcher, out attempt);
         }
 
         /// <summary>

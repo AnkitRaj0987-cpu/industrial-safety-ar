@@ -143,6 +143,9 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         /// </summary>
         public const string DefaultOfflineWorkerId = "00000000-dead-beef-0001-000000000001";
 
+        public const string EventTypeAttemptFinalized = "attempt_finalized_for_outbox";
+        public const string ActionFinalizeSession = "finalize_session";
+
         public FireWorkflowStage CurrentStage { get; private set; } = FireWorkflowStage.NotStarted;
         public string CurrentStepId { get; private set; } = StepDetectHazard;
         public string WorkerId { get; set; } = DefaultOfflineWorkerId;
@@ -150,6 +153,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public TrainingAttempt LatestAttempt { get; private set; }
         public AssessmentResult LatestAssessment { get; private set; }
         public bool IsAssessmentCompleted => LatestAttempt != null && LatestAssessment != null;
+        public bool IsAttemptFinalizedForOutbox { get; private set; }
 
         /// <summary>
         /// The active rubric definition bound to this training workflow session.
@@ -185,6 +189,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public event Action<FireWorkflowStage> OnStageChanged;
         public event Action<string> OnFeedbackChanged;
         public event Action<TrainingAttempt, AssessmentResult> OnAssessmentCompleted;
+        public event Action<TrainingAttempt> OnAttemptFinalizedForOutbox;
 
         public void SetStage(FireWorkflowStage stage)
         {
@@ -1172,6 +1177,79 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         }
 
         /// <summary>
+        /// Finalizes the completed TrainingAttempt for offline outbox storage/synchronization.
+        /// Dispatches an outbox domain event and raises the OnAttemptFinalizedForOutbox hook.
+        /// Strictly idempotent: rejects premature calls, null attempts, and duplicate invocations.
+        /// </summary>
+        /// <param name="dispatcher">The training event dispatcher capturing domain events.</param>
+        /// <param name="finalizedAttempt">The finalized TrainingAttempt, or null if rejected.</param>
+        /// <returns>True if finalized successfully; false if premature, null, or already finalized.</returns>
+        public bool FinalizeAttemptForOutbox(ITrainingEventDispatcher dispatcher, out TrainingAttempt finalizedAttempt)
+        {
+            finalizedAttempt = null;
+
+            // Reject premature or null attempts
+            if (!IsAssessmentCompleted || LatestAttempt == null || LatestAssessment == null)
+            {
+                return false;
+            }
+
+            // Reject duplicate finalizations (Idempotency protection)
+            if (IsAttemptFinalizedForOutbox)
+            {
+                return false;
+            }
+
+            finalizedAttempt = LatestAttempt;
+            IsAttemptFinalizedForOutbox = true;
+
+            if (finalizedAttempt.Status != TrainingAttempt.StatusCompleted)
+            {
+                finalizedAttempt.Status = TrainingAttempt.StatusCompleted;
+            }
+
+            if (string.IsNullOrEmpty(finalizedAttempt.CompletedAt))
+            {
+                finalizedAttempt.CompletedAt = DateTime.UtcNow.ToString("o");
+            }
+
+            var outboxEvent = new TrainingEvent
+            {
+                ModuleId = ModuleId,
+                ContentVersion = ContentVersion,
+                StepId = StepReachAssembly,
+                EventType = EventTypeAttemptFinalized,
+                ActionId = ActionFinalizeSession,
+                TargetId = finalizedAttempt.ClientAttemptId,
+                Outcome = finalizedAttempt.Passed ? "pass" : "fail",
+                Payload =
+                {
+                    { "client_attempt_id", finalizedAttempt.ClientAttemptId },
+                    { "worker_id", finalizedAttempt.WorkerId ?? DefaultOfflineWorkerId },
+                    { "module_id", finalizedAttempt.ModuleId ?? ModuleId },
+                    { "content_version", finalizedAttempt.ContentVersion ?? ContentVersion },
+                    { "score", finalizedAttempt.ClientScore.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) },
+                    { "passed", finalizedAttempt.Passed ? "true" : "false" },
+                    { "status", finalizedAttempt.Status },
+                    { "completed_at", finalizedAttempt.CompletedAt ?? string.Empty }
+                }
+            };
+
+            dispatcher?.Dispatch(outboxEvent);
+
+            if (finalizedAttempt.Events != null && !finalizedAttempt.Events.Contains(outboxEvent))
+            {
+                finalizedAttempt.Events.Add(outboxEvent);
+            }
+
+            OnAttemptFinalizedForOutbox?.Invoke(finalizedAttempt);
+            return true;
+        }
+
+        public bool FinalizeAttemptForOutbox(ITrainingEventDispatcher dispatcher)
+            => FinalizeAttemptForOutbox(dispatcher, out _);
+
+        /// <summary>
         /// Resets the training workflow and clears previous attempt state for a retake.
         /// </summary>
         public void Reset()
@@ -1181,6 +1259,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             LatestAttempt = null;
             LatestAssessment = null;
             SessionStartedAt = DateTime.UtcNow.ToString("o");
+            IsAttemptFinalizedForOutbox = false;
         }
 
         public string GetFeedbackForStage(FireWorkflowStage stage)
