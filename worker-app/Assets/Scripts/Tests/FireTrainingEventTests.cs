@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using IndustrialSafetyAR.Core.Events;
+using IndustrialSafetyAR.Assessment;
 using IndustrialSafetyAR.Modules.FireExplosion;
 using UnityEngine;
 
@@ -68,6 +69,14 @@ namespace IndustrialSafetyAR.Tests
             allPassed &= RunTest("Step8ToStep9EventOrdering", Test_Step8ToStep9EventOrdering, logMessages);
             allPassed &= RunTest("DuplicateAssemblyCompletionPrevented", Test_DuplicateAssemblyCompletionPrevented, logMessages);
             allPassed &= RunTest("PrematureAssemblyPointActionRejected", Test_PrematureAssemblyPointActionRejected, logMessages);
+            allPassed &= RunTest("Assessment_PerfectStep1To9Sequence_Scores100AndPasses", Test_Assessment_PerfectStep1To9Sequence_Scores100AndPasses, logMessages);
+            allPassed &= RunTest("Assessment_WrongHazardIdentification_Deducts5Penalty", Test_Assessment_WrongHazardIdentification_Deducts5Penalty, logMessages);
+            allPassed &= RunTest("Assessment_WrongExtinguisher_Deducts5Penalty", Test_Assessment_WrongExtinguisher_Deducts5Penalty, logMessages);
+            allPassed &= RunTest("Assessment_UnsafeSmokeCorridor_Deducts5Penalty", Test_Assessment_UnsafeSmokeCorridor_Deducts5Penalty, logMessages);
+            allPassed &= RunTest("Assessment_RepeatedAward_RespectsAwardLimit", Test_Assessment_RepeatedAward_RespectsAwardLimit, logMessages);
+            allPassed &= RunTest("Assessment_ScoreBelow70_Fails", Test_Assessment_ScoreBelow70_Fails, logMessages);
+            allPassed &= RunTest("Assessment_PenaltiesCannotDriveScoreBelowZero", Test_Assessment_PenaltiesCannotDriveScoreBelowZero, logMessages);
+            allPassed &= RunTest("Assessment_DeterministicRepeatedEvaluation_GivesIdenticalResult", Test_Assessment_DeterministicRepeatedEvaluation_GivesIdenticalResult, logMessages);
 
             return allPassed;
         }
@@ -1486,6 +1495,299 @@ namespace IndustrialSafetyAR.Tests
             if (bus.DispatchedEvents.Count != 0) throw new Exception("Bus should have 0 events");
             if (workflow.CurrentStage != FireWorkflowStage.WaypointMainCorridorReached)
                 throw new Exception("Workflow stage should remain unchanged");
+        }
+
+        private static List<TrainingEvent> GenerateFlawlessStep1To9Events()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+
+            workflow.ConfirmHazardDetected(bus, out _);
+            workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            workflow.SubmitDistanceDecision(2.5f, bus, out _);
+            workflow.SubmitPullPin(bus, out _);
+            workflow.SubmitAim(bus, out _);
+            workflow.SubmitSqueeze(bus, out _);
+            workflow.SubmitSweep(bus, out _);
+            workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            return new List<TrainingEvent>(bus.DispatchedEvents);
+        }
+
+        public static void Test_Assessment_PerfectStep1To9Sequence_Scores100AndPasses()
+        {
+            var events = GenerateFlawlessStep1To9Events();
+            var rubric = RubricDefinition.CreateFireExplosionRubric();
+
+            var result = LocalAssessmentEngine.Evaluate(events, rubric);
+
+            if (result.TotalAwarded != 100.00f)
+                throw new Exception($"Expected TotalAwarded 100.00, got {result.TotalAwarded}");
+            if (result.TotalPenalties != 0.00f)
+                throw new Exception($"Expected TotalPenalties 0.00, got {result.TotalPenalties}");
+            if (result.ClientScore != 100.00f)
+                throw new Exception($"Expected ClientScore 100.00, got {result.ClientScore}");
+            if (!result.Passed)
+                throw new Exception("Expected Passed to be true for flawless run");
+            if (result.RuleResults.Count != 9)
+                throw new Exception($"Expected 9 rule results, got {result.RuleResults.Count}");
+
+            foreach (var r in result.RuleResults)
+            {
+                if (!r.IsSatisfied)
+                    throw new Exception($"Rule {r.RuleId} was not satisfied");
+                if (r.TimesAwarded != 1)
+                    throw new Exception($"Rule {r.RuleId} TimesAwarded was {r.TimesAwarded}, expected 1");
+                if (r.PenaltyDeducted != 0f)
+                    throw new Exception($"Rule {r.RuleId} had unexpected penalty: {r.PenaltyDeducted}");
+            }
+
+            var attempt = LocalAssessmentEngine.EvaluateAttempt(events, rubric, workerId: "test-worker-01");
+            if (attempt.Status != TrainingAttempt.StatusCompleted)
+                throw new Exception($"Expected status completed, got {attempt.Status}");
+            if (attempt.ClientScore != 100.00f)
+                throw new Exception($"Attempt ClientScore mismatch: {attempt.ClientScore}");
+            if (!attempt.Passed)
+                throw new Exception("Attempt Passed was false");
+            if (attempt.Events.Count != 14)
+                throw new Exception($"Expected 14 events in attempt, got {attempt.Events.Count}");
+            if (string.IsNullOrEmpty(attempt.ClientAttemptId))
+                throw new Exception("ClientAttemptId was null/empty");
+        }
+
+        public static void Test_Assessment_WrongHazardIdentification_Deducts5Penalty()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+
+            workflow.ConfirmHazardDetected(bus, out _);
+            // Incorrect identification => emits failure penalty event
+            workflow.SubmitHazardIdentification("hazard_chemical_spill", bus, out _);
+            // Correct identification => emits success award event
+            workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            workflow.SubmitDistanceDecision(2.5f, bus, out _);
+            workflow.SubmitPullPin(bus, out _);
+            workflow.SubmitAim(bus, out _);
+            workflow.SubmitSqueeze(bus, out _);
+            workflow.SubmitSweep(bus, out _);
+            workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            var rubric = RubricDefinition.CreateFireExplosionRubric();
+            var result = LocalAssessmentEngine.Evaluate(bus.DispatchedEvents, rubric);
+
+            var idRule = result.GetRuleResult("rule_identify_hazard");
+            if (idRule == null) throw new Exception("rule_identify_hazard result not found");
+            if (idRule.PointsAwarded != 15.00f) throw new Exception($"PointsAwarded was {idRule.PointsAwarded}, expected 15.00");
+            if (idRule.PenaltyDeducted != 5.00f) throw new Exception($"PenaltyDeducted was {idRule.PenaltyDeducted}, expected 5.00");
+            if (idRule.NetScore != 10.00f) throw new Exception($"NetScore was {idRule.NetScore}, expected 10.00");
+
+            if (result.TotalPenalties != 5.00f) throw new Exception($"TotalPenalties was {result.TotalPenalties}, expected 5.00");
+            if (result.ClientScore != 95.00f) throw new Exception($"ClientScore was {result.ClientScore}, expected 95.00");
+            if (!result.Passed) throw new Exception("Expected Passed to be true (95 >= 70)");
+        }
+
+        public static void Test_Assessment_WrongExtinguisher_Deducts5Penalty()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+
+            workflow.ConfirmHazardDetected(bus, out _);
+            workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            // Incorrect extinguisher => emits failure penalty event
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherWater, bus, out _);
+            // Correct extinguisher => emits success award event
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            workflow.SubmitDistanceDecision(2.5f, bus, out _);
+            workflow.SubmitPullPin(bus, out _);
+            workflow.SubmitAim(bus, out _);
+            workflow.SubmitSqueeze(bus, out _);
+            workflow.SubmitSweep(bus, out _);
+            workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            var rubric = RubricDefinition.CreateFireExplosionRubric();
+            var result = LocalAssessmentEngine.Evaluate(bus.DispatchedEvents, rubric);
+
+            var extRule = result.GetRuleResult("rule_select_extinguisher");
+            if (extRule == null) throw new Exception("rule_select_extinguisher result not found");
+            if (extRule.PointsAwarded != 15.00f) throw new Exception($"PointsAwarded was {extRule.PointsAwarded}, expected 15.00");
+            if (extRule.PenaltyDeducted != 5.00f) throw new Exception($"PenaltyDeducted was {extRule.PenaltyDeducted}, expected 5.00");
+
+            if (result.TotalPenalties != 5.00f) throw new Exception($"TotalPenalties was {result.TotalPenalties}, expected 5.00");
+            if (result.ClientScore != 95.00f) throw new Exception($"ClientScore was {result.ClientScore}, expected 95.00");
+            if (!result.Passed) throw new Exception("Expected Passed to be true");
+        }
+
+        public static void Test_Assessment_UnsafeSmokeCorridor_Deducts5Penalty()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+
+            workflow.ConfirmHazardDetected(bus, out _);
+            workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            workflow.SubmitDistanceDecision(2.5f, bus, out _);
+            workflow.SubmitPullPin(bus, out _);
+            workflow.SubmitAim(bus, out _);
+            workflow.SubmitSqueeze(bus, out _);
+            workflow.SubmitSweep(bus, out _);
+            workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            // Unsafe smoke corridor attempted => emits failure penalty event
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.HazardSmokeCorridor, bus, out _);
+            // Valid route sequence
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            var rubric = RubricDefinition.CreateFireExplosionRubric();
+            var result = LocalAssessmentEngine.Evaluate(bus.DispatchedEvents, rubric);
+
+            var evacRule = result.GetRuleResult("rule_evacuate_route");
+            if (evacRule == null) throw new Exception("rule_evacuate_route result not found");
+            if (evacRule.PointsAwarded != 10.00f) throw new Exception($"PointsAwarded was {evacRule.PointsAwarded}, expected 10.00");
+            if (evacRule.PenaltyDeducted != 5.00f) throw new Exception($"PenaltyDeducted was {evacRule.PenaltyDeducted}, expected 5.00");
+
+            if (result.TotalPenalties != 5.00f) throw new Exception($"TotalPenalties was {result.TotalPenalties}, expected 5.00");
+            if (result.ClientScore != 95.00f) throw new Exception($"ClientScore was {result.ClientScore}, expected 95.00");
+            if (!result.Passed) throw new Exception("Expected Passed to be true");
+        }
+
+        public static void Test_Assessment_RepeatedAward_RespectsAwardLimit()
+        {
+            var events = new List<TrainingEvent>();
+            for (int i = 0; i < 5; i++)
+            {
+                events.Add(new TrainingEvent
+                {
+                    StepId = "step_detect_hazard",
+                    EventType = "step_completed",
+                    ActionId = "detect_hazard_acknowledged",
+                    Outcome = "success"
+                });
+            }
+
+            var rubric = RubricDefinition.CreateFireExplosionRubric();
+            var result = LocalAssessmentEngine.Evaluate(events, rubric);
+
+            var detectRule = result.GetRuleResult("rule_detect_hazard");
+            if (detectRule == null) throw new Exception("rule_detect_hazard not found");
+            if (detectRule.TimesAwarded != 1)
+                throw new Exception($"TimesAwarded was {detectRule.TimesAwarded}, expected 1");
+            if (detectRule.PointsAwarded != 5.00f)
+                throw new Exception($"PointsAwarded was {detectRule.PointsAwarded}, expected 5.00 (not 25.00)");
+        }
+
+        public static void Test_Assessment_ScoreBelow70_Fails()
+        {
+            // Worker only completes Step 1 (+5) and Step 2 (+15), missing all remaining steps
+            var events = new List<TrainingEvent>
+            {
+                new TrainingEvent
+                {
+                    StepId = "step_detect_hazard",
+                    EventType = "step_completed",
+                    ActionId = "detect_hazard_acknowledged",
+                    Outcome = "success"
+                },
+                new TrainingEvent
+                {
+                    StepId = "step_identify_hazard",
+                    EventType = "hazard_identified",
+                    TargetId = "hazard_electrical_conveyor_fire",
+                    Outcome = "success"
+                }
+            };
+
+            var rubric = RubricDefinition.CreateFireExplosionRubric();
+            var result = LocalAssessmentEngine.Evaluate(events, rubric);
+
+            if (result.ClientScore != 20.00f)
+                throw new Exception($"Expected ClientScore 20.00, got {result.ClientScore}");
+            if (result.Passed)
+                throw new Exception("Score of 20% must FAIL (threshold is 70%)");
+        }
+
+        public static void Test_Assessment_PenaltiesCannotDriveScoreBelowZero()
+        {
+            // Events consist purely of penalty failures
+            var events = new List<TrainingEvent>
+            {
+                new TrainingEvent
+                {
+                    StepId = "step_identify_hazard",
+                    EventType = "hazard_identified",
+                    Outcome = "failure"
+                },
+                new TrainingEvent
+                {
+                    StepId = "step_select_extinguisher",
+                    EventType = "extinguisher_selected",
+                    Outcome = "failure"
+                },
+                new TrainingEvent
+                {
+                    StepId = "step_evacuate_route",
+                    EventType = "evacuation_sequence_submitted",
+                    Outcome = "failure"
+                }
+            };
+
+            var rubric = RubricDefinition.CreateFireExplosionRubric();
+            var result = LocalAssessmentEngine.Evaluate(events, rubric);
+
+            if (result.TotalPenalties != 15.00f)
+                throw new Exception($"Expected TotalPenalties 15.00, got {result.TotalPenalties}");
+            if (result.ClientScore != 0.00f)
+                throw new Exception($"ClientScore must be clamped at 0.00, got {result.ClientScore}");
+            if (result.Passed)
+                throw new Exception("Expected Passed to be false");
+        }
+
+        public static void Test_Assessment_DeterministicRepeatedEvaluation_GivesIdenticalResult()
+        {
+            var events = GenerateFlawlessStep1To9Events();
+            var rubric = RubricDefinition.CreateFireExplosionRubric();
+
+            var firstResult = LocalAssessmentEngine.Evaluate(events, rubric);
+
+            for (int i = 0; i < 10; i++)
+            {
+                var iterationResult = LocalAssessmentEngine.Evaluate(events, rubric);
+                if (iterationResult.ClientScore != firstResult.ClientScore)
+                    throw new Exception($"Drift detected in ClientScore on iteration {i}");
+                if (iterationResult.TotalAwarded != firstResult.TotalAwarded)
+                    throw new Exception($"Drift detected in TotalAwarded on iteration {i}");
+                if (iterationResult.TotalPenalties != firstResult.TotalPenalties)
+                    throw new Exception($"Drift detected in TotalPenalties on iteration {i}");
+                if (iterationResult.Passed != firstResult.Passed)
+                    throw new Exception($"Drift detected in Passed status on iteration {i}");
+            }
         }
     }
 }

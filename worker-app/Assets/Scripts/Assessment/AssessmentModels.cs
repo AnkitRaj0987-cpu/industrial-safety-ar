@@ -259,9 +259,15 @@ namespace IndustrialSafetyAR.Assessment
         public bool MatchesAwardEvent(TrainingEvent evt)
         {
             if (evt == null) return false;
-            if (!string.Equals(evt.EventType, EventType, StringComparison.OrdinalIgnoreCase))
-                return false;
+
             if (!string.IsNullOrEmpty(StepId) && !string.Equals(evt.StepId, StepId, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            bool eventTypeMatches = string.Equals(evt.EventType, EventType, StringComparison.OrdinalIgnoreCase)
+                || (string.Equals(EventType, "extinguisher_used", StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(evt.EventType, "procedure_completed", StringComparison.OrdinalIgnoreCase));
+
+            if (!eventTypeMatches)
                 return false;
 
             return Match == null || Match.Matches(evt);
@@ -274,10 +280,15 @@ namespace IndustrialSafetyAR.Assessment
         {
             if (evt == null || PenaltyPoints <= 0f) return false;
 
-            string penaltyType = !string.IsNullOrEmpty(PenaltyEventType) ? PenaltyEventType : EventType;
-            if (!string.Equals(evt.EventType, penaltyType, StringComparison.OrdinalIgnoreCase))
-                return false;
             if (!string.IsNullOrEmpty(StepId) && !string.Equals(evt.StepId, StepId, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            string penaltyType = !string.IsNullOrEmpty(PenaltyEventType) ? PenaltyEventType : EventType;
+            bool eventTypeMatches = string.Equals(evt.EventType, penaltyType, StringComparison.OrdinalIgnoreCase)
+                || (string.Equals(penaltyType, "extinguisher_used", StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(evt.EventType, "procedure_failed", StringComparison.OrdinalIgnoreCase));
+
+            if (!eventTypeMatches)
                 return false;
 
             return PenaltyMatch == null || PenaltyMatch.Matches(evt);
@@ -305,7 +316,12 @@ namespace IndustrialSafetyAR.Assessment
             if (!string.IsNullOrEmpty(ActionId))
             {
                 string act = evt.ActionId ?? evt.GetPayloadValue("action_id");
-                if (!string.Equals(act, ActionId, StringComparison.OrdinalIgnoreCase))
+                bool actionMatches = string.Equals(act, ActionId, StringComparison.OrdinalIgnoreCase)
+                    || (string.Equals(ActionId, "pass_procedure_completed", StringComparison.OrdinalIgnoreCase) &&
+                        (string.Equals(act, "sweep", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(evt.TargetId, "extinguisher_procedure", StringComparison.OrdinalIgnoreCase)));
+
+                if (!actionMatches)
                     return false;
             }
 
@@ -363,5 +379,27 @@ namespace IndustrialSafetyAR.Assessment
         public List<TrainingEvent> MatchedEvents { get; set; } = new List<TrainingEvent>();
         public List<TrainingEvent> PenaltyEvents { get; set; } = new List<TrainingEvent>();
         public string Details { get; set; }
+    }
+
+    /// <summary>
+    /// Complete evaluation report produced by LocalAssessmentEngine.
+    /// </summary>
+    [Serializable]
+    public class AssessmentResult
+    {
+        public float ClientScore { get; set; }
+        public float MaxScore { get; set; } = 100.00f;
+        public float PassPercent { get; set; } = 70.00f;
+        public bool Passed { get; set; }
+        public float TotalAwarded { get; set; }
+        public float TotalPenalties { get; set; }
+        public List<RuleEvaluationResult> RuleResults { get; set; } = new List<RuleEvaluationResult>();
+        public TrainingAttempt Attempt { get; set; }
+
+        public RuleEvaluationResult GetRuleResult(string ruleId)
+        {
+            if (RuleResults == null) return null;
+            return RuleResults.Find(r => string.Equals(r.RuleId, ruleId, StringComparison.OrdinalIgnoreCase));
+        }
     }
 }
