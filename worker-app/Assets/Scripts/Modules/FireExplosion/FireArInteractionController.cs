@@ -44,7 +44,13 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         ProcedureCompleted = ExtinguisherDischarged,
         AwaitingExitIdentification,
         step_identify_exit = AwaitingExitIdentification,
-        ExitIdentified
+        ExitIdentified,
+        AwaitingEvacuationRoute,
+        step_evacuate_route = AwaitingEvacuationRoute,
+        WaypointMainCorridorReached,
+        WaypointBypassCrosscutReached,
+        RouteEvacuated,
+        EvacuationCompleted = RouteEvacuated
     }
 
     /// <summary>
@@ -78,6 +84,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         private FireInteractionState _state = FireInteractionState.WaitingForTracking;
         private FireHazardMarker _activeHazard;
         private readonly System.Collections.Generic.List<EmergencyExitMarker> _activeExitMarkers = new System.Collections.Generic.List<EmergencyExitMarker>();
+        private readonly System.Collections.Generic.List<EvacuationRouteMarker> _activeRouteMarkers = new System.Collections.Generic.List<EvacuationRouteMarker>();
         private ITrainingEventDispatcher _eventDispatcher;
 
         public FireInteractionState State => _state;
@@ -85,6 +92,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public FireTrainingWorkflow Workflow => _workflow;
         public FireHazardMarker ActiveHazard => _activeHazard;
         public System.Collections.Generic.IReadOnlyList<EmergencyExitMarker> ActiveExitMarkers => _activeExitMarkers;
+        public System.Collections.Generic.IReadOnlyList<EvacuationRouteMarker> ActiveRouteMarkers => _activeRouteMarkers;
         public string CurrentStepId => _workflow.CurrentStepId;
 
         public event Action<FireInteractionState> OnStateChanged;
@@ -98,6 +106,8 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public event Action<string, TrainingEvent> OnExtinguisherActionCompleted;
         public event Action<TrainingEvent> OnExitIdentified;
         public event Action<string, TrainingEvent> OnExitMarked;
+        public event Action<string, TrainingEvent> OnRouteWaypointReached;
+        public event Action<TrainingEvent> OnEvacuationCompleted;
         public event Action<string> OnFeedbackChanged;
 
         private void Awake()
@@ -160,6 +170,10 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             {
                 SpawnExitMarkersIfNeeded();
             }
+            else if (stage == FireWorkflowStage.ExitIdentified || stage == FireWorkflowStage.AwaitingEvacuationRoute)
+            {
+                SpawnEvacuationRouteMarkersIfNeeded();
+            }
             OnStateChanged?.Invoke(_state);
         }
 
@@ -215,6 +229,13 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 case FireWorkflowStage.ExtinguisherDischarged:
                 case FireWorkflowStage.AwaitingExitIdentification:
                     TrySelectEmergencyExit(screenPosition);
+                    break;
+
+                case FireWorkflowStage.ExitIdentified:
+                case FireWorkflowStage.AwaitingEvacuationRoute:
+                case FireWorkflowStage.WaypointMainCorridorReached:
+                case FireWorkflowStage.WaypointBypassCrosscutReached:
+                    TrySelectEvacuationWaypoint(screenPosition);
                     break;
             }
         }
@@ -544,6 +565,147 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             _activeExitMarkers.Add(corridorMarker);
 
             Debug.Log("[FireArInteractionController] Procedural emergency exit markers spawned in AR space.");
+        }
+
+        private void TrySelectEvacuationWaypoint(Vector2 screenPosition)
+        {
+            if (_arCamera == null)
+            {
+                _arCamera = Camera.main;
+                if (_arCamera == null) return;
+            }
+
+            Ray ray = _arCamera.ScreenPointToRay(screenPosition);
+            if (Physics.Raycast(ray, out RaycastHit hit, 50f))
+            {
+                var waypoint = hit.collider.GetComponentInParent<EvacuationRouteMarker>();
+                if (waypoint != null)
+                {
+                    SubmitEvacuationWaypoint(waypoint.WaypointId);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Submits an evacuation route waypoint along the designated safe path.
+        /// </summary>
+        public bool SubmitEvacuationWaypoint(string waypointId)
+        {
+            bool success = _workflow.SubmitEvacuationWaypoint(waypointId, _eventDispatcher, out var trainingEvent);
+            if (success)
+            {
+                if (_activeRouteMarkers != null)
+                {
+                    foreach (var marker in _activeRouteMarkers)
+                    {
+                        if (marker != null && string.Equals(marker.WaypointId, waypointId, StringComparison.OrdinalIgnoreCase))
+                        {
+                            marker.MarkTraversed();
+                        }
+                    }
+
+                    // Activate next expected waypoint marker
+                    int nextIndex = _workflow.CurrentStage == FireWorkflowStage.WaypointMainCorridorReached ? 2
+                        : (_workflow.CurrentStage == FireWorkflowStage.WaypointBypassCrosscutReached ? 3 : 0);
+
+                    if (nextIndex > 0)
+                    {
+                        foreach (var marker in _activeRouteMarkers)
+                        {
+                            if (marker != null && marker.SequenceOrder == nextIndex)
+                            {
+                                marker.SetActiveTarget(true);
+                            }
+                        }
+                    }
+                }
+
+                OnRouteWaypointReached?.Invoke(waypointId, trainingEvent);
+
+                if (_workflow.CurrentStage == FireWorkflowStage.RouteEvacuated)
+                {
+                    OnEvacuationCompleted?.Invoke(trainingEvent);
+                }
+            }
+
+            return success;
+        }
+
+        /// <summary>
+        /// Submits an ordered list of waypoints representing the entire evacuation route sequence.
+        /// </summary>
+        public bool SubmitEvacuationSequence(System.Collections.Generic.IList<string> waypointIds)
+        {
+            bool success = _workflow.SubmitEvacuationSequence(waypointIds, _eventDispatcher, out var trainingEvent);
+            if (success)
+            {
+                if (_activeRouteMarkers != null)
+                {
+                    foreach (var marker in _activeRouteMarkers)
+                    {
+                        if (marker != null && !marker.IsHazardousAlternative)
+                        {
+                            marker.MarkTraversed();
+                        }
+                    }
+                }
+
+                OnEvacuationCompleted?.Invoke(trainingEvent);
+            }
+
+            return success;
+        }
+
+        /// <summary>
+        /// Spawns procedural 3D evacuation route markers in AR space guiding the worker safely toward the assembly point.
+        /// </summary>
+        public void SpawnEvacuationRouteMarkersIfNeeded()
+        {
+            if (_activeRouteMarkers != null && _activeRouteMarkers.Count > 0)
+            {
+                return;
+            }
+
+            Vector3 basePos = _activeHazard != null ? _activeHazard.transform.position : Vector3.zero;
+            Quaternion baseRot = _activeHazard != null ? _activeHazard.transform.rotation : Quaternion.identity;
+
+            // 1. Waypoint 1: Main Corridor (Clear route starting near Sector B exit)
+            Vector3 wp1Pos = basePos + baseRot * new Vector3(3.2f, 0f, 2.5f);
+            var wp1Obj = new GameObject("Marker_WaypointMainCorridor");
+            wp1Obj.transform.position = wp1Pos;
+            wp1Obj.transform.rotation = baseRot;
+            var wp1Marker = wp1Obj.AddComponent<EvacuationRouteMarker>();
+            wp1Marker.ConfigureWaypoint(FireTrainingWorkflow.WaypointMainCorridor, "Waypoint 1: Main Corridor", 1, false);
+            _activeRouteMarkers.Add(wp1Marker);
+
+            // 2. Waypoint 2: Bypass Crosscut (Diverting away from smoke buildup)
+            Vector3 wp2Pos = basePos + baseRot * new Vector3(4.5f, 0f, 3.8f);
+            var wp2Obj = new GameObject("Marker_WaypointBypassCrosscut");
+            wp2Obj.transform.position = wp2Pos;
+            wp2Obj.transform.rotation = baseRot;
+            var wp2Marker = wp2Obj.AddComponent<EvacuationRouteMarker>();
+            wp2Marker.ConfigureWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, "Waypoint 2: Bypass Crosscut", 2, false);
+            _activeRouteMarkers.Add(wp2Marker);
+
+            // 3. Waypoint 3: Fire Door Exit (Boundary leading toward assembly muster point)
+            Vector3 wp3Pos = basePos + baseRot * new Vector3(5.8f, 0f, 5.2f);
+            var wp3Obj = new GameObject("Marker_WaypointFireDoorExit");
+            wp3Obj.transform.position = wp3Pos;
+            wp3Obj.transform.rotation = baseRot;
+            var wp3Marker = wp3Obj.AddComponent<EvacuationRouteMarker>();
+            wp3Marker.ConfigureWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, "Waypoint 3: Fire Door Exit", 3, false);
+            _activeRouteMarkers.Add(wp3Marker);
+
+            // 4. Hazard Alternative: Sector A Smoke Corridor (Unsafe corridor)
+            Vector3 smokePos = basePos + baseRot * new Vector3(1.0f, 0f, 4.5f);
+            var smokeObj = new GameObject("Marker_HazardSmokeCorridor");
+            smokeObj.transform.position = smokePos;
+            smokeObj.transform.rotation = baseRot;
+            var smokeMarker = smokeObj.AddComponent<EvacuationRouteMarker>();
+            smokeMarker.ConfigureWaypoint(FireTrainingWorkflow.HazardSmokeCorridor, "Sector A Smoke Corridor", 0, true);
+            _activeRouteMarkers.Add(smokeMarker);
+
+            Debug.Log("[FireArInteractionController] Procedural evacuation route waypoints spawned in AR space.");
         }
 
         private bool TryGetScreenTap(out Vector2 position)

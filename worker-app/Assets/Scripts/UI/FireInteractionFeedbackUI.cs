@@ -187,7 +187,14 @@ namespace IndustrialSafetyAR.UI
                     break;
 
                 case FireInteractionState.ExitIdentified:
-                    ShowExitIdentifiedUI();
+                case FireInteractionState.AwaitingEvacuationRoute:
+                case FireInteractionState.WaypointMainCorridorReached:
+                case FireInteractionState.WaypointBypassCrosscutReached:
+                    ShowEvacuationRouteUI();
+                    break;
+
+                case FireInteractionState.RouteEvacuated:
+                    ShowEvacuationCompletedUI();
                     break;
             }
         }
@@ -485,6 +492,63 @@ namespace IndustrialSafetyAR.UI
             if (_promptText != null)
             {
                 _promptText.text = "<color=#4CAF50>EMERGENCY EXIT IDENTIFIED!</color>\n<size=80%>Sector B Exit Marked • Clear egress route verified.</size>";
+                _promptText.color = new Color(0.25f, 0.95f, 0.4f);
+            }
+
+            if (_bannerBg != null)
+            {
+                _bannerBg.color = new Color(0.12f, 0.28f, 0.16f, 0.94f);
+            }
+        }
+
+        private void ShowEvacuationRouteUI()
+        {
+            ClearActionButtons();
+            if (_actionContainer == null) return;
+
+            if (_promptText != null)
+            {
+                _promptText.text = "<b>STEP 8: EMERGENCY EVACUATION ROUTE</b>\nFollow waypoints away from fire toward assembly point:";
+                _promptText.color = new Color(0.25f, 0.95f, 0.4f);
+            }
+
+            if (_bannerBg != null)
+            {
+                _bannerBg.color = new Color(0.10f, 0.12f, 0.16f, 0.90f);
+            }
+
+            // 1. Waypoint 1: Main Corridor (Clear route)
+            CreateOptionButton("1. WAYPOINT 1: Main Corridor (Clear Route)", new Vector2(0f, 0.74f), new Vector2(1f, 0.98f), () =>
+            {
+                _controller?.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor);
+            });
+
+            // 2. Waypoint 2: Bypass Crosscut (Smoke divert)
+            CreateOptionButton("2. WAYPOINT 2: Bypass Crosscut (Smoke Divert)", new Vector2(0f, 0.49f), new Vector2(1f, 0.73f), () =>
+            {
+                _controller?.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut);
+            });
+
+            // 3. Waypoint 3: Fire Door Exit (Egress boundary)
+            CreateOptionButton("3. WAYPOINT 3: Fire Door Exit (Egress Boundary)", new Vector2(0f, 0.24f), new Vector2(1f, 0.48f), () =>
+            {
+                _controller?.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit);
+            });
+
+            // 4. Hazard Alternative: Sector A Smoke Corridor (Unsafe)
+            CreateActionButton("4. DANGER: Sector A Smoke Corridor (Unsafe)", new Vector2(0f, 0.01f), new Vector2(1f, 0.23f), new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
+            {
+                _controller?.SubmitEvacuationWaypoint(FireTrainingWorkflow.HazardSmokeCorridor);
+            });
+        }
+
+        private void ShowEvacuationCompletedUI()
+        {
+            ClearActionButtons();
+
+            if (_promptText != null)
+            {
+                _promptText.text = "<color=#4CAF50>EVACUATION ROUTE COMPLETED!</color>\n<size=80%>Safe Egress Verified • Proceed to Assembly Muster Point Alpha</size>";
                 _promptText.color = new Color(0.25f, 0.95f, 0.4f);
             }
 

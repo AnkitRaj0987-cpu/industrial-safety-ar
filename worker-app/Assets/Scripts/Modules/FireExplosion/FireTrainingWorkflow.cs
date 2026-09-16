@@ -34,7 +34,13 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         ProcedureCompleted = ExtinguisherDischarged,
         AwaitingExitIdentification,
         step_identify_exit = AwaitingExitIdentification,
-        ExitIdentified
+        ExitIdentified,
+        AwaitingEvacuationRoute,
+        step_evacuate_route = AwaitingEvacuationRoute,
+        WaypointMainCorridorReached,
+        WaypointBypassCrosscutReached,
+        RouteEvacuated,
+        EvacuationCompleted = RouteEvacuated
     }
 
     /// <summary>
@@ -104,6 +110,19 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
         // Step 8: Evacuate Route
         public const string StepEvacuateRoute = "step_evacuate_route";
+        public const string ActionSubmitSequence = "submit_sequence";
+        public const string RuleEvacuateRoute = "rule_evacuate_route";
+
+        public const string WaypointMainCorridor = "waypoint_main_corridor";
+        public const string WaypointBypassCrosscut = "waypoint_bypass_crosscut";
+        public const string WaypointByExit = "waypoint_by_exit";
+        public const string WaypointFireDoorExit = "waypoint_fire_door_exit";
+        public const string HazardSmokeCorridor = "hazard_heavy_smoke_corridor";
+        public const string DecisionAvoidSmoke = "avoid_heavy_smoke_corridor";
+
+        // Step 10: Assembly Target
+        public const string StepReachAssembly = "step_reach_assembly";
+        public const string TargetAssemblyMusterPoint = "assembly_muster_point_alpha";
 
         public FireWorkflowStage CurrentStage { get; private set; } = FireWorkflowStage.NotStarted;
         public string CurrentStepId { get; private set; } = StepDetectHazard;
@@ -148,7 +167,13 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                     CurrentStepId = StepIdentifyExit;
                     break;
                 case FireWorkflowStage.ExitIdentified:
+                case FireWorkflowStage.AwaitingEvacuationRoute:
+                case FireWorkflowStage.WaypointMainCorridorReached:
+                case FireWorkflowStage.WaypointBypassCrosscutReached:
                     CurrentStepId = StepEvacuateRoute;
+                    break;
+                case FireWorkflowStage.RouteEvacuated:
+                    CurrentStepId = StepReachAssembly;
                     break;
             }
 
@@ -642,6 +667,300 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             return true;
         }
 
+        /// <summary>
+        /// Submits an evacuation route waypoint along the designated safe path.
+        /// Enforces sequential order: waypoint_main_corridor -> waypoint_bypass_crosscut -> waypoint_fire_door_exit.
+        /// </summary>
+        public bool SubmitEvacuationWaypoint(string waypointId, ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent)
+        {
+            emittedEvent = null;
+
+            bool isInStep8 = CurrentStage == FireWorkflowStage.ExitIdentified
+                || CurrentStage == FireWorkflowStage.AwaitingEvacuationRoute
+                || CurrentStage == FireWorkflowStage.WaypointMainCorridorReached
+                || CurrentStage == FireWorkflowStage.WaypointBypassCrosscutReached;
+
+            if (!isInStep8)
+            {
+                // Premature action (before Step 7 complete) or duplicate action after completion
+                return false;
+            }
+
+            string rawId = waypointId?.Trim() ?? string.Empty;
+
+            // Check dangerous smoke-filled corridor hazard
+            if (string.Equals(rawId, HazardSmokeCorridor, StringComparison.OrdinalIgnoreCase)
+                || rawId.IndexOf("smoke", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                emittedEvent = new TrainingEvent
+                {
+                    ModuleId = ModuleId,
+                    ContentVersion = ContentVersion,
+                    StepId = StepEvacuateRoute,
+                    EventType = "evacuation_sequence_submitted",
+                    ActionId = ActionSubmitSequence,
+                    TargetId = rawId,
+                    Outcome = "failure",
+                    Payload =
+                    {
+                        { "rule_id", RuleEvacuateRoute },
+                        { "action_id", ActionSubmitSequence },
+                        { "target_id", rawId },
+                        { "outcome", "failure" },
+                        { "hazard_warning", DecisionAvoidSmoke }
+                    }
+                };
+
+                dispatcher?.Dispatch(emittedEvent);
+                OnFeedbackChanged?.Invoke("CRITICAL HAZARD: Dense toxic smoke detected! Do not proceed through this corridor.");
+                return false;
+            }
+
+            // Sequential order validation
+            if (CurrentStage == FireWorkflowStage.ExitIdentified || CurrentStage == FireWorkflowStage.AwaitingEvacuationRoute)
+            {
+                if (string.Equals(rawId, WaypointMainCorridor, StringComparison.OrdinalIgnoreCase))
+                {
+                    emittedEvent = new TrainingEvent
+                    {
+                        ModuleId = ModuleId,
+                        ContentVersion = ContentVersion,
+                        StepId = StepEvacuateRoute,
+                        EventType = "evacuation_sequence_submitted",
+                        ActionId = ActionSubmitSequence,
+                        TargetId = WaypointMainCorridor,
+                        Outcome = "success",
+                        Payload =
+                        {
+                            { "rule_id", RuleEvacuateRoute },
+                            { "action_id", ActionSubmitSequence },
+                            { "target_id", WaypointMainCorridor },
+                            { "outcome", "success" },
+                            { "waypoint_index", "1" }
+                        }
+                    };
+
+                    dispatcher?.Dispatch(emittedEvent);
+                    SetStage(FireWorkflowStage.WaypointMainCorridorReached);
+                    OnFeedbackChanged?.Invoke("WAYPOINT 1 REACHED: Proceed toward emergency exit waypoints.");
+                    return true;
+                }
+            }
+            else if (CurrentStage == FireWorkflowStage.WaypointMainCorridorReached)
+            {
+                // Route branch A: canonical direct exit waypoint (waypoint_main_corridor -> waypoint_by_exit -> step_reach_assembly)
+                if (string.Equals(rawId, WaypointByExit, StringComparison.OrdinalIgnoreCase))
+                {
+                    emittedEvent = new TrainingEvent
+                    {
+                        ModuleId = ModuleId,
+                        ContentVersion = ContentVersion,
+                        StepId = StepEvacuateRoute,
+                        EventType = "evacuation_sequence_submitted",
+                        ActionId = ActionSubmitSequence,
+                        TargetId = WaypointByExit,
+                        Outcome = "success",
+                        Payload =
+                        {
+                            { "rule_id", RuleEvacuateRoute },
+                            { "action_id", ActionSubmitSequence },
+                            { "target_id", WaypointByExit },
+                            { "ordered_ids", $"{WaypointMainCorridor},{WaypointByExit}" },
+                            { "outcome", "success" }
+                        }
+                    };
+
+                    dispatcher?.Dispatch(emittedEvent);
+                    SetStage(FireWorkflowStage.RouteEvacuated);
+                    OnFeedbackChanged?.Invoke("EVACUATION ROUTE COMPLETED!\nSafe egress confirmed. Proceed to Assembly Muster Point.");
+                    return true;
+                }
+
+                // Route branch B: bypass crosscut (waypoint_main_corridor -> waypoint_bypass_crosscut -> waypoint_fire_door_exit)
+                if (string.Equals(rawId, WaypointBypassCrosscut, StringComparison.OrdinalIgnoreCase))
+                {
+                    emittedEvent = new TrainingEvent
+                    {
+                        ModuleId = ModuleId,
+                        ContentVersion = ContentVersion,
+                        StepId = StepEvacuateRoute,
+                        EventType = "evacuation_sequence_submitted",
+                        ActionId = ActionSubmitSequence,
+                        TargetId = WaypointBypassCrosscut,
+                        Outcome = "success",
+                        Payload =
+                        {
+                            { "rule_id", RuleEvacuateRoute },
+                            { "action_id", ActionSubmitSequence },
+                            { "target_id", WaypointBypassCrosscut },
+                            { "outcome", "success" },
+                            { "waypoint_index", "2" }
+                        }
+                    };
+
+                    dispatcher?.Dispatch(emittedEvent);
+                    SetStage(FireWorkflowStage.WaypointBypassCrosscutReached);
+                    OnFeedbackChanged?.Invoke("WAYPOINT 2 REACHED: Proceed through Fire Door Exit toward assembly point.");
+                    return true;
+                }
+            }
+            else if (CurrentStage == FireWorkflowStage.WaypointBypassCrosscutReached)
+            {
+                if (string.Equals(rawId, WaypointFireDoorExit, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(rawId, WaypointByExit, StringComparison.OrdinalIgnoreCase))
+                {
+                    emittedEvent = new TrainingEvent
+                    {
+                        ModuleId = ModuleId,
+                        ContentVersion = ContentVersion,
+                        StepId = StepEvacuateRoute,
+                        EventType = "evacuation_sequence_submitted",
+                        ActionId = ActionSubmitSequence,
+                        TargetId = WaypointFireDoorExit,
+                        Outcome = "success",
+                        Payload =
+                        {
+                            { "rule_id", RuleEvacuateRoute },
+                            { "action_id", ActionSubmitSequence },
+                            { "target_id", WaypointFireDoorExit },
+                            { "ordered_ids", $"{WaypointMainCorridor},{WaypointBypassCrosscut},{WaypointFireDoorExit}" },
+                            { "outcome", "success" }
+                        }
+                    };
+
+                    dispatcher?.Dispatch(emittedEvent);
+                    SetStage(FireWorkflowStage.RouteEvacuated);
+                    OnFeedbackChanged?.Invoke("EVACUATION ROUTE COMPLETED!\nSafe egress confirmed. Proceed to Assembly Muster Point.");
+                    return true;
+                }
+            }
+
+            // Out-of-order or invalid waypoint
+            emittedEvent = new TrainingEvent
+            {
+                ModuleId = ModuleId,
+                ContentVersion = ContentVersion,
+                StepId = StepEvacuateRoute,
+                EventType = "evacuation_sequence_submitted",
+                ActionId = ActionSubmitSequence,
+                TargetId = rawId,
+                Outcome = "failure",
+                Payload =
+                {
+                    { "rule_id", RuleEvacuateRoute },
+                    { "action_id", ActionSubmitSequence },
+                    { "target_id", rawId },
+                    { "outcome", "failure" },
+                    { "error", "out_of_order" }
+                }
+            };
+
+            dispatcher?.Dispatch(emittedEvent);
+            OnFeedbackChanged?.Invoke("SEQUENCE ERROR: Follow emergency route waypoints in sequential order.");
+            return false;
+        }
+
+        /// <summary>
+        /// Submits an ordered list of waypoints representing the evacuation sequence.
+        /// </summary>
+        public bool SubmitEvacuationSequence(System.Collections.Generic.IList<string> waypointIds, ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent)
+        {
+            emittedEvent = null;
+
+            bool isInStep8 = CurrentStage == FireWorkflowStage.ExitIdentified
+                || CurrentStage == FireWorkflowStage.AwaitingEvacuationRoute
+                || CurrentStage == FireWorkflowStage.WaypointMainCorridorReached
+                || CurrentStage == FireWorkflowStage.WaypointBypassCrosscutReached;
+
+            if (!isInStep8)
+            {
+                return false;
+            }
+
+            if (waypointIds == null || waypointIds.Count < 2)
+            {
+                emittedEvent = new TrainingEvent
+                {
+                    ModuleId = ModuleId,
+                    ContentVersion = ContentVersion,
+                    StepId = StepEvacuateRoute,
+                    EventType = "evacuation_sequence_submitted",
+                    ActionId = ActionSubmitSequence,
+                    Outcome = "failure",
+                    Payload =
+                    {
+                        { "rule_id", RuleEvacuateRoute },
+                        { "action_id", ActionSubmitSequence },
+                        { "outcome", "failure" },
+                        { "error", "incomplete_sequence" }
+                    }
+                };
+                dispatcher?.Dispatch(emittedEvent);
+                OnFeedbackChanged?.Invoke("INCOMPLETE ROUTE: All evacuation waypoints must be traversed.");
+                return false;
+            }
+
+            bool allValid = false;
+            string targetId = WaypointFireDoorExit;
+            string orderedIds = $"{WaypointMainCorridor},{WaypointBypassCrosscut},{WaypointFireDoorExit}";
+
+            if (waypointIds.Count == 2)
+            {
+                bool v0 = string.Equals(waypointIds[0]?.Trim(), WaypointMainCorridor, StringComparison.OrdinalIgnoreCase);
+                bool v1 = string.Equals(waypointIds[1]?.Trim(), WaypointByExit, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(waypointIds[1]?.Trim(), WaypointFireDoorExit, StringComparison.OrdinalIgnoreCase);
+                allValid = v0 && v1;
+                targetId = waypointIds[1]?.Trim();
+                orderedIds = $"{WaypointMainCorridor},{targetId}";
+            }
+            else
+            {
+                bool valid0 = string.Equals(waypointIds[0]?.Trim(), WaypointMainCorridor, StringComparison.OrdinalIgnoreCase);
+                bool valid1 = string.Equals(waypointIds[1]?.Trim(), WaypointBypassCrosscut, StringComparison.OrdinalIgnoreCase);
+                bool valid2 = string.Equals(waypointIds[2]?.Trim(), WaypointFireDoorExit, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(waypointIds[2]?.Trim(), WaypointByExit, StringComparison.OrdinalIgnoreCase);
+
+                allValid = valid0 && valid1 && valid2;
+                targetId = waypointIds[2]?.Trim();
+                orderedIds = $"{WaypointMainCorridor},{WaypointBypassCrosscut},{targetId}";
+            }
+
+            string outcome = allValid ? "success" : "failure";
+
+            emittedEvent = new TrainingEvent
+            {
+                ModuleId = ModuleId,
+                ContentVersion = ContentVersion,
+                StepId = StepEvacuateRoute,
+                EventType = "evacuation_sequence_submitted",
+                ActionId = ActionSubmitSequence,
+                TargetId = targetId,
+                Outcome = outcome,
+                Payload =
+                {
+                    { "rule_id", RuleEvacuateRoute },
+                    { "action_id", ActionSubmitSequence },
+                    { "target_id", targetId },
+                    { "ordered_ids", orderedIds },
+                    { "outcome", outcome }
+                }
+            };
+
+            dispatcher?.Dispatch(emittedEvent);
+
+            if (allValid)
+            {
+                SetStage(FireWorkflowStage.RouteEvacuated);
+                OnFeedbackChanged?.Invoke("EVACUATION ROUTE COMPLETED!\nSafe egress confirmed. Proceed to Assembly Muster Point.");
+                return true;
+            }
+            else
+            {
+                OnFeedbackChanged?.Invoke("SEQUENCE ERROR: Follow emergency route waypoints in sequential order.");
+                return false;
+            }
+        }
+
         public string GetFeedbackForStage(FireWorkflowStage stage)
         {
             switch (stage)
@@ -676,7 +995,14 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 case FireWorkflowStage.AwaitingExitIdentification:
                     return "STEP 7: IDENTIFY EMERGENCY EXIT\nLocate and tap the green illuminated Emergency Exit sign in AR space.";
                 case FireWorkflowStage.ExitIdentified:
-                    return "EMERGENCY EXIT IDENTIFIED!\nSector B Exit Marked. Clear egress route verified.";
+                case FireWorkflowStage.AwaitingEvacuationRoute:
+                    return "STEP 8: EVACUATION ROUTE\nFollow the green route waypoints away from fire hazard.";
+                case FireWorkflowStage.WaypointMainCorridorReached:
+                    return "WAYPOINT 1 REACHED: Proceed through Bypass Crosscut to avoid smoke.";
+                case FireWorkflowStage.WaypointBypassCrosscutReached:
+                    return "WAYPOINT 2 REACHED: Proceed through Fire Door Exit toward assembly point.";
+                case FireWorkflowStage.RouteEvacuated:
+                    return "EVACUATION ROUTE COMPLETED!\nSafe egress confirmed. Proceed to Assembly Muster Point.";
                 default:
                     return string.Empty;
             }
