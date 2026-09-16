@@ -48,11 +48,27 @@ namespace IndustrialSafetyAR.UI
             EnsureActionContainer();
         }
 
+        private Canvas GetOrCreateCanvas()
+        {
+            var canvas = FindAnyObjectByType<Canvas>();
+            if (canvas == null)
+            {
+                var canvasObj = new GameObject("TrainingFeedbackCanvas");
+                canvas = canvasObj.AddComponent<Canvas>();
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                var scaler = canvasObj.AddComponent<CanvasScaler>();
+                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(1080, 1920);
+                canvasObj.AddComponent<GraphicRaycaster>();
+            }
+            return canvas;
+        }
+
         private void EnsurePromptBanner()
         {
             if (_promptText != null) return;
 
-            var canvas = FindAnyObjectByType<Canvas>();
+            var canvas = GetOrCreateCanvas();
             if (canvas == null) return;
 
             var bannerObj = new GameObject("TrainingPromptBanner");
@@ -90,7 +106,7 @@ namespace IndustrialSafetyAR.UI
         {
             if (_actionContainer != null) return;
 
-            var canvas = FindAnyObjectByType<Canvas>();
+            var canvas = GetOrCreateCanvas();
             if (canvas == null) return;
 
             _actionContainer = new GameObject("TrainingActionContainer");

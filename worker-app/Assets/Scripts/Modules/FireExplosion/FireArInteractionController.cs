@@ -887,6 +887,61 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         }
 
         /// <summary>
+        /// Resets the training workflow and interaction environment for a fresh retake attempt,
+        /// clearing all spawned 3D markers and event dispatcher log so a new unique client_attempt_id is generated.
+        /// </summary>
+        public void RetakeTraining()
+        {
+            if (_activeHazard != null)
+            {
+                Destroy(_activeHazard.gameObject);
+                _activeHazard = null;
+            }
+
+            if (_activeExitMarkers != null)
+            {
+                foreach (var marker in _activeExitMarkers)
+                {
+                    if (marker != null) Destroy(marker.gameObject);
+                }
+                _activeExitMarkers.Clear();
+            }
+
+            if (_activeRouteMarkers != null)
+            {
+                foreach (var marker in _activeRouteMarkers)
+                {
+                    if (marker != null) Destroy(marker.gameObject);
+                }
+                _activeRouteMarkers.Clear();
+            }
+
+            if (_activeAssemblyMarkers != null)
+            {
+                foreach (var marker in _activeAssemblyMarkers)
+                {
+                    if (marker != null) Destroy(marker.gameObject);
+                }
+                _activeAssemblyMarkers.Clear();
+            }
+
+            if (_eventDispatcher is TrainingEventBus bus)
+            {
+                bus.Clear();
+            }
+            else if (TrainingEventBus.Instance != null)
+            {
+                TrainingEventBus.Instance.Clear();
+            }
+
+            _workflow.Reset();
+            _state = FireInteractionState.ReadyToPlace;
+            _workflow.SetStage(FireWorkflowStage.ReadyToPlace);
+            OnStateChanged?.Invoke(_state);
+            Debug.Log("[FireArInteractionController] Retake initiated: Scenario reset for new unique attempt.");
+        }
+
+        /// <summary>
         /// Automatically bootstraps the Fire AR interaction system whenever an AR scene containing
         /// ArSessionFacade is loaded, eliminating manual scene wiring and scene merge conflicts.
         /// </summary>
@@ -899,7 +954,8 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 var go = new GameObject("FireArInteractionManager");
                 go.AddComponent<FireArInteractionController>();
                 go.AddComponent<IndustrialSafetyAR.UI.FireInteractionFeedbackUI>();
-                Debug.Log("[FireArInteractionController] Auto-bootstrapped Fire AR Interaction in AR scene.");
+                go.AddComponent<IndustrialSafetyAR.UI.FireAssessmentSummaryUI>();
+                Debug.Log("[FireArInteractionController] Auto-bootstrapped Fire AR Interaction and Assessment Summary in AR scene.");
             }
         }
     }

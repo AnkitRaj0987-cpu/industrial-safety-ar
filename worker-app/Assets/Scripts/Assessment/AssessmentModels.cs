@@ -402,4 +402,168 @@ namespace IndustrialSafetyAR.Assessment
             return RuleResults.Find(r => string.Equals(r.RuleId, ruleId, StringComparison.OrdinalIgnoreCase));
         }
     }
+
+    /// <summary>
+    /// Step-by-step score line item for worker assessment summary display.
+    /// Pure C# model with no UnityEngine dependency.
+    /// </summary>
+    [Serializable]
+    public class StepScoreSummary
+    {
+        public int StepNumber { get; set; }
+        public string StepId { get; set; }
+        public string RuleId { get; set; }
+        public string Title { get; set; }
+        public float MaxPoints { get; set; }
+        public float PointsAwarded { get; set; }
+        public float PenaltyDeducted { get; set; }
+        public float NetScore => (float)Math.Round(PointsAwarded - PenaltyDeducted, 2);
+        public bool IsSatisfied { get; set; }
+        public string StatusText { get; set; }
+        public string Details { get; set; }
+    }
+
+    /// <summary>
+    /// Presentation model providing pre-formatted data for the Assessment Summary UI.
+    /// Decoupled from UnityEngine so formatting and calculation can be verified in unit tests.
+    /// </summary>
+    [Serializable]
+    public class AssessmentSummaryViewModel
+    {
+        public const string DefaultModuleTitle = "Fire & Explosion Response";
+        public const string StatusPassText = "PASS";
+        public const string StatusFailText = "FAILED — RETAKE REQUIRED";
+        public const string ColorPassHex = "#2ECC71"; // Emerald Green
+        public const string ColorFailHex = "#E74C3C"; // Crimson Red
+
+        public string ModuleTitle { get; set; } = DefaultModuleTitle;
+        public string ModuleId { get; set; } = "fire-explosion-response";
+        public string ContentVersion { get; set; } = "1.0.0";
+        public string ClientAttemptId { get; set; }
+        public string WorkerId { get; set; }
+        public string StartedAt { get; set; }
+        public string CompletedAt { get; set; }
+        public string DurationText { get; set; } = "--:--";
+        public double DurationSeconds { get; set; }
+        public float ClientScore { get; set; }
+        public float MaxScore { get; set; } = 100.00f;
+        public float PassPercent { get; set; } = 70.00f;
+        public bool Passed { get; set; }
+        public string ScoreDisplayText => $"{ClientScore:0.00} / {MaxScore:0}";
+        public string PassFailBadgeText => Passed ? StatusPassText : StatusFailText;
+        public string PassFailColorHex => Passed ? ColorPassHex : ColorFailHex;
+        public List<StepScoreSummary> StepSummaries { get; set; } = new List<StepScoreSummary>();
+        public List<string> Penalties { get; set; } = new List<string>();
+        public string SafetyFeedback { get; set; }
+        public bool SyncPrepared { get; set; }
+
+        public static string FormatDuration(string startedAt, string completedAt, out double totalSeconds)
+        {
+            totalSeconds = 0;
+            if (!string.IsNullOrEmpty(startedAt) && !string.IsNullOrEmpty(completedAt))
+            {
+                if (DateTime.TryParse(startedAt, out var start) && DateTime.TryParse(completedAt, out var end))
+                {
+                    var span = end - start;
+                    if (span.TotalSeconds < 0) span = TimeSpan.Zero;
+                    totalSeconds = span.TotalSeconds;
+                    int minutes = (int)span.TotalMinutes;
+                    int seconds = span.Seconds;
+                    if (minutes > 0)
+                    {
+                        return $"{minutes:D2}m {seconds:D2}s";
+                    }
+                    return $"{seconds}s";
+                }
+            }
+            return "--:--";
+        }
+
+        public static AssessmentSummaryViewModel Build(TrainingAttempt attempt, AssessmentResult assessment)
+        {
+            var vm = new AssessmentSummaryViewModel();
+
+            if (attempt != null)
+            {
+                vm.ClientAttemptId = attempt.ClientAttemptId;
+                vm.WorkerId = attempt.WorkerId;
+                vm.ModuleId = !string.IsNullOrEmpty(attempt.ModuleId) ? attempt.ModuleId : "fire-explosion-response";
+                vm.ContentVersion = attempt.ContentVersion ?? "1.0.0";
+                vm.StartedAt = attempt.StartedAt;
+                vm.CompletedAt = attempt.CompletedAt;
+                vm.DurationText = FormatDuration(attempt.StartedAt, attempt.CompletedAt, out double secs);
+                vm.DurationSeconds = secs;
+            }
+
+            if (assessment != null)
+            {
+                vm.ClientScore = assessment.ClientScore;
+                vm.MaxScore = assessment.MaxScore;
+                vm.PassPercent = assessment.PassPercent;
+                vm.Passed = assessment.Passed;
+
+                // Step 1 to 9 rule mappings
+                var stepDefs = new (int num, string ruleId, string stepId, string title, float maxPts)[]
+                {
+                    (1, "rule_detect_hazard", "step_detect_hazard", "Step 1: Detect Hazard", 5f),
+                    (2, "rule_identify_hazard", "step_identify_hazard", "Step 2: Identify Hazard", 15f),
+                    (3, "rule_raise_alarm", "step_raise_alarm", "Step 3: Raise Alarm", 15f),
+                    (4, "rule_select_extinguisher", "step_select_extinguisher", "Step 4: Select Extinguisher", 15f),
+                    (5, "rule_maintain_distance", "step_maintain_distance", "Step 5: Maintain Safe Distance", 10f),
+                    (6, "rule_use_extinguisher", "step_use_extinguisher", "Step 6: PASS Extinguisher Procedure", 15f),
+                    (7, "rule_identify_exit", "step_identify_exit", "Step 7: Identify Emergency Exit", 10f),
+                    (8, "rule_evacuate_route", "step_evacuate_route", "Step 8: Evacuate Designated Route", 10f),
+                    (9, "rule_reach_assembly", "step_reach_assembly", "Step 9: Reach Assembly Point", 5f),
+                };
+
+                foreach (var def in stepDefs)
+                {
+                    var ruleRes = assessment.GetRuleResult(def.ruleId);
+                    float awarded = ruleRes != null ? ruleRes.PointsAwarded : 0f;
+                    float penalty = ruleRes != null ? ruleRes.PenaltyDeducted : 0f;
+                    bool satisfied = ruleRes != null && ruleRes.IsSatisfied;
+
+                    string status = satisfied ? (penalty > 0 ? "PENALIZED" : "PASSED") : "INCOMPLETE";
+
+                    vm.StepSummaries.Add(new StepScoreSummary
+                    {
+                        StepNumber = def.num,
+                        RuleId = def.ruleId,
+                        StepId = def.stepId,
+                        Title = def.title,
+                        MaxPoints = def.maxPts,
+                        PointsAwarded = awarded,
+                        PenaltyDeducted = penalty,
+                        IsSatisfied = satisfied,
+                        StatusText = status,
+                        Details = ruleRes?.Details ?? string.Empty
+                    });
+
+                    if (penalty > 0)
+                    {
+                        vm.Penalties.Add($"{def.title}: -{penalty:0.00} pts deduction incurred ({ruleRes?.Details ?? "Procedure penalty"})");
+                    }
+                }
+            }
+
+            // Generate safety feedback
+            if (vm.Passed)
+            {
+                if (vm.Penalties.Count == 0 && vm.ClientScore >= 100f)
+                {
+                    vm.SafetyFeedback = "Flawless emergency performance! All 9 industrial fire response protocols were executed with 100% compliance.";
+                }
+                else
+                {
+                    vm.SafetyFeedback = $"Certified Compliant ({vm.ClientScore:0.00}%). Note: Review the {vm.Penalties.Count} penalty area(s) to maintain zero-incident standard.";
+                }
+            }
+            else
+            {
+                vm.SafetyFeedback = $"Standard Not Met ({vm.ClientScore:0.00}% < {vm.PassPercent:0}% threshold). Retake training to master safety compliance before field authorization.";
+            }
+
+            return vm;
+        }
+    }
 }

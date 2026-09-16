@@ -82,6 +82,12 @@ namespace IndustrialSafetyAR.Tests
             allPassed &= RunTest("Workflow_ClientScoreAndPassedStatusCopiedFromEngine", Test_Workflow_ClientScoreAndPassedStatusCopiedFromEngine, logMessages);
             allPassed &= RunTest("Workflow_DuplicateCompletionDoesNotCreateSecondAttempt", Test_Workflow_DuplicateCompletionDoesNotCreateSecondAttempt, logMessages);
             allPassed &= RunTest("Workflow_PrematureCompletionCannotFinalizeAttempt", Test_Workflow_PrematureCompletionCannotFinalizeAttempt, logMessages);
+            allPassed &= RunTest("SummaryViewModel_BuildsCorrectlyForPassingAttempt", Test_SummaryViewModel_BuildsCorrectlyForPassingAttempt, logMessages);
+            allPassed &= RunTest("SummaryViewModel_BuildsCorrectlyForFailingAttempt", Test_SummaryViewModel_BuildsCorrectlyForFailingAttempt, logMessages);
+            allPassed &= RunTest("SummaryViewModel_StepBreakdownHasAllNineSteps", Test_SummaryViewModel_StepBreakdownHasAllNineSteps, logMessages);
+            allPassed &= RunTest("SummaryViewModel_CalculatesDurationCorrectly", Test_SummaryViewModel_CalculatesDurationCorrectly, logMessages);
+            allPassed &= RunTest("SummaryViewModel_CapturesPenaltiesCorrectly", Test_SummaryViewModel_CapturesPenaltiesCorrectly, logMessages);
+            allPassed &= RunTest("Workflow_RetakeCreatesNewUniqueAttemptId", Test_Workflow_RetakeCreatesNewUniqueAttemptId, logMessages);
 
             return allPassed;
         }
@@ -2003,6 +2009,256 @@ namespace IndustrialSafetyAR.Tests
             if (evt2 != null) throw new Exception("Premature call must not emit event");
             if (workflow.LatestAttempt != null) throw new Exception("LatestAttempt must be null");
             if (workflow.IsAssessmentCompleted) throw new Exception("IsAssessmentCompleted must be false");
+        }
+
+        public static void Test_SummaryViewModel_BuildsCorrectlyForPassingAttempt()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var workflow = new FireTrainingWorkflow();
+            workflow.WorkerId = "worker-fire-specialist-01";
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+
+            workflow.ConfirmHazardDetected(bus, out _);
+            workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            workflow.SubmitDistanceDecision(2.5f, bus, out _);
+            workflow.SubmitPullPin(bus, out _);
+            workflow.SubmitAim(bus, out _);
+            workflow.SubmitSqueeze(bus, out _);
+            workflow.SubmitSweep(bus, out _);
+            workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            var vm = AssessmentSummaryViewModel.Build(workflow.LatestAttempt, workflow.LatestAssessment);
+
+            if (vm == null) throw new Exception("ViewModel was null");
+            if (vm.ModuleTitle != "Fire & Explosion Response")
+                throw new Exception($"Expected module title 'Fire & Explosion Response', got '{vm.ModuleTitle}'");
+            if (!vm.Passed) throw new Exception("Expected Passed to be true");
+            if (vm.ClientScore != 100.00f) throw new Exception($"Expected score 100.00, got {vm.ClientScore}");
+            if (vm.ScoreDisplayText != "100.00 / 100")
+                throw new Exception($"Expected ScoreDisplayText '100.00 / 100', got '{vm.ScoreDisplayText}'");
+            if (vm.PassFailBadgeText != "PASS")
+                throw new Exception($"Expected badge 'PASS', got '{vm.PassFailBadgeText}'");
+            if (vm.PassFailColorHex != "#2ECC71")
+                throw new Exception($"Expected pass color #2ECC71, got {vm.PassFailColorHex}");
+            if (vm.StepSummaries.Count != 9)
+                throw new Exception($"Expected 9 step summaries, got {vm.StepSummaries.Count}");
+            if (vm.Penalties.Count != 0)
+                throw new Exception($"Expected 0 penalties, got {vm.Penalties.Count}");
+            if (string.IsNullOrEmpty(vm.SafetyFeedback))
+                throw new Exception("Safety feedback should not be empty");
+        }
+
+        public static void Test_SummaryViewModel_BuildsCorrectlyForFailingAttempt()
+        {
+            var events = new List<TrainingEvent>
+            {
+                // Only detect hazard (+5) - total score 5% (fails < 70%)
+                new TrainingEvent
+                {
+                    StepId = "step_detect_hazard",
+                    EventType = "step_completed",
+                    ActionId = "detect_hazard_acknowledged",
+                    Outcome = "success"
+                }
+            };
+
+            var rubric = RubricDefinition.CreateFireExplosionRubric();
+            var assessment = LocalAssessmentEngine.Evaluate(events, rubric);
+            var attempt = new TrainingAttempt("worker_failing_01", "fire-explosion-response");
+            attempt.Complete(assessment.ClientScore, assessment.Passed);
+
+            var vm = AssessmentSummaryViewModel.Build(attempt, assessment);
+
+            if (vm == null) throw new Exception("ViewModel was null");
+            if (vm.Passed) throw new Exception("Expected Passed to be false for 5% score");
+            if (vm.PassFailBadgeText != "FAILED — RETAKE REQUIRED")
+                throw new Exception($"Expected 'FAILED — RETAKE REQUIRED', got '{vm.PassFailBadgeText}'");
+            if (vm.PassFailColorHex != "#E74C3C")
+                throw new Exception($"Expected fail color #E74C3C, got {vm.PassFailColorHex}");
+            if (!vm.SafetyFeedback.Contains("Standard Not Met"))
+                throw new Exception("Safety feedback should mention Standard Not Met");
+            if (!vm.SafetyFeedback.Contains("Retake training"))
+                throw new Exception("Safety feedback should recommend retake");
+        }
+
+        public static void Test_SummaryViewModel_StepBreakdownHasAllNineSteps()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+
+            workflow.ConfirmHazardDetected(bus, out _);
+            workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            workflow.SubmitDistanceDecision(2.5f, bus, out _);
+            workflow.SubmitPullPin(bus, out _);
+            workflow.SubmitAim(bus, out _);
+            workflow.SubmitSqueeze(bus, out _);
+            workflow.SubmitSweep(bus, out _);
+            workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            var vm = AssessmentSummaryViewModel.Build(workflow.LatestAttempt, workflow.LatestAssessment);
+
+            if (vm.StepSummaries.Count != 9)
+                throw new Exception($"Expected 9 step breakdown rows, got {vm.StepSummaries.Count}");
+
+            float totalMax = 0f;
+            float totalAwarded = 0f;
+            for (int i = 0; i < 9; i++)
+            {
+                var step = vm.StepSummaries[i];
+                if (step.StepNumber != i + 1)
+                    throw new Exception($"Step {i} has StepNumber {step.StepNumber}, expected {i + 1}");
+                if (!step.IsSatisfied)
+                    throw new Exception($"Step {step.StepNumber} should be satisfied");
+                totalMax += step.MaxPoints;
+                totalAwarded += step.NetScore;
+            }
+
+            if (totalMax != 100.00f)
+                throw new Exception($"Sum of max points across 9 steps must be 100, got {totalMax}");
+            if (totalAwarded != 100.00f)
+                throw new Exception($"Sum of awarded points across 9 steps must be 100, got {totalAwarded}");
+        }
+
+        public static void Test_SummaryViewModel_CalculatesDurationCorrectly()
+        {
+            // Standard minutes + seconds
+            string dur1 = AssessmentSummaryViewModel.FormatDuration("2026-09-16T08:00:00.0000000Z", "2026-09-16T08:01:45.0000000Z", out double secs1);
+            if (dur1 != "01m 45s") throw new Exception($"Expected '01m 45s', got '{dur1}'");
+            if (secs1 != 105.0) throw new Exception($"Expected 105 seconds, got {secs1}");
+
+            // Seconds only
+            string dur2 = AssessmentSummaryViewModel.FormatDuration("2026-09-16T08:00:00.0000000Z", "2026-09-16T08:00:25.0000000Z", out double secs2);
+            if (dur2 != "25s") throw new Exception($"Expected '25s', got '{dur2}'");
+            if (secs2 != 25.0) throw new Exception($"Expected 25 seconds, got {secs2}");
+
+            // Invalid or missing values
+            string dur3 = AssessmentSummaryViewModel.FormatDuration(null, null, out double secs3);
+            if (dur3 != "--:--") throw new Exception($"Expected '--:--', got '{dur3}'");
+            if (secs3 != 0.0) throw new Exception($"Expected 0 seconds, got {secs3}");
+        }
+
+        public static void Test_SummaryViewModel_CapturesPenaltiesCorrectly()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+
+            workflow.ConfirmHazardDetected(bus, out _);
+            // Incur Step 2 penalty (-5)
+            workflow.SubmitHazardIdentification("hazard_chemical_spill", bus, out _);
+            workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            // Incur Step 4 penalty (-5)
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherWater, bus, out _);
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            workflow.SubmitDistanceDecision(2.5f, bus, out _);
+            workflow.SubmitPullPin(bus, out _);
+            workflow.SubmitAim(bus, out _);
+            workflow.SubmitSqueeze(bus, out _);
+            workflow.SubmitSweep(bus, out _);
+            workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            var vm = AssessmentSummaryViewModel.Build(workflow.LatestAttempt, workflow.LatestAssessment);
+
+            if (vm.ClientScore != 90.00f)
+                throw new Exception($"Expected score 90.00 with two 5pt penalties, got {vm.ClientScore}");
+            if (vm.Penalties.Count != 2)
+                throw new Exception($"Expected 2 penalties captured, got {vm.Penalties.Count}");
+            if (!vm.Passed)
+                throw new Exception("Expected 90% attempt to pass");
+            if (!vm.Penalties[0].Contains("Step 2: Identify Hazard"))
+                throw new Exception($"Penalty 0 should mention Step 2: {vm.Penalties[0]}");
+            if (!vm.Penalties[1].Contains("Step 4: Select Extinguisher"))
+                throw new Exception($"Penalty 1 should mention Step 4: {vm.Penalties[1]}");
+        }
+
+        public static void Test_Workflow_RetakeCreatesNewUniqueAttemptId()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+
+            // First run
+            workflow.ConfirmHazardDetected(bus, out _);
+            workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            workflow.SubmitDistanceDecision(2.5f, bus, out _);
+            workflow.SubmitPullPin(bus, out _);
+            workflow.SubmitAim(bus, out _);
+            workflow.SubmitSqueeze(bus, out _);
+            workflow.SubmitSweep(bus, out _);
+            workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            string firstAttemptId = workflow.LatestAttempt.ClientAttemptId;
+            if (string.IsNullOrEmpty(firstAttemptId))
+                throw new Exception("First attempt ID was null or empty");
+
+            // Execute Retake / Reset
+            workflow.Reset();
+            bus.Clear();
+
+            if (workflow.LatestAttempt != null)
+                throw new Exception("LatestAttempt should be null after Reset()");
+            if (workflow.LatestAssessment != null)
+                throw new Exception("LatestAssessment should be null after Reset()");
+            if (workflow.IsAssessmentCompleted)
+                throw new Exception("IsAssessmentCompleted should be false after Reset()");
+
+            // Second run
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+            workflow.ConfirmHazardDetected(bus, out _);
+            workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            workflow.SubmitDistanceDecision(2.5f, bus, out _);
+            workflow.SubmitPullPin(bus, out _);
+            workflow.SubmitAim(bus, out _);
+            workflow.SubmitSqueeze(bus, out _);
+            workflow.SubmitSweep(bus, out _);
+            workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            string secondAttemptId = workflow.LatestAttempt.ClientAttemptId;
+            if (string.IsNullOrEmpty(secondAttemptId))
+                throw new Exception("Second attempt ID was null or empty");
+
+            if (firstAttemptId == secondAttemptId)
+                throw new Exception($"Retake failed to create new unique attempt ID: {firstAttemptId} == {secondAttemptId}");
+
+            // Verify both are valid non-empty GUIDs
+            if (!Guid.TryParse(firstAttemptId, out _))
+                throw new Exception($"First attempt ID was not a valid GUID: {firstAttemptId}");
+            if (!Guid.TryParse(secondAttemptId, out _))
+                throw new Exception($"Second attempt ID was not a valid GUID: {secondAttemptId}");
         }
     }
 }
