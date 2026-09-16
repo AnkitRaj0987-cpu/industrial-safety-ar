@@ -136,13 +136,51 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public const string TargetAssemblyPointBeta = "assembly_muster_point_beta";
         public const string ZoneTypeEmergencyAssembly = "emergency_assembly_area";
 
+        /// <summary>
+        /// Stable valid UUID for offline runtime attempts when no remote session is active.
+        /// Conforms strictly to RFC 4122 / attempt.schema.json format: uuid.
+        /// Matches the demo worker identifier seeded in the platform.
+        /// </summary>
+        public const string DefaultOfflineWorkerId = "00000000-dead-beef-0001-000000000001";
+
         public FireWorkflowStage CurrentStage { get; private set; } = FireWorkflowStage.NotStarted;
         public string CurrentStepId { get; private set; } = StepDetectHazard;
-        public string WorkerId { get; set; } = "worker_offline_01";
+        public string WorkerId { get; set; } = DefaultOfflineWorkerId;
         public string SessionStartedAt { get; private set; }
         public TrainingAttempt LatestAttempt { get; private set; }
         public AssessmentResult LatestAssessment { get; private set; }
         public bool IsAssessmentCompleted => LatestAttempt != null && LatestAssessment != null;
+
+        /// <summary>
+        /// The active rubric definition bound to this training workflow session.
+        /// Loaded from bundled assets at runtime.
+        /// </summary>
+        public RubricDefinition BoundRubric { get; private set; }
+
+        public FireTrainingWorkflow()
+        {
+            BindRubric(RubricLoader.LoadFireExplosionRubric());
+        }
+
+        public FireTrainingWorkflow(RubricDefinition rubric)
+        {
+            BindRubric(rubric ?? RubricLoader.LoadFireExplosionRubric());
+        }
+
+        public FireTrainingWorkflow(IRubricProvider rubricProvider)
+        {
+            BindRubric(rubricProvider != null
+                ? rubricProvider.LoadRubric(ModuleId)
+                : RubricLoader.LoadFireExplosionRubric());
+        }
+
+        /// <summary>
+        /// Explicitly binds a loaded RubricDefinition to this workflow instance.
+        /// </summary>
+        public void BindRubric(RubricDefinition rubric)
+        {
+            BoundRubric = rubric ?? RubricLoader.LoadFireExplosionRubric();
+        }
 
         public event Action<FireWorkflowStage> OnStageChanged;
         public event Action<string> OnFeedbackChanged;
@@ -1082,7 +1120,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 events = new List<TrainingEvent>();
             }
 
-            return EvaluateAssessment(events, rubric);
+            return EvaluateAssessment(events, rubric ?? BoundRubric);
         }
 
         /// <summary>
@@ -1102,7 +1140,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
             if (rubric == null)
             {
-                rubric = RubricDefinition.CreateFireExplosionRubric();
+                rubric = BoundRubric ?? RubricLoader.LoadFireExplosionRubric();
             }
 
             var eventList = events != null ? new List<TrainingEvent>(events) : new List<TrainingEvent>();
@@ -1112,7 +1150,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             {
                 SchemaVersion = rubric.SchemaVersion ?? "1.0.0",
                 ClientAttemptId = Guid.NewGuid().ToString(),
-                WorkerId = !string.IsNullOrEmpty(WorkerId) ? WorkerId : Guid.Empty.ToString(),
+                WorkerId = !string.IsNullOrEmpty(WorkerId) ? WorkerId : DefaultOfflineWorkerId,
                 ModuleId = ModuleId,
                 ContentVersion = ContentVersion,
                 StartedAt = !string.IsNullOrEmpty(SessionStartedAt) ? SessionStartedAt : DateTime.UtcNow.ToString("o"),

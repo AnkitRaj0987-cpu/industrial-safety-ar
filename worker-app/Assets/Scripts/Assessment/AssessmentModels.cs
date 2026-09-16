@@ -7,6 +7,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Text;
 using IndustrialSafetyAR.Core.Events;
 
 namespace IndustrialSafetyAR.Assessment
@@ -102,137 +105,138 @@ namespace IndustrialSafetyAR.Assessment
         public List<RubricRule> Rules { get; set; } = new List<RubricRule>();
 
         /// <summary>
-        /// Factory creating the canonical Fire &amp; Explosion Response scoring rubric matching rubric.json.
+        /// Parses a RubricDefinition from a raw JSON string adhering to docs/contracts/rubric.schema.json.
+        /// Pure C# standard library implementation decoupled from UnityEngine.
+        /// </summary>
+        public static RubricDefinition FromJson(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                throw new ArgumentException("Rubric JSON string cannot be null or empty.", nameof(json));
+
+            object parsed = SimpleJsonParser.Parse(json);
+            if (!(parsed is Dictionary<string, object> dict))
+                throw new FormatException("Rubric JSON root must be an object.");
+
+            var rubric = new RubricDefinition
+            {
+                SchemaVersion = GetString(dict, "schema_version", "1.0.0"),
+                ModuleId = GetString(dict, "module_id", null),
+                ContentVersion = GetString(dict, "content_version", "1.0.0"),
+                PassPercent = (float)GetDouble(dict, "pass_percent", 70.0),
+                MaxScore = (float)GetDouble(dict, "max_score", 100.0)
+            };
+
+            if (dict.TryGetValue("rules", out var rulesObj) && rulesObj is List<object> rulesList)
+            {
+                foreach (var item in rulesList)
+                {
+                    if (item is Dictionary<string, object> ruleDict)
+                    {
+                        var rule = ParseRule(ruleDict);
+                        if (rule != null)
+                        {
+                            rubric.Rules.Add(rule);
+                        }
+                    }
+                }
+            }
+
+            return rubric;
+        }
+
+        private static RubricRule ParseRule(Dictionary<string, object> dict)
+        {
+            var rule = new RubricRule
+            {
+                RuleId = GetString(dict, "rule_id", null),
+                StepId = GetString(dict, "step_id", null),
+                Required = GetBool(dict, "required", true),
+                EventType = GetString(dict, "event_type", null),
+                Points = (float)GetDouble(dict, "points", 0.0),
+                AwardLimit = (int)GetDouble(dict, "award_limit", 1.0),
+                PenaltyPoints = (float)GetDouble(dict, "penalty_points", 0.0),
+                PenaltyEventType = GetString(dict, "penalty_event_type", null)
+            };
+
+            if (dict.TryGetValue("match", out var matchObj) && matchObj is Dictionary<string, object> matchDict)
+            {
+                rule.Match = ParseMatchCriteria(matchDict);
+            }
+
+            if (dict.TryGetValue("penalty_match", out var penaltyMatchObj) && penaltyMatchObj is Dictionary<string, object> pMatchDict)
+            {
+                rule.PenaltyMatch = ParseMatchCriteria(pMatchDict);
+            }
+
+            return rule;
+        }
+
+        private static RuleMatchCriteria ParseMatchCriteria(Dictionary<string, object> dict)
+        {
+            var criteria = new RuleMatchCriteria
+            {
+                ActionId = GetString(dict, "action_id", null),
+                TargetId = GetString(dict, "target_id", null),
+                DecisionId = GetString(dict, "decision_id", null),
+                Outcome = GetString(dict, "outcome", null)
+            };
+
+            if (dict.TryGetValue("boolean_value", out var boolVal) && boolVal is bool b)
+            {
+                criteria.BooleanValue = b;
+            }
+
+            if (dict.TryGetValue("selection_ids", out var selObj) && selObj is List<object> selList)
+            {
+                criteria.SelectionIds = new List<string>();
+                foreach (var s in selList) if (s != null) criteria.SelectionIds.Add(s.ToString());
+            }
+
+            if (dict.TryGetValue("ordered_ids", out var ordObj) && ordObj is List<object> ordList)
+            {
+                criteria.OrderedIds = new List<string>();
+                foreach (var o in ordList) if (o != null) criteria.OrderedIds.Add(o.ToString());
+            }
+
+            return criteria;
+        }
+
+        private static string GetString(Dictionary<string, object> dict, string key, string fallback = null)
+        {
+            if (dict.TryGetValue(key, out var val) && val != null)
+                return val.ToString();
+            return fallback;
+        }
+
+        private static double GetDouble(Dictionary<string, object> dict, string key, double fallback = 0.0)
+        {
+            if (dict.TryGetValue(key, out var val) && val != null)
+            {
+                if (val is double d) return d;
+                if (val is int i) return i;
+                if (val is long l) return l;
+                if (double.TryParse(val.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double parsed))
+                    return parsed;
+            }
+            return fallback;
+        }
+
+        private static bool GetBool(Dictionary<string, object> dict, string key, bool fallback = false)
+        {
+            if (dict.TryGetValue(key, out var val) && val != null)
+            {
+                if (val is bool b) return b;
+                if (bool.TryParse(val.ToString(), out bool parsed)) return parsed;
+            }
+            return fallback;
+        }
+
+        /// <summary>
+        /// Factory returning the Fire &amp; Explosion Response scoring rubric loaded from bundled assets.
         /// </summary>
         public static RubricDefinition CreateFireExplosionRubric()
         {
-            return new RubricDefinition
-            {
-                SchemaVersion = "1.0.0",
-                ModuleId = "fire-explosion-response",
-                ContentVersion = "1.0.0",
-                PassPercent = 70.00f,
-                MaxScore = 100.00f,
-                Rules = new List<RubricRule>
-                {
-                    // Step 1: Detect Hazard (+5)
-                    new RubricRule
-                    {
-                        RuleId = "rule_detect_hazard",
-                        StepId = "step_detect_hazard",
-                        Required = true,
-                        EventType = "step_completed",
-                        Match = new RuleMatchCriteria { ActionId = "detect_hazard_acknowledged", Outcome = "success" },
-                        Points = 5.00f,
-                        AwardLimit = 1,
-                        PenaltyPoints = 0.00f
-                    },
-                    // Step 2: Identify Hazard (+15, -5 on failure)
-                    new RubricRule
-                    {
-                        RuleId = "rule_identify_hazard",
-                        StepId = "step_identify_hazard",
-                        Required = true,
-                        EventType = "hazard_identified",
-                        Match = new RuleMatchCriteria { TargetId = "hazard_electrical_conveyor_fire", Outcome = "success" },
-                        Points = 15.00f,
-                        AwardLimit = 1,
-                        PenaltyPoints = 5.00f,
-                        PenaltyEventType = "hazard_identified",
-                        PenaltyMatch = new RuleMatchCriteria { Outcome = "failure" }
-                    },
-                    // Step 3: Raise Alarm (+15)
-                    new RubricRule
-                    {
-                        RuleId = "rule_raise_alarm",
-                        StepId = "step_raise_alarm",
-                        Required = true,
-                        EventType = "alarm_raised",
-                        Match = new RuleMatchCriteria { ActionId = "manual_call_point_activated", Outcome = "success" },
-                        Points = 15.00f,
-                        AwardLimit = 1,
-                        PenaltyPoints = 0.00f
-                    },
-                    // Step 4: Select Extinguisher (+15, -5 on failure)
-                    new RubricRule
-                    {
-                        RuleId = "rule_select_extinguisher",
-                        StepId = "step_select_extinguisher",
-                        Required = true,
-                        EventType = "extinguisher_selected",
-                        Match = new RuleMatchCriteria { TargetId = "extinguisher_co2", Outcome = "success" },
-                        Points = 15.00f,
-                        AwardLimit = 1,
-                        PenaltyPoints = 5.00f,
-                        PenaltyEventType = "extinguisher_selected",
-                        PenaltyMatch = new RuleMatchCriteria { Outcome = "failure" }
-                    },
-                    // Step 5: Maintain Safe Distance (+10)
-                    new RubricRule
-                    {
-                        RuleId = "rule_maintain_distance",
-                        StepId = "step_maintain_distance",
-                        Required = true,
-                        EventType = "decision_made",
-                        Match = new RuleMatchCriteria { DecisionId = "standoff_distance_2m_maintained", Outcome = "success" },
-                        Points = 10.00f,
-                        AwardLimit = 1,
-                        PenaltyPoints = 0.00f
-                    },
-                    // Step 6: Use Extinguisher / PASS (+15, -5 on failure)
-                    new RubricRule
-                    {
-                        RuleId = "rule_use_extinguisher",
-                        StepId = "step_use_extinguisher",
-                        Required = true,
-                        EventType = "extinguisher_used",
-                        Match = new RuleMatchCriteria { ActionId = "pass_procedure_completed", Outcome = "success" },
-                        Points = 15.00f,
-                        AwardLimit = 1,
-                        PenaltyPoints = 5.00f,
-                        PenaltyEventType = "extinguisher_used",
-                        PenaltyMatch = new RuleMatchCriteria { Outcome = "failure" }
-                    },
-                    // Step 7: Identify Emergency Exit (+10)
-                    new RubricRule
-                    {
-                        RuleId = "rule_identify_exit",
-                        StepId = "step_identify_exit",
-                        Required = true,
-                        EventType = "exit_marked",
-                        Match = new RuleMatchCriteria { TargetId = "exit_emergency_sector_b", Outcome = "success" },
-                        Points = 10.00f,
-                        AwardLimit = 1,
-                        PenaltyPoints = 0.00f
-                    },
-                    // Step 8: Evacuation Route (+10, -5 on failure)
-                    new RubricRule
-                    {
-                        RuleId = "rule_evacuate_route",
-                        StepId = "step_evacuate_route",
-                        Required = true,
-                        EventType = "evacuation_sequence_submitted",
-                        Match = new RuleMatchCriteria { Outcome = "success" },
-                        Points = 10.00f,
-                        AwardLimit = 1,
-                        PenaltyPoints = 5.00f,
-                        PenaltyEventType = "evacuation_sequence_submitted",
-                        PenaltyMatch = new RuleMatchCriteria { Outcome = "failure" }
-                    },
-                    // Step 9: Reach Assembly Point (+5)
-                    new RubricRule
-                    {
-                        RuleId = "rule_reach_assembly",
-                        StepId = "step_reach_assembly",
-                        Required = true,
-                        EventType = "assembly_reached",
-                        Match = new RuleMatchCriteria { TargetId = "assembly_muster_point_alpha", Outcome = "success" },
-                        Points = 5.00f,
-                        AwardLimit = 1,
-                        PenaltyPoints = 0.00f
-                    }
-                }
-            };
+            return RubricLoader.LoadFireExplosionRubric();
         }
     }
 
@@ -564,6 +568,507 @@ namespace IndustrialSafetyAR.Assessment
             }
 
             return vm;
+        }
+    }
+
+    /// <summary>
+    /// Contract for loading training module scoring rubrics from bundled or external assets.
+    /// Pure C# interface decoupled from UnityEngine.
+    /// </summary>
+    public interface IRubricProvider
+    {
+        RubricDefinition LoadRubric(string moduleId = RubricLoader.FireModuleId);
+    }
+
+    /// <summary>
+    /// Clean runtime loader and resolver for module rubrics.
+    /// Handles disk loading from bundled assets and provides an offline-safe fallback
+    /// with zero network requirements and zero UnityEngine dependencies.
+    /// </summary>
+    public static class RubricLoader
+    {
+        public const string FireModuleId = "fire-explosion-response";
+
+        /// <summary>
+        /// Optional override path for testing or dynamic loading.
+        /// </summary>
+        public static string CustomRubricPath { get; set; }
+
+        /// <summary>
+        /// Loads the Fire &amp; Explosion rubric from local bundled assets.
+        /// </summary>
+        public static RubricDefinition LoadFireExplosionRubric()
+        {
+            return LoadRubric(FireModuleId);
+        }
+
+        /// <summary>
+        /// Loads a rubric by module identifier from local bundled assets.
+        /// </summary>
+        public static RubricDefinition LoadRubric(string moduleId = FireModuleId)
+        {
+            string filePath = ResolveRubricFilePath(moduleId);
+            if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
+            {
+                try
+                {
+                    string json = File.ReadAllText(filePath);
+                    return RubricDefinition.FromJson(json);
+                }
+                catch
+                {
+                    // Fall back to bundled JSON on disk read failure
+                }
+            }
+
+            if (string.Equals(moduleId, FireModuleId, StringComparison.OrdinalIgnoreCase))
+            {
+                return RubricDefinition.FromJson(BundledFireRubricJson);
+            }
+
+            throw new FileNotFoundException($"Could not load rubric for module '{moduleId}' from assets or bundled fallback.");
+        }
+
+        /// <summary>
+        /// Loads a rubric directly from an explicit file path.
+        /// </summary>
+        public static RubricDefinition LoadFromFile(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath))
+                throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
+            if (!File.Exists(filePath))
+                throw new FileNotFoundException($"Rubric file not found at: {filePath}", filePath);
+
+            string json = File.ReadAllText(filePath);
+            return RubricDefinition.FromJson(json);
+        }
+
+        /// <summary>
+        /// Resolves the filesystem path to the bundled rubric file for a given module.
+        /// Searches project root, current directory, AppDomain base, and parent directories.
+        /// </summary>
+        public static string ResolveRubricFilePath(string moduleId = FireModuleId)
+        {
+            if (!string.IsNullOrEmpty(CustomRubricPath) && File.Exists(CustomRubricPath))
+            {
+                return CustomRubricPath;
+            }
+
+            string relPath1 = Path.Combine("Assets", "Content", "Modules", moduleId, "rubric.json");
+            string relPath2 = Path.Combine("worker-app", "Assets", "Content", "Modules", moduleId, "rubric.json");
+
+            // Check current working directory
+            string cwd = Directory.GetCurrentDirectory();
+            if (!string.IsNullOrEmpty(cwd))
+            {
+                string p1 = Path.Combine(cwd, relPath1);
+                if (File.Exists(p1)) return p1;
+                string p2 = Path.Combine(cwd, relPath2);
+                if (File.Exists(p2)) return p2;
+
+                var dir = new DirectoryInfo(cwd);
+                for (int i = 0; i < 6 && dir != null; i++)
+                {
+                    string check1 = Path.Combine(dir.FullName, relPath1);
+                    if (File.Exists(check1)) return check1;
+                    string check2 = Path.Combine(dir.FullName, relPath2);
+                    if (File.Exists(check2)) return check2;
+                    dir = dir.Parent;
+                }
+            }
+
+            // Check AppDomain BaseDirectory
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            if (!string.IsNullOrEmpty(baseDir))
+            {
+                string b1 = Path.Combine(baseDir, relPath1);
+                if (File.Exists(b1)) return b1;
+                string b2 = Path.Combine(baseDir, relPath2);
+                if (File.Exists(b2)) return b2;
+
+                var dir = new DirectoryInfo(baseDir);
+                for (int i = 0; i < 6 && dir != null; i++)
+                {
+                    string check1 = Path.Combine(dir.FullName, relPath1);
+                    if (File.Exists(check1)) return check1;
+                    string check2 = Path.Combine(dir.FullName, relPath2);
+                    if (File.Exists(check2)) return check2;
+                    dir = dir.Parent;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Offline-bundled exact copy of worker-app/Assets/Content/Modules/fire-explosion-response/rubric.json.
+        /// Guarantees offline availability when filesystem access is restricted (e.g. mobile player sandbox).
+        /// </summary>
+        public const string BundledFireRubricJson = @"{
+  ""schema_version"": ""1.0.0"",
+  ""module_id"": ""fire-explosion-response"",
+  ""content_version"": ""1.0.0"",
+  ""pass_percent"": 70.00,
+  ""max_score"": 100.00,
+  ""rules"": [
+    {
+      ""rule_id"": ""rule_detect_hazard"",
+      ""step_id"": ""step_detect_hazard"",
+      ""required"": true,
+      ""event_type"": ""step_completed"",
+      ""match"": {
+        ""action_id"": ""detect_hazard_acknowledged"",
+        ""outcome"": ""success""
+      },
+      ""points"": 5.00,
+      ""award_limit"": 1,
+      ""penalty_points"": 0.00
+    },
+    {
+      ""rule_id"": ""rule_identify_hazard"",
+      ""step_id"": ""step_identify_hazard"",
+      ""required"": true,
+      ""event_type"": ""hazard_identified"",
+      ""match"": {
+        ""target_id"": ""hazard_electrical_conveyor_fire"",
+        ""outcome"": ""success""
+      },
+      ""points"": 15.00,
+      ""award_limit"": 1,
+      ""penalty_points"": 5.00,
+      ""penalty_event_type"": ""hazard_identified"",
+      ""penalty_match"": {
+        ""outcome"": ""failure""
+      }
+    },
+    {
+      ""rule_id"": ""rule_raise_alarm"",
+      ""step_id"": ""step_raise_alarm"",
+      ""required"": true,
+      ""event_type"": ""alarm_raised"",
+      ""match"": {
+        ""action_id"": ""manual_call_point_activated"",
+        ""outcome"": ""success""
+      },
+      ""points"": 15.00,
+      ""award_limit"": 1,
+      ""penalty_points"": 0.00
+    },
+    {
+      ""rule_id"": ""rule_select_extinguisher"",
+      ""step_id"": ""step_select_extinguisher"",
+      ""required"": true,
+      ""event_type"": ""extinguisher_selected"",
+      ""match"": {
+        ""target_id"": ""extinguisher_co2"",
+        ""outcome"": ""success""
+      },
+      ""points"": 15.00,
+      ""award_limit"": 1,
+      ""penalty_points"": 5.00,
+      ""penalty_event_type"": ""extinguisher_selected"",
+      ""penalty_match"": {
+        ""outcome"": ""failure""
+      }
+    },
+    {
+      ""rule_id"": ""rule_maintain_distance"",
+      ""step_id"": ""step_maintain_distance"",
+      ""required"": true,
+      ""event_type"": ""decision_made"",
+      ""match"": {
+        ""decision_id"": ""standoff_distance_2m_maintained"",
+        ""outcome"": ""success""
+      },
+      ""points"": 10.00,
+      ""award_limit"": 1,
+      ""penalty_points"": 0.00
+    },
+    {
+      ""rule_id"": ""rule_use_extinguisher"",
+      ""step_id"": ""step_use_extinguisher"",
+      ""required"": true,
+      ""event_type"": ""extinguisher_used"",
+      ""match"": {
+        ""action_id"": ""pass_procedure_completed"",
+        ""outcome"": ""success""
+      },
+      ""points"": 15.00,
+      ""award_limit"": 1,
+      ""penalty_points"": 5.00,
+      ""penalty_event_type"": ""extinguisher_used"",
+      ""penalty_match"": {
+        ""outcome"": ""failure""
+      }
+    },
+    {
+      ""rule_id"": ""rule_identify_exit"",
+      ""step_id"": ""step_identify_exit"",
+      ""required"": true,
+      ""event_type"": ""exit_marked"",
+      ""match"": {
+        ""target_id"": ""exit_emergency_sector_b"",
+        ""outcome"": ""success""
+      },
+      ""points"": 10.00,
+      ""award_limit"": 1,
+      ""penalty_points"": 0.00
+    },
+    {
+      ""rule_id"": ""rule_evacuate_route"",
+      ""step_id"": ""step_evacuate_route"",
+      ""required"": true,
+      ""event_type"": ""evacuation_sequence_submitted"",
+      ""match"": {
+        ""outcome"": ""success""
+      },
+      ""points"": 10.00,
+      ""award_limit"": 1,
+      ""penalty_points"": 5.00,
+      ""penalty_event_type"": ""evacuation_sequence_submitted"",
+      ""penalty_match"": {
+        ""outcome"": ""failure""
+      }
+    },
+    {
+      ""rule_id"": ""rule_reach_assembly"",
+      ""step_id"": ""step_reach_assembly"",
+      ""required"": true,
+      ""event_type"": ""assembly_reached"",
+      ""match"": {
+        ""target_id"": ""assembly_muster_point_alpha"",
+        ""outcome"": ""success""
+      },
+      ""points"": 5.00,
+      ""award_limit"": 1,
+      ""penalty_points"": 0.00
+    }
+  ]
+}";
+    }
+
+    /// <summary>
+    /// Default implementation of IRubricProvider that loads bundled offline rubrics.
+    /// </summary>
+    public class BundledRubricProvider : IRubricProvider
+    {
+        public RubricDefinition LoadRubric(string moduleId = RubricLoader.FireModuleId)
+        {
+            return RubricLoader.LoadRubric(moduleId);
+        }
+    }
+
+    /// <summary>
+    /// Minimal, zero-dependency JSON parser for rubric definitions.
+    /// Pure C# standard library only, completely independent of UnityEngine,
+    /// Newtonsoft.Json, or System.Text.Json.
+    /// </summary>
+    internal static class SimpleJsonParser
+    {
+        public static object Parse(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return null;
+            int idx = 0;
+            return ParseValue(json, ref idx);
+        }
+
+        private static void SkipWhitespace(string s, ref int idx)
+        {
+            while (idx < s.Length && char.IsWhiteSpace(s[idx]))
+                idx++;
+        }
+
+        private static object ParseValue(string s, ref int idx)
+        {
+            SkipWhitespace(s, ref idx);
+            if (idx >= s.Length) return null;
+
+            char c = s[idx];
+            if (c == '{') return ParseObject(s, ref idx);
+            if (c == '[') return ParseArray(s, ref idx);
+            if (c == '"') return ParseString(s, ref idx);
+            if (c == 't' || c == 'T' || c == 'f' || c == 'F') return ParseBool(s, ref idx);
+            if (c == 'n' || c == 'N') return ParseNull(s, ref idx);
+            if (c == '-' || (c >= '0' && c <= '9')) return ParseNumber(s, ref idx);
+
+            throw new FormatException($"Unexpected character '{c}' at position {idx}");
+        }
+
+        private static Dictionary<string, object> ParseObject(string s, ref int idx)
+        {
+            var dict = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            idx++; // consume '{'
+
+            while (idx < s.Length)
+            {
+                SkipWhitespace(s, ref idx);
+                if (idx >= s.Length) throw new FormatException("Unterminated object in JSON");
+                if (s[idx] == '}')
+                {
+                    idx++;
+                    return dict;
+                }
+
+                if (s[idx] != '"')
+                    throw new FormatException($"Expected string key at position {idx}, got '{s[idx]}'");
+
+                string key = ParseString(s, ref idx);
+
+                SkipWhitespace(s, ref idx);
+                if (idx >= s.Length || s[idx] != ':')
+                    throw new FormatException($"Expected ':' at position {idx}");
+                idx++; // consume ':'
+
+                object val = ParseValue(s, ref idx);
+                dict[key] = val;
+
+                SkipWhitespace(s, ref idx);
+                if (idx >= s.Length) throw new FormatException("Unterminated object in JSON");
+                if (s[idx] == ',')
+                {
+                    idx++;
+                }
+                else if (s[idx] == '}')
+                {
+                    idx++;
+                    return dict;
+                }
+                else
+                {
+                    throw new FormatException($"Expected ',' or '}}' at position {idx}, got '{s[idx]}'");
+                }
+            }
+
+            throw new FormatException("Unterminated object in JSON");
+        }
+
+        private static List<object> ParseArray(string s, ref int idx)
+        {
+            var list = new List<object>();
+            idx++; // consume '['
+
+            while (idx < s.Length)
+            {
+                SkipWhitespace(s, ref idx);
+                if (idx >= s.Length) throw new FormatException("Unterminated array in JSON");
+                if (s[idx] == ']')
+                {
+                    idx++;
+                    return list;
+                }
+
+                object val = ParseValue(s, ref idx);
+                list.Add(val);
+
+                SkipWhitespace(s, ref idx);
+                if (idx >= s.Length) throw new FormatException("Unterminated array in JSON");
+                if (s[idx] == ',')
+                {
+                    idx++;
+                }
+                else if (s[idx] == ']')
+                {
+                    idx++;
+                    return list;
+                }
+                else
+                {
+                    throw new FormatException($"Expected ',' or ']' at position {idx}, got '{s[idx]}'");
+                }
+            }
+
+            throw new FormatException("Unterminated array in JSON");
+        }
+
+        private static string ParseString(string s, ref int idx)
+        {
+            idx++; // consume opening '"'
+            var sb = new StringBuilder();
+
+            while (idx < s.Length)
+            {
+                char c = s[idx++];
+                if (c == '"')
+                {
+                    return sb.ToString();
+                }
+                if (c == '\\')
+                {
+                    if (idx >= s.Length) throw new FormatException("Incomplete escape sequence in JSON string");
+                    char esc = s[idx++];
+                    switch (esc)
+                    {
+                        case '"': sb.Append('"'); break;
+                        case '\\': sb.Append('\\'); break;
+                        case '/': sb.Append('/'); break;
+                        case 'b': sb.Append('\b'); break;
+                        case 'f': sb.Append('\f'); break;
+                        case 'n': sb.Append('\n'); break;
+                        case 'r': sb.Append('\r'); break;
+                        case 't': sb.Append('\t'); break;
+                        case 'u':
+                            if (idx + 4 > s.Length) throw new FormatException("Incomplete unicode escape in JSON string");
+                            string hex = s.Substring(idx, 4);
+                            sb.Append((char)int.Parse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture));
+                            idx += 4;
+                            break;
+                        default:
+                            sb.Append(esc);
+                            break;
+                    }
+                }
+                else
+                {
+                    sb.Append(c);
+                }
+            }
+
+            throw new FormatException("Unterminated string in JSON");
+        }
+
+        private static bool ParseBool(string s, ref int idx)
+        {
+            if (idx + 4 <= s.Length && string.Equals(s.Substring(idx, 4), "true", StringComparison.OrdinalIgnoreCase))
+            {
+                idx += 4;
+                return true;
+            }
+            if (idx + 5 <= s.Length && string.Equals(s.Substring(idx, 5), "false", StringComparison.OrdinalIgnoreCase))
+            {
+                idx += 5;
+                return false;
+            }
+            throw new FormatException($"Invalid boolean at position {idx}");
+        }
+
+        private static object ParseNull(string s, ref int idx)
+        {
+            if (idx + 4 <= s.Length && string.Equals(s.Substring(idx, 4), "null", StringComparison.OrdinalIgnoreCase))
+            {
+                idx += 4;
+                return null;
+            }
+            throw new FormatException($"Invalid null token at position {idx}");
+        }
+
+        private static double ParseNumber(string s, ref int idx)
+        {
+            int start = idx;
+            if (s[idx] == '-') idx++;
+            while (idx < s.Length && ((s[idx] >= '0' && s[idx] <= '9') || s[idx] == '.' || s[idx] == 'e' || s[idx] == 'E' || s[idx] == '+' || s[idx] == '-'))
+            {
+                if ((s[idx] == '+' || s[idx] == '-') && idx > start && s[idx - 1] != 'e' && s[idx - 1] != 'E')
+                    break;
+                idx++;
+            }
+
+            string numStr = s.Substring(start, idx - start);
+            if (double.TryParse(numStr, NumberStyles.Float, CultureInfo.InvariantCulture, out double result))
+            {
+                return result;
+            }
+
+            throw new FormatException($"Invalid number '{numStr}' at position {start}");
         }
     }
 }

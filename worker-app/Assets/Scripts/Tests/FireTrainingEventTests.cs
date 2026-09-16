@@ -93,6 +93,11 @@ namespace IndustrialSafetyAR.Tests
             allPassed &= RunTest("CompletedTrainingAttemptMatchesAttemptSchemaJson", Test_CompletedTrainingAttemptMatchesAttemptSchemaJson, logMessages);
             allPassed &= RunTest("AssemblyPoint_PrematureAndDuplicateSubmissionsStrictlyRejected", Test_AssemblyPoint_PrematureAndDuplicateSubmissionsStrictlyRejected, logMessages);
             allPassed &= RunTest("Retake_EnsuresZeroIdReuseAndCleanStateReset", Test_Retake_EnsuresZeroIdReuseAndCleanStateReset, logMessages);
+            allPassed &= RunTest("Workflow_DefaultWorkerId_IsValidNonEmptyUuid", Test_Workflow_DefaultWorkerId_IsValidNonEmptyUuid, logMessages);
+            allPassed &= RunTest("RubricLoader_LoadsBundledFireRubric", Test_RubricLoader_LoadsBundledFireRubric, logMessages);
+            allPassed &= RunTest("LoadedFireRubric_IdentityAndVersion", Test_LoadedFireRubric_IdentityAndVersion, logMessages);
+            allPassed &= RunTest("LoadedFireRubric_AllNineRulesAvailableAndConfigured", Test_LoadedFireRubric_AllNineRulesAvailableAndConfigured, logMessages);
+            allPassed &= RunTest("Workflow_UsesLoadedRubricForEvaluation", Test_Workflow_UsesLoadedRubricForEvaluation, logMessages);
 
             return allPassed;
         }
@@ -2741,6 +2746,261 @@ namespace IndustrialSafetyAR.Tests
                 if (!Guid.TryParse(id, out var g) || g == Guid.Empty)
                     throw new Exception($"Attempt ID '{id}' is not a valid GUID");
             }
+        }
+
+        public static void Test_Workflow_DefaultWorkerId_IsValidNonEmptyUuid()
+        {
+            var workflow = new FireTrainingWorkflow();
+
+            // 1. WorkerId must not be null or empty
+            if (string.IsNullOrEmpty(workflow.WorkerId))
+                throw new Exception("Default WorkerId must not be null or empty");
+
+            // 2. WorkerId must be a valid non-empty GUID
+            if (!Guid.TryParse(workflow.WorkerId, out var workerGuid) || workerGuid == Guid.Empty)
+                throw new Exception($"Default WorkerId '{workflow.WorkerId}' is not a valid non-empty UUID");
+
+            // 3. Must match DefaultOfflineWorkerId
+            if (workflow.WorkerId != FireTrainingWorkflow.DefaultOfflineWorkerId)
+                throw new Exception($"WorkerId '{workflow.WorkerId}' does not match DefaultOfflineWorkerId '{FireTrainingWorkflow.DefaultOfflineWorkerId}'");
+
+            // 4. Must match attempt.schema.json format (36 chars, 4 hyphens, lowercase hex)
+            if (workflow.WorkerId.Length != 36)
+                throw new Exception($"WorkerId '{workflow.WorkerId}' must be exactly 36 characters");
+
+            // 5. Complete an attempt and verify the generated TrainingAttempt retains the valid UUID
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+            workflow.ConfirmHazardDetected(bus, out _);
+            workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            workflow.SubmitDistanceDecision(2.5f, bus, out _);
+            workflow.SubmitPullPin(bus, out _);
+            workflow.SubmitAim(bus, out _);
+            workflow.SubmitSqueeze(bus, out _);
+            workflow.SubmitSweep(bus, out _);
+            workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            if (workflow.LatestAttempt == null)
+                throw new Exception("Workflow failed to produce LatestAttempt");
+
+            if (workflow.LatestAttempt.WorkerId != FireTrainingWorkflow.DefaultOfflineWorkerId)
+                throw new Exception($"Attempt WorkerId '{workflow.LatestAttempt.WorkerId}' does not match DefaultOfflineWorkerId");
+
+            if (!Guid.TryParse(workflow.LatestAttempt.WorkerId, out var attemptWorkerGuid) || attemptWorkerGuid == Guid.Empty)
+                throw new Exception($"Attempt WorkerId '{workflow.LatestAttempt.WorkerId}' is not a valid UUID");
+        }
+
+        public static void Test_RubricLoader_LoadsBundledFireRubric()
+        {
+            // 1. Load via RubricLoader static method
+            var rubric = RubricLoader.LoadFireExplosionRubric();
+            if (rubric == null)
+                throw new Exception("RubricLoader.LoadFireExplosionRubric() returned null");
+
+            // 2. Load via IRubricProvider interface
+            IRubricProvider provider = new BundledRubricProvider();
+            var rubricFromProvider = provider.LoadRubric(RubricLoader.FireModuleId);
+            if (rubricFromProvider == null)
+                throw new Exception("BundledRubricProvider.LoadRubric() returned null");
+
+            // 3. Test FromJson directly on bundled JSON string
+            var fromJson = RubricDefinition.FromJson(RubricLoader.BundledFireRubricJson);
+            if (fromJson == null)
+                throw new Exception("RubricDefinition.FromJson(BundledFireRubricJson) returned null");
+
+            // 4. Test loading from resolved file path if present on disk
+            string resolvedPath = RubricLoader.ResolveRubricFilePath(RubricLoader.FireModuleId);
+            if (!string.IsNullOrEmpty(resolvedPath) && System.IO.File.Exists(resolvedPath))
+            {
+                var fromFile = RubricLoader.LoadFromFile(resolvedPath);
+                if (fromFile == null)
+                    throw new Exception($"RubricLoader.LoadFromFile('{resolvedPath}') returned null");
+                if (fromFile.ModuleId != "fire-explosion-response")
+                    throw new Exception($"FromFile ModuleId mismatch: {fromFile.ModuleId}");
+            }
+
+            // 5. Test error handling for invalid/empty JSON
+            try
+            {
+                RubricDefinition.FromJson("");
+                throw new Exception("Expected ArgumentException on empty JSON, but none was thrown");
+            }
+            catch (ArgumentException)
+            {
+                // expected
+            }
+        }
+
+        public static void Test_LoadedFireRubric_IdentityAndVersion()
+        {
+            var rubric = RubricLoader.LoadFireExplosionRubric();
+
+            // 1. Schema version
+            if (rubric.SchemaVersion != "1.0.0")
+                throw new Exception($"SchemaVersion mismatch: expected '1.0.0', got '{rubric.SchemaVersion}'");
+
+            // 2. Module identity
+            if (rubric.ModuleId != "fire-explosion-response")
+                throw new Exception($"ModuleId mismatch: expected 'fire-explosion-response', got '{rubric.ModuleId}'");
+
+            // 3. Content version
+            if (rubric.ContentVersion != "1.0.0")
+                throw new Exception($"ContentVersion mismatch: expected '1.0.0', got '{rubric.ContentVersion}'");
+
+            // 4. Pass percent
+            if (Math.Abs(rubric.PassPercent - 70.00f) > 0.001f)
+                throw new Exception($"PassPercent mismatch: expected 70.00, got {rubric.PassPercent}");
+
+            // 5. Max score
+            if (Math.Abs(rubric.MaxScore - 100.00f) > 0.001f)
+                throw new Exception($"MaxScore mismatch: expected 100.00, got {rubric.MaxScore}");
+        }
+
+        public static void Test_LoadedFireRubric_AllNineRulesAvailableAndConfigured()
+        {
+            var rubric = RubricLoader.LoadFireExplosionRubric();
+
+            if (rubric.Rules == null)
+                throw new Exception("rubric.Rules must not be null");
+
+            // Verify exactly 9 rules
+            if (rubric.Rules.Count != 9)
+                throw new Exception($"Expected 9 rules in rubric, found {rubric.Rules.Count}");
+
+            // Expected 9 rules specification: (ruleId, stepId, required, eventType, points, penaltyPoints)
+            var expectedRules = new (string ruleId, string stepId, bool required, string eventType, float points, float penaltyPoints)[]
+            {
+                ("rule_detect_hazard", "step_detect_hazard", true, "step_completed", 5.00f, 0.00f),
+                ("rule_identify_hazard", "step_identify_hazard", true, "hazard_identified", 15.00f, 5.00f),
+                ("rule_raise_alarm", "step_raise_alarm", true, "alarm_raised", 15.00f, 0.00f),
+                ("rule_select_extinguisher", "step_select_extinguisher", true, "extinguisher_selected", 15.00f, 5.00f),
+                ("rule_maintain_distance", "step_maintain_distance", true, "decision_made", 10.00f, 0.00f),
+                ("rule_use_extinguisher", "step_use_extinguisher", true, "extinguisher_used", 15.00f, 5.00f),
+                ("rule_identify_exit", "step_identify_exit", true, "exit_marked", 10.00f, 0.00f),
+                ("rule_evacuate_route", "step_evacuate_route", true, "evacuation_sequence_submitted", 10.00f, 5.00f),
+                ("rule_reach_assembly", "step_reach_assembly", true, "assembly_reached", 5.00f, 0.00f),
+            };
+
+            float totalAvailablePoints = 0f;
+
+            for (int i = 0; i < expectedRules.Length; i++)
+            {
+                var exp = expectedRules[i];
+                var rule = rubric.Rules.Find(r => r.RuleId == exp.ruleId);
+                if (rule == null)
+                    throw new Exception($"Rule '{exp.ruleId}' is missing from loaded rubric");
+
+                if (rule.StepId != exp.stepId)
+                    throw new Exception($"Rule '{exp.ruleId}' step_id mismatch: expected '{exp.stepId}', got '{rule.StepId}'");
+
+                if (rule.Required != exp.required)
+                    throw new Exception($"Rule '{exp.ruleId}' required mismatch: expected {exp.required}, got {rule.Required}");
+
+                if (rule.EventType != exp.eventType)
+                    throw new Exception($"Rule '{exp.ruleId}' event_type mismatch: expected '{exp.eventType}', got '{rule.EventType}'");
+
+                if (Math.Abs(rule.Points - exp.points) > 0.001f)
+                    throw new Exception($"Rule '{exp.ruleId}' points mismatch: expected {exp.points}, got {rule.Points}");
+
+                if (Math.Abs(rule.PenaltyPoints - exp.penaltyPoints) > 0.001f)
+                    throw new Exception($"Rule '{exp.ruleId}' penalty_points mismatch: expected {exp.penaltyPoints}, got {rule.PenaltyPoints}");
+
+                if (rule.AwardLimit != 1)
+                    throw new Exception($"Rule '{exp.ruleId}' award_limit mismatch: expected 1, got {rule.AwardLimit}");
+
+                if (rule.Match == null)
+                    throw new Exception($"Rule '{exp.ruleId}' match criteria must not be null");
+
+                if (exp.penaltyPoints > 0f && rule.PenaltyMatch == null)
+                    throw new Exception($"Rule '{exp.ruleId}' has penalties but penalty_match criteria is null");
+
+                totalAvailablePoints += rule.Points;
+            }
+
+            if (Math.Abs(totalAvailablePoints - rubric.MaxScore) > 0.001f)
+                throw new Exception($"Sum of rule points ({totalAvailablePoints}) does not equal MaxScore ({rubric.MaxScore})");
+        }
+
+        public static void Test_Workflow_UsesLoadedRubricForEvaluation()
+        {
+            // 1. Verify workflow automatically binds the loaded rubric upon construction
+            var workflow = new FireTrainingWorkflow();
+            if (workflow.BoundRubric == null)
+                throw new Exception("Workflow.BoundRubric must be automatically bound on construction");
+
+            if (workflow.BoundRubric.ModuleId != "fire-explosion-response")
+                throw new Exception($"BoundRubric ModuleId mismatch: {workflow.BoundRubric.ModuleId}");
+
+            if (workflow.BoundRubric.Rules.Count != 9)
+                throw new Exception($"BoundRubric Rules count mismatch: {workflow.BoundRubric.Rules.Count}");
+
+            // 2. Explicitly bind loaded rubric from provider
+            var provider = new BundledRubricProvider();
+            var loadedRubric = provider.LoadRubric("fire-explosion-response");
+            workflow.BindRubric(loadedRubric);
+
+            if (!object.ReferenceEquals(workflow.BoundRubric, loadedRubric))
+                throw new Exception("BindRubric did not update BoundRubric reference");
+
+            // 3. Execute scenario with 2 penalties to verify evaluation executes against loaded rubric
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+            workflow.ConfirmHazardDetected(bus, out _);
+            // Incur penalty 1: wrong hazard identification (-5)
+            workflow.SubmitHazardIdentification("hazard_chemical_spill", bus, out _);
+            workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            // Incur penalty 2: wrong extinguisher selection (-5)
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherWater, bus, out _);
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            workflow.SubmitDistanceDecision(2.5f, bus, out _);
+            workflow.SubmitPullPin(bus, out _);
+            workflow.SubmitAim(bus, out _);
+            workflow.SubmitSqueeze(bus, out _);
+            workflow.SubmitSweep(bus, out _);
+            workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            // 4. Verify evaluation results match loaded rubric calculations
+            var assessment = workflow.LatestAssessment;
+            if (assessment == null)
+                throw new Exception("AssessmentResult was not produced");
+
+            if (assessment.RuleResults.Count != 9)
+                throw new Exception($"Expected 9 rule evaluation results, got {assessment.RuleResults.Count}");
+
+            // Net score should be 100 - 5 - 5 = 90.00
+            if (Math.Abs(assessment.ClientScore - 90.00f) > 0.001f)
+                throw new Exception($"ClientScore was {assessment.ClientScore}, expected 90.00");
+
+            if (!assessment.Passed)
+                throw new Exception("Assessment should be PASSED with 90% score");
+
+            if (Math.Abs(assessment.TotalPenalties - 10.00f) > 0.001f)
+                throw new Exception($"TotalPenalties was {assessment.TotalPenalties}, expected 10.00");
+
+            // 5. Verify the generated TrainingAttempt reflects the bound rubric schema & content version
+            var attempt = workflow.LatestAttempt;
+            if (attempt == null)
+                throw new Exception("LatestAttempt was not produced");
+
+            if (attempt.SchemaVersion != loadedRubric.SchemaVersion)
+                throw new Exception($"Attempt SchemaVersion '{attempt.SchemaVersion}' != rubric '{loadedRubric.SchemaVersion}'");
+
+            if (attempt.ContentVersion != loadedRubric.ContentVersion)
+                throw new Exception($"Attempt ContentVersion '{attempt.ContentVersion}' != rubric '{loadedRubric.ContentVersion}'");
         }
     }
 }
