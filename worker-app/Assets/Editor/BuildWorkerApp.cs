@@ -21,14 +21,16 @@ namespace IndustrialSafetyAR.Editor
             EditorApplication.delayCall += CheckTrigger;
         }
 
+        [MenuItem("Industrial Safety AR/Build Fire Training APK")]
         public static void PerformBuild()
         {
-            DoBuild("worker-app-clean-foundation.apk");
+            DoBuild("worker-app-clean-foundation.apk", autoRun: false);
         }
 
+        [MenuItem("Industrial Safety AR/Build and Run Fire Training APK")]
         public static void PerformBuildAndRun()
         {
-            DoBuild("worker-app-clean-foundation.apk");
+            DoBuild("worker-app-clean-foundation.apk", autoRun: true);
         }
 
         private static void CheckTrigger()
@@ -68,7 +70,7 @@ namespace IndustrialSafetyAR.Editor
             }
         }
 
-        private static void DoBuild(string targetApkName = "worker-app-clean-foundation.apk")
+        private static void DoBuild(string targetApkName = "worker-app-clean-foundation.apk", bool autoRun = false)
         {
             string projectRoot = Path.GetDirectoryName(Application.dataPath);
             string logPath = Path.Combine(projectRoot, "../builds/build_result.txt");
@@ -92,7 +94,7 @@ namespace IndustrialSafetyAR.Editor
                     scenes = new[] { "Assets/Scenes/SampleScene.unity" },
                     locationPathName = outputApk,
                     target = BuildTarget.Android,
-                    options = BuildOptions.None
+                    options = autoRun ? BuildOptions.AutoRunPlayer : BuildOptions.None
                 };
 
                 Debug.Log($"[BuildWorkerApp] Starting build to: {outputApk}");
