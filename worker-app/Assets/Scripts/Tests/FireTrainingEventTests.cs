@@ -61,6 +61,13 @@ namespace IndustrialSafetyAR.Tests
             allPassed &= RunTest("EvacuationRouteEventMatchesRubricSchema", Test_EvacuationRouteEventMatchesRubricSchema, logMessages);
             allPassed &= RunTest("Steps1To8EventOrdering", Test_Steps1To8EventOrdering, logMessages);
             allPassed &= RunTest("DuplicateEvacuationCompletionPrevented", Test_DuplicateEvacuationCompletionPrevented, logMessages);
+            allPassed &= RunTest("Step9CannotBeginBeforeStep8", Test_Step9CannotBeginBeforeStep8, logMessages);
+            allPassed &= RunTest("SuccessfulAssemblyPointIdentification", Test_SuccessfulAssemblyPointIdentification, logMessages);
+            allPassed &= RunTest("WrongAssemblyPointRejected", Test_WrongAssemblyPointRejected, logMessages);
+            allPassed &= RunTest("AssemblyPointEventMatchesRubricSchema", Test_AssemblyPointEventMatchesRubricSchema, logMessages);
+            allPassed &= RunTest("Step8ToStep9EventOrdering", Test_Step8ToStep9EventOrdering, logMessages);
+            allPassed &= RunTest("DuplicateAssemblyCompletionPrevented", Test_DuplicateAssemblyCompletionPrevented, logMessages);
+            allPassed &= RunTest("PrematureAssemblyPointActionRejected", Test_PrematureAssemblyPointActionRejected, logMessages);
 
             return allPassed;
         }
@@ -1300,6 +1307,185 @@ namespace IndustrialSafetyAR.Tests
             if (success) throw new Exception("Duplicate evacuation submission should be rejected");
             if (evt != null) throw new Exception("Duplicate call should not emit an event");
             if (bus.DispatchedEvents.Count != 0) throw new Exception("Duplicate call should not add events to bus");
+        }
+
+        public static void Test_Step9CannotBeginBeforeStep8()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.AwaitingEvacuationRoute);
+
+            bool success = workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out var evt);
+
+            if (success) throw new Exception("Assembly point identification should fail before Step 8 is completed");
+            if (evt != null) throw new Exception("Emitted event should be null when premature");
+            if (bus.DispatchedEvents.Count != 0) throw new Exception("No events should be dispatched to bus");
+            if (workflow.CurrentStage != FireWorkflowStage.AwaitingEvacuationRoute)
+                throw new Exception("Workflow stage should not change on rejected action");
+        }
+
+        public static void Test_SuccessfulAssemblyPointIdentification()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.RouteEvacuated);
+
+            bool success = workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out var evt);
+
+            if (!success) throw new Exception("Expected SubmitReachAssemblyPoint to succeed");
+            if (evt == null) throw new Exception("Emitted event should not be null");
+            if (evt.StepId != FireTrainingWorkflow.StepReachAssembly) throw new Exception($"StepId mismatch: {evt.StepId}");
+            if (evt.EventType != FireTrainingWorkflow.EventTypeAssemblyReached) throw new Exception($"EventType mismatch: {evt.EventType}");
+            if (evt.ActionId != FireTrainingWorkflow.ActionCompleteStep) throw new Exception($"ActionId mismatch: {evt.ActionId}");
+            if (evt.TargetId != FireTrainingWorkflow.TargetAssemblyMusterPoint) throw new Exception($"TargetId mismatch: {evt.TargetId}");
+            if (evt.Outcome != "success") throw new Exception($"Outcome mismatch: {evt.Outcome}");
+            if (workflow.CurrentStage != FireWorkflowStage.AssemblyPointReached)
+                throw new Exception($"Expected stage AssemblyPointReached, got {workflow.CurrentStage}");
+            if (bus.DispatchedEvents.Count != 1) throw new Exception("Bus should contain 1 dispatched event");
+        }
+
+        public static void Test_WrongAssemblyPointRejected()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.RouteEvacuated);
+
+            bool success = workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyPointBeta, bus, out var evt);
+
+            if (success) throw new Exception("Selecting non-designated assembly point should return false");
+            if (evt == null) throw new Exception("Failure event should be emitted for rubric grading");
+            if (evt.Outcome != "failure") throw new Exception($"Expected outcome failure, got {evt.Outcome}");
+            if (evt.TargetId != FireTrainingWorkflow.TargetAssemblyPointBeta) throw new Exception($"TargetId mismatch: {evt.TargetId}");
+            if (evt.GetPayloadValue("error") != "wrong_assembly_point") throw new Exception("Payload error code mismatch");
+            if (workflow.CurrentStage != FireWorkflowStage.RouteEvacuated)
+                throw new Exception($"Stage should remain RouteEvacuated, got {workflow.CurrentStage}");
+            if (bus.DispatchedEvents.Count != 1) throw new Exception("Failure event should be dispatched to bus");
+        }
+
+        public static void Test_AssemblyPointEventMatchesRubricSchema()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.RouteEvacuated);
+
+            bool success = workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out var evt);
+
+            if (!success) throw new Exception("SubmitReachAssemblyPoint failed");
+            if (evt.ModuleId != "fire-explosion-response") throw new Exception("ModuleId mismatch");
+            if (evt.ContentVersion != "1.0.0") throw new Exception("ContentVersion mismatch");
+            if (evt.StepId != "step_reach_assembly") throw new Exception("StepId mismatch");
+            if (evt.EventType != "assembly_reached") throw new Exception("EventType mismatch");
+            if (evt.ActionId != "complete_step") throw new Exception("ActionId mismatch");
+            if (evt.TargetId != "assembly_muster_point_alpha") throw new Exception("TargetId mismatch");
+            if (evt.Outcome != "success") throw new Exception("Outcome mismatch");
+            if (evt.GetPayloadValue("rule_id") != "rule_reach_assembly") throw new Exception("rule_id mismatch");
+            if (evt.GetPayloadValue("action_id") != "complete_step") throw new Exception("action_id mismatch");
+            if (evt.GetPayloadValue("target_id") != "assembly_muster_point_alpha") throw new Exception("target_id mismatch");
+            if (evt.GetPayloadValue("zone_type") != "emergency_assembly_area") throw new Exception("zone_type mismatch");
+            if (evt.GetPayloadValue("outcome") != "success") throw new Exception("outcome mismatch");
+        }
+
+        public static void Test_Step8ToStep9EventOrdering()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+
+            // Steps 1 to 8
+            if (!workflow.ConfirmHazardDetected(bus, out _)) throw new Exception("Step 1 failed");
+            if (!workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _)) throw new Exception("Step 2 failed");
+            if (!workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _)) throw new Exception("Step 3 failed");
+            if (!workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _)) throw new Exception("Step 4 failed");
+            if (!workflow.SubmitDistanceDecision(2.5f, bus, out _)) throw new Exception("Step 5 failed");
+            if (!workflow.SubmitPullPin(bus, out _)) throw new Exception("Step 6a failed");
+            if (!workflow.SubmitAim(bus, out _)) throw new Exception("Step 6b failed");
+            if (!workflow.SubmitSqueeze(bus, out _)) throw new Exception("Step 6c failed");
+            if (!workflow.SubmitSweep(bus, out _)) throw new Exception("Step 6d failed");
+            if (!workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _)) throw new Exception("Step 7 failed");
+            if (!workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _)) throw new Exception("Step 8a failed");
+            if (!workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _)) throw new Exception("Step 8b failed");
+            if (!workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _)) throw new Exception("Step 8c failed");
+
+            // Step 9: Reach Assembly Point
+            bool s9 = workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+            if (!s9) throw new Exception("Step 9 failed");
+
+            var events = bus.DispatchedEvents;
+            if (events.Count != 14) throw new Exception($"Expected 14 dispatched events, got {events.Count}");
+
+            // Verify sequential ordering of Step IDs across Steps 1 to 9:
+            if (events[0].StepId != "step_detect_hazard") throw new Exception("Event 0 was not step_detect_hazard");
+            if (events[1].StepId != "step_identify_hazard") throw new Exception("Event 1 was not step_identify_hazard");
+            if (events[2].StepId != "step_raise_alarm") throw new Exception("Event 2 was not step_raise_alarm");
+            if (events[3].StepId != "step_select_extinguisher") throw new Exception("Event 3 was not step_select_extinguisher");
+            if (events[4].StepId != "step_maintain_distance") throw new Exception("Event 4 was not step_maintain_distance");
+            if (events[5].StepId != "step_use_extinguisher") throw new Exception("Event 5 was not step_use_extinguisher");
+            if (events[6].StepId != "step_use_extinguisher") throw new Exception("Event 6 was not step_use_extinguisher");
+            if (events[7].StepId != "step_use_extinguisher") throw new Exception("Event 7 was not step_use_extinguisher");
+            if (events[8].StepId != "step_use_extinguisher") throw new Exception("Event 8 was not step_use_extinguisher");
+            if (events[9].StepId != "step_identify_exit") throw new Exception("Event 9 was not step_identify_exit");
+            if (events[10].StepId != "step_evacuate_route") throw new Exception("Event 10 was not step_evacuate_route");
+            if (events[11].StepId != "step_evacuate_route") throw new Exception("Event 11 was not step_evacuate_route");
+            if (events[12].StepId != "step_evacuate_route") throw new Exception("Event 12 was not step_evacuate_route");
+            if (events[13].StepId != "step_reach_assembly") throw new Exception("Event 13 was not step_reach_assembly");
+
+            // Verify Step 9 event specifics:
+            if (events[13].EventType != "assembly_reached") throw new Exception("Event 13 EventType mismatch");
+            if (events[13].ActionId != "complete_step") throw new Exception("Event 13 ActionId mismatch");
+            if (events[13].TargetId != "assembly_muster_point_alpha") throw new Exception("Event 13 TargetId mismatch");
+            if (events[13].GetPayloadValue("rule_id") != "rule_reach_assembly") throw new Exception("Event 13 rule_id mismatch");
+
+            // Verify all events have outcome == success
+            for (int i = 0; i < events.Count; i++)
+            {
+                if (events[i].Outcome != "success") throw new Exception($"Event {i} outcome was not success");
+            }
+
+            // Verify final terminal stage
+            if (workflow.CurrentStage != FireWorkflowStage.AssemblyPointReached)
+                throw new Exception($"Expected AssemblyPointReached stage, got {workflow.CurrentStage}");
+        }
+
+        public static void Test_DuplicateAssemblyCompletionPrevented()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.AssemblyPointReached);
+
+            bool success = workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out var evt);
+
+            if (success) throw new Exception("Duplicate assembly point completion should be rejected");
+            if (evt != null) throw new Exception("Duplicate call should not emit an event");
+            if (bus.DispatchedEvents.Count != 0) throw new Exception("Duplicate call should not add events to bus");
+        }
+
+        public static void Test_PrematureAssemblyPointActionRejected()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.WaypointMainCorridorReached);
+
+            bool success = workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out var evt);
+
+            if (success) throw new Exception("Premature assembly submission during mid-route should be rejected");
+            if (evt != null) throw new Exception("Emitted event should be null on premature submission");
+            if (bus.DispatchedEvents.Count != 0) throw new Exception("Bus should have 0 events");
+            if (workflow.CurrentStage != FireWorkflowStage.WaypointMainCorridorReached)
+                throw new Exception("Workflow stage should remain unchanged");
         }
     }
 }

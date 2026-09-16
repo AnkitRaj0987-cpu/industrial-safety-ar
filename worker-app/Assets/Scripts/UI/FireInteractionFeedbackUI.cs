@@ -194,7 +194,12 @@ namespace IndustrialSafetyAR.UI
                     break;
 
                 case FireInteractionState.RouteEvacuated:
-                    ShowEvacuationCompletedUI();
+                case FireInteractionState.AwaitingAssemblyPoint:
+                    ShowAssemblyPointUI();
+                    break;
+
+                case FireInteractionState.AssemblyPointReached:
+                    ShowAssemblyCompletedUI();
                     break;
             }
         }
@@ -542,19 +547,53 @@ namespace IndustrialSafetyAR.UI
             });
         }
 
-        private void ShowEvacuationCompletedUI()
+        private void ShowAssemblyPointUI()
+        {
+            ClearActionButtons();
+            if (_actionContainer == null) return;
+
+            if (_promptText != null)
+            {
+                _promptText.text = "<b>STEP 9: REACH ASSEMBLY POINT</b>\nFollow the evacuation route and identify the designated assembly point.";
+                _promptText.color = new Color(0.25f, 0.95f, 0.4f);
+            }
+
+            if (_bannerBg != null)
+            {
+                _bannerBg.color = new Color(0.10f, 0.12f, 0.16f, 0.90f);
+            }
+
+            // 1. Primary designated assembly muster point
+            CreateOptionButton("1. ASSEMBLE: Muster Point Alpha (Designated Safe Area)", new Vector2(0f, 0.52f), new Vector2(1f, 0.96f), () =>
+            {
+                _controller?.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint);
+            });
+
+            // 2. Non-designated alternative (error testing / safety contrast)
+            CreateActionButton("2. WRONG: Perimeter Loading Gate (Unauthorized Area)", new Vector2(0f, 0.04f), new Vector2(1f, 0.48f), new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
+            {
+                _controller?.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyPointBeta);
+            });
+        }
+
+        private void ShowAssemblyCompletedUI()
         {
             ClearActionButtons();
 
             if (_promptText != null)
             {
-                _promptText.text = "<color=#4CAF50>EVACUATION ROUTE COMPLETED!</color>\n<size=80%>Safe Egress Verified • Proceed to Assembly Muster Point Alpha</size>";
+                _promptText.text = "<color=#4CAF50>FIRE & EXPLOSION RESPONSE COMPLETED!</color>\n<size=80%>Emergency Evacuation Verified • Worker Safe at Muster Point Alpha</size>";
                 _promptText.color = new Color(0.25f, 0.95f, 0.4f);
             }
 
             if (_bannerBg != null)
             {
                 _bannerBg.color = new Color(0.12f, 0.28f, 0.16f, 0.94f);
+            }
+
+            if (_successBadge != null)
+            {
+                _successBadge.SetActive(true);
             }
         }
 

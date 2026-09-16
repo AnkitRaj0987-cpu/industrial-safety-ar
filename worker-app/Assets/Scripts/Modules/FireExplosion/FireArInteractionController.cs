@@ -50,7 +50,12 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         WaypointMainCorridorReached,
         WaypointBypassCrosscutReached,
         RouteEvacuated,
-        EvacuationCompleted = RouteEvacuated
+        EvacuationCompleted = RouteEvacuated,
+        AwaitingAssemblyPoint,
+        step_reach_assembly = AwaitingAssemblyPoint,
+        AssemblyPointReached,
+        AssemblyCompleted = AssemblyPointReached,
+        TrainingCompleted = AssemblyPointReached
     }
 
     /// <summary>
@@ -85,6 +90,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         private FireHazardMarker _activeHazard;
         private readonly System.Collections.Generic.List<EmergencyExitMarker> _activeExitMarkers = new System.Collections.Generic.List<EmergencyExitMarker>();
         private readonly System.Collections.Generic.List<EvacuationRouteMarker> _activeRouteMarkers = new System.Collections.Generic.List<EvacuationRouteMarker>();
+        private readonly System.Collections.Generic.List<AssemblyPointMarker> _activeAssemblyMarkers = new System.Collections.Generic.List<AssemblyPointMarker>();
         private ITrainingEventDispatcher _eventDispatcher;
 
         public FireInteractionState State => _state;
@@ -93,6 +99,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public FireHazardMarker ActiveHazard => _activeHazard;
         public System.Collections.Generic.IReadOnlyList<EmergencyExitMarker> ActiveExitMarkers => _activeExitMarkers;
         public System.Collections.Generic.IReadOnlyList<EvacuationRouteMarker> ActiveRouteMarkers => _activeRouteMarkers;
+        public System.Collections.Generic.IReadOnlyList<AssemblyPointMarker> ActiveAssemblyMarkers => _activeAssemblyMarkers;
         public string CurrentStepId => _workflow.CurrentStepId;
 
         public event Action<FireInteractionState> OnStateChanged;
@@ -108,6 +115,8 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public event Action<string, TrainingEvent> OnExitMarked;
         public event Action<string, TrainingEvent> OnRouteWaypointReached;
         public event Action<TrainingEvent> OnEvacuationCompleted;
+        public event Action<TrainingEvent> OnAssemblyPointReached;
+        public event Action<TrainingEvent> OnTrainingCompleted;
         public event Action<string> OnFeedbackChanged;
 
         private void Awake()
@@ -174,6 +183,10 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             {
                 SpawnEvacuationRouteMarkersIfNeeded();
             }
+            else if (stage == FireWorkflowStage.RouteEvacuated || stage == FireWorkflowStage.AwaitingAssemblyPoint)
+            {
+                SpawnAssemblyPointMarkersIfNeeded();
+            }
             OnStateChanged?.Invoke(_state);
         }
 
@@ -236,6 +249,11 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 case FireWorkflowStage.WaypointMainCorridorReached:
                 case FireWorkflowStage.WaypointBypassCrosscutReached:
                     TrySelectEvacuationWaypoint(screenPosition);
+                    break;
+
+                case FireWorkflowStage.RouteEvacuated:
+                case FireWorkflowStage.AwaitingAssemblyPoint:
+                    TrySelectAssemblyPoint(screenPosition);
                     break;
             }
         }
@@ -624,6 +642,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
                 if (_workflow.CurrentStage == FireWorkflowStage.RouteEvacuated)
                 {
+                    SpawnAssemblyPointMarkersIfNeeded();
                     OnEvacuationCompleted?.Invoke(trainingEvent);
                 }
             }
@@ -650,6 +669,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                     }
                 }
 
+                SpawnAssemblyPointMarkersIfNeeded();
                 OnEvacuationCompleted?.Invoke(trainingEvent);
             }
 
@@ -706,6 +726,88 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             _activeRouteMarkers.Add(smokeMarker);
 
             Debug.Log("[FireArInteractionController] Procedural evacuation route waypoints spawned in AR space.");
+        }
+
+        private void TrySelectAssemblyPoint(Vector2 screenPosition)
+        {
+            if (_arCamera == null)
+            {
+                _arCamera = Camera.main;
+                if (_arCamera == null) return;
+            }
+
+            Ray ray = _arCamera.ScreenPointToRay(screenPosition);
+            if (Physics.Raycast(ray, out RaycastHit hit, 50f))
+            {
+                var marker = hit.collider.GetComponentInParent<AssemblyPointMarker>();
+                if (marker != null)
+                {
+                    SubmitReachAssemblyPoint(marker.PointId);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Submits the emergency assembly point identification action.
+        /// </summary>
+        /// <param name="targetId">The selected assembly point target ID (e.g. assembly_muster_point_alpha).</param>
+        /// <param name="actionId">The action identifier (defaults to complete_step).</param>
+        /// <returns>True if designated assembly point reached; false if incorrect or premature.</returns>
+        public bool SubmitReachAssemblyPoint(string targetId, string actionId = FireTrainingWorkflow.ActionCompleteStep)
+        {
+            bool success = _workflow.SubmitReachAssemblyPoint(targetId, actionId, _eventDispatcher, out var trainingEvent);
+            if (success)
+            {
+                if (_activeAssemblyMarkers != null)
+                {
+                    foreach (var marker in _activeAssemblyMarkers)
+                    {
+                        if (marker != null && string.Equals(marker.PointId, targetId, StringComparison.OrdinalIgnoreCase))
+                        {
+                            marker.AcknowledgeReached();
+                        }
+                    }
+                }
+
+                OnAssemblyPointReached?.Invoke(trainingEvent);
+                OnTrainingCompleted?.Invoke(trainingEvent);
+            }
+
+            return success;
+        }
+
+        /// <summary>
+        /// Spawns procedural 3D assembly point markers in AR space after successful evacuation.
+        /// </summary>
+        public void SpawnAssemblyPointMarkersIfNeeded()
+        {
+            if (_activeAssemblyMarkers != null && _activeAssemblyMarkers.Count > 0)
+            {
+                return;
+            }
+
+            Vector3 basePos = _activeHazard != null ? _activeHazard.transform.position : Vector3.zero;
+            Quaternion baseRot = _activeHazard != null ? _activeHazard.transform.rotation : Quaternion.identity;
+
+            // 1. Designated Safe Emergency Assembly Area (Muster Point Alpha)
+            Vector3 alphaPos = basePos + baseRot * new Vector3(7.0f, 0f, 6.5f);
+            var alphaObj = new GameObject("Marker_AssemblyMusterPointAlpha");
+            alphaObj.transform.position = alphaPos;
+            alphaObj.transform.rotation = baseRot;
+            var alphaMarker = alphaObj.AddComponent<AssemblyPointMarker>();
+            alphaMarker.ConfigureAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, "Muster Point Alpha", true);
+            _activeAssemblyMarkers.Add(alphaMarker);
+
+            // 2. Non-designated / Unauthorized Area (Perimeter Loading Gate - Unsafe during emergency)
+            Vector3 betaPos = basePos + baseRot * new Vector3(4.0f, 0f, 7.5f);
+            var betaObj = new GameObject("Marker_AssemblyPointBeta");
+            betaObj.transform.position = betaPos;
+            betaObj.transform.rotation = baseRot;
+            var betaMarker = betaObj.AddComponent<AssemblyPointMarker>();
+            betaMarker.ConfigureAssemblyPoint(FireTrainingWorkflow.TargetAssemblyPointBeta, "Loading Gate B (Unauthorized)", false);
+            _activeAssemblyMarkers.Add(betaMarker);
+
+            Debug.Log("[FireArInteractionController] Procedural emergency assembly point markers spawned in AR space.");
         }
 
         private bool TryGetScreenTap(out Vector2 position)

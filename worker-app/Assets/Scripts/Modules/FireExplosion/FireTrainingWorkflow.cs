@@ -40,7 +40,12 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         WaypointMainCorridorReached,
         WaypointBypassCrosscutReached,
         RouteEvacuated,
-        EvacuationCompleted = RouteEvacuated
+        EvacuationCompleted = RouteEvacuated,
+        AwaitingAssemblyPoint,
+        step_reach_assembly = AwaitingAssemblyPoint,
+        AssemblyPointReached,
+        AssemblyCompleted = AssemblyPointReached,
+        TrainingCompleted = AssemblyPointReached
     }
 
     /// <summary>
@@ -120,9 +125,14 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public const string HazardSmokeCorridor = "hazard_heavy_smoke_corridor";
         public const string DecisionAvoidSmoke = "avoid_heavy_smoke_corridor";
 
-        // Step 10: Assembly Target
+        // Step 9: Reach Assembly Point
         public const string StepReachAssembly = "step_reach_assembly";
+        public const string RuleReachAssembly = "rule_reach_assembly";
+        public const string ActionCompleteStep = "complete_step";
+        public const string EventTypeAssemblyReached = "assembly_reached";
         public const string TargetAssemblyMusterPoint = "assembly_muster_point_alpha";
+        public const string TargetAssemblyPointBeta = "assembly_muster_point_beta";
+        public const string ZoneTypeEmergencyAssembly = "emergency_assembly_area";
 
         public FireWorkflowStage CurrentStage { get; private set; } = FireWorkflowStage.NotStarted;
         public string CurrentStepId { get; private set; } = StepDetectHazard;
@@ -173,6 +183,8 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                     CurrentStepId = StepEvacuateRoute;
                     break;
                 case FireWorkflowStage.RouteEvacuated:
+                case FireWorkflowStage.AwaitingAssemblyPoint:
+                case FireWorkflowStage.AssemblyPointReached:
                     CurrentStepId = StepReachAssembly;
                     break;
             }
@@ -961,6 +973,71 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             }
         }
 
+        /// <summary>
+        /// Submits identification and arrival at the designated emergency assembly muster point.
+        /// </summary>
+        /// <param name="targetId">The selected assembly point target ID (e.g. assembly_muster_point_alpha).</param>
+        /// <param name="actionId">The action identifier (defaults to complete_step).</param>
+        /// <param name="dispatcher">The training event dispatcher.</param>
+        /// <param name="emittedEvent">The generated training event, or null if rejected.</param>
+        /// <returns>True if designated assembly point identified; false if incorrect or premature.</returns>
+        public bool SubmitReachAssemblyPoint(string targetId, string actionId, ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent)
+        {
+            emittedEvent = null;
+
+            bool isReadyForStep9 = CurrentStage == FireWorkflowStage.RouteEvacuated
+                || CurrentStage == FireWorkflowStage.AwaitingAssemblyPoint;
+
+            if (!isReadyForStep9)
+            {
+                // Premature action (before Step 8 completion) or duplicate action after completion
+                return false;
+            }
+
+            string rawTarget = targetId?.Trim() ?? string.Empty;
+            string actId = string.IsNullOrEmpty(actionId) ? ActionCompleteStep : actionId.Trim();
+
+            bool isDesignated = string.Equals(rawTarget, TargetAssemblyMusterPoint, StringComparison.OrdinalIgnoreCase);
+            string outcome = isDesignated ? "success" : "failure";
+
+            emittedEvent = new TrainingEvent
+            {
+                ModuleId = ModuleId,
+                ContentVersion = ContentVersion,
+                StepId = StepReachAssembly,
+                EventType = EventTypeAssemblyReached,
+                ActionId = actId,
+                TargetId = rawTarget,
+                Outcome = outcome,
+                Payload =
+                {
+                    { "rule_id", RuleReachAssembly },
+                    { "action_id", actId },
+                    { "target_id", rawTarget },
+                    { "outcome", outcome }
+                }
+            };
+
+            if (isDesignated)
+            {
+                emittedEvent.Payload["zone_type"] = ZoneTypeEmergencyAssembly;
+                dispatcher?.Dispatch(emittedEvent);
+                SetStage(FireWorkflowStage.AssemblyPointReached);
+                OnFeedbackChanged?.Invoke("ASSEMBLY POINT REACHED!\nWorker safely evacuated to Assembly Muster Point Alpha. Fire response training completed.");
+                return true;
+            }
+            else
+            {
+                emittedEvent.Payload["error"] = "wrong_assembly_point";
+                dispatcher?.Dispatch(emittedEvent);
+                OnFeedbackChanged?.Invoke("WRONG ASSEMBLY POINT — Move to the designated emergency assembly area.");
+                return false;
+            }
+        }
+
+        public bool SubmitReachAssemblyPoint(string targetId, ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent)
+            => SubmitReachAssemblyPoint(targetId, ActionCompleteStep, dispatcher, out emittedEvent);
+
         public string GetFeedbackForStage(FireWorkflowStage stage)
         {
             switch (stage)
@@ -1002,7 +1079,10 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 case FireWorkflowStage.WaypointBypassCrosscutReached:
                     return "WAYPOINT 2 REACHED: Proceed through Fire Door Exit toward assembly point.";
                 case FireWorkflowStage.RouteEvacuated:
-                    return "EVACUATION ROUTE COMPLETED!\nSafe egress confirmed. Proceed to Assembly Muster Point.";
+                case FireWorkflowStage.AwaitingAssemblyPoint:
+                    return "STEP 9: REACH ASSEMBLY POINT — Follow the evacuation route and identify the designated assembly point.";
+                case FireWorkflowStage.AssemblyPointReached:
+                    return "ASSEMBLY POINT REACHED!\nWorker safely evacuated to Assembly Muster Point Alpha. Fire response training completed.";
                 default:
                     return string.Empty;
             }

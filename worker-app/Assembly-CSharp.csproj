@@ -1,4 +1,4 @@
-﻿<Project>
+<Project>
   <!-- Generated file, do not modify, your changes will be overwritten (use AssetPostprocessor.OnGeneratedCSProject) -->
   <PropertyGroup>
     <BaseIntermediateOutputPath>Temp\obj\$(MSBuildProjectName)</BaseIntermediateOutputPath>
@@ -56,6 +56,7 @@
     <Compile Include="Assets\Scripts\Core\AppBootstrap.cs" />
     <Compile Include="Assets\Scripts\AR\ArSessionFacade.cs" />
     <Compile Include="Assets\Scripts\Modules\FireExplosion\EvacuationRouteMarker.cs" />
+    <Compile Include="Assets\Scripts\Modules\FireExplosion\AssemblyPointMarker.cs" />
     <Compile Include="Assets\TutorialInfo\Readme.cs" />
     <Compile Include="Assets\Scripts\UI\FireInteractionFeedbackUI.cs" />
     <Compile Include="Assets\Scripts\Modules\FireExplosion\FireArInteractionController.cs" />
