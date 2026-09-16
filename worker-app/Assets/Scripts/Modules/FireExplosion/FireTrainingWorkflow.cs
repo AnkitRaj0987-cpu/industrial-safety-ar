@@ -6,7 +6,9 @@
 // Fully decoupled from Unity runtime for isolated unit testing.
 
 using System;
+using System.Collections.Generic;
 using IndustrialSafetyAR.Core.Events;
+using IndustrialSafetyAR.Assessment;
 
 namespace IndustrialSafetyAR.Modules.FireExplosion
 {
@@ -136,12 +138,23 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
         public FireWorkflowStage CurrentStage { get; private set; } = FireWorkflowStage.NotStarted;
         public string CurrentStepId { get; private set; } = StepDetectHazard;
+        public string WorkerId { get; set; } = "worker_offline_01";
+        public string SessionStartedAt { get; private set; }
+        public TrainingAttempt LatestAttempt { get; private set; }
+        public AssessmentResult LatestAssessment { get; private set; }
+        public bool IsAssessmentCompleted => LatestAttempt != null && LatestAssessment != null;
 
         public event Action<FireWorkflowStage> OnStageChanged;
         public event Action<string> OnFeedbackChanged;
+        public event Action<TrainingAttempt, AssessmentResult> OnAssessmentCompleted;
 
         public void SetStage(FireWorkflowStage stage)
         {
+            if (string.IsNullOrEmpty(SessionStartedAt) && stage != FireWorkflowStage.NotStarted)
+            {
+                SessionStartedAt = DateTime.UtcNow.ToString("o");
+            }
+
             CurrentStage = stage;
             switch (stage)
             {
@@ -1024,6 +1037,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 dispatcher?.Dispatch(emittedEvent);
                 SetStage(FireWorkflowStage.AssemblyPointReached);
                 OnFeedbackChanged?.Invoke("ASSEMBLY POINT REACHED!\nWorker safely evacuated to Assembly Muster Point Alpha. Fire response training completed.");
+                EvaluateAssessment(dispatcher);
                 return true;
             }
             else
@@ -1037,6 +1051,99 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
         public bool SubmitReachAssemblyPoint(string targetId, ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent)
             => SubmitReachAssemblyPoint(targetId, ActionCompleteStep, dispatcher, out emittedEvent);
+
+        /// <summary>
+        /// Evaluates the session using the dispatched events and stores the finalized TrainingAttempt.
+        /// Ensures evaluation happens exactly once per completed training run.
+        /// </summary>
+        public AssessmentResult EvaluateAssessment(ITrainingEventDispatcher dispatcher, RubricDefinition rubric = null)
+        {
+            if (CurrentStage != FireWorkflowStage.AssemblyPointReached)
+            {
+                return null;
+            }
+
+            if (IsAssessmentCompleted)
+            {
+                return LatestAssessment;
+            }
+
+            IEnumerable<TrainingEvent> events = null;
+            if (dispatcher is TrainingEventBus bus)
+            {
+                events = bus.DispatchedEvents;
+            }
+            else if (TrainingEventBus.Instance != null && TrainingEventBus.Instance.DispatchedEvents.Count > 0)
+            {
+                events = TrainingEventBus.Instance.DispatchedEvents;
+            }
+            else
+            {
+                events = new List<TrainingEvent>();
+            }
+
+            return EvaluateAssessment(events, rubric);
+        }
+
+        /// <summary>
+        /// Explicit overload allowing evaluation of a provided event sequence directly.
+        /// </summary>
+        public AssessmentResult EvaluateAssessment(IEnumerable<TrainingEvent> events, RubricDefinition rubric = null)
+        {
+            if (CurrentStage != FireWorkflowStage.AssemblyPointReached)
+            {
+                return null;
+            }
+
+            if (IsAssessmentCompleted)
+            {
+                return LatestAssessment;
+            }
+
+            if (rubric == null)
+            {
+                rubric = RubricDefinition.CreateFireExplosionRubric();
+            }
+
+            var eventList = events != null ? new List<TrainingEvent>(events) : new List<TrainingEvent>();
+            var assessmentResult = LocalAssessmentEngine.Evaluate(eventList, rubric);
+
+            var attempt = new TrainingAttempt
+            {
+                SchemaVersion = rubric.SchemaVersion ?? "1.0.0",
+                ClientAttemptId = Guid.NewGuid().ToString(),
+                WorkerId = !string.IsNullOrEmpty(WorkerId) ? WorkerId : Guid.Empty.ToString(),
+                ModuleId = ModuleId,
+                ContentVersion = ContentVersion,
+                StartedAt = !string.IsNullOrEmpty(SessionStartedAt) ? SessionStartedAt : DateTime.UtcNow.ToString("o"),
+                CompletedAt = DateTime.UtcNow.ToString("o"),
+                Status = TrainingAttempt.StatusCompleted,
+                ClientScore = assessmentResult.ClientScore,
+                Passed = assessmentResult.Passed,
+                Events = eventList
+            };
+
+            attempt.Complete(assessmentResult.ClientScore, assessmentResult.Passed);
+
+            assessmentResult.Attempt = attempt;
+            LatestAttempt = attempt;
+            LatestAssessment = assessmentResult;
+
+            OnAssessmentCompleted?.Invoke(attempt, assessmentResult);
+            return assessmentResult;
+        }
+
+        /// <summary>
+        /// Resets the training workflow and clears previous attempt state for a retake.
+        /// </summary>
+        public void Reset()
+        {
+            CurrentStage = FireWorkflowStage.NotStarted;
+            CurrentStepId = StepDetectHazard;
+            LatestAttempt = null;
+            LatestAssessment = null;
+            SessionStartedAt = DateTime.UtcNow.ToString("o");
+        }
 
         public string GetFeedbackForStage(FireWorkflowStage stage)
         {

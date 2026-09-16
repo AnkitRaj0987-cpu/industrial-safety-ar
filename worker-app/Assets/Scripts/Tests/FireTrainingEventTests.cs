@@ -77,6 +77,11 @@ namespace IndustrialSafetyAR.Tests
             allPassed &= RunTest("Assessment_ScoreBelow70_Fails", Test_Assessment_ScoreBelow70_Fails, logMessages);
             allPassed &= RunTest("Assessment_PenaltiesCannotDriveScoreBelowZero", Test_Assessment_PenaltiesCannotDriveScoreBelowZero, logMessages);
             allPassed &= RunTest("Assessment_DeterministicRepeatedEvaluation_GivesIdenticalResult", Test_Assessment_DeterministicRepeatedEvaluation_GivesIdenticalResult, logMessages);
+            allPassed &= RunTest("Workflow_AssessmentStartsOnlyAfterFinalFireCompletion", Test_Workflow_AssessmentStartsOnlyAfterFinalFireCompletion, logMessages);
+            allPassed &= RunTest("Workflow_FinalCompletionEvaluatesSteps1To9Events", Test_Workflow_FinalCompletionEvaluatesSteps1To9Events, logMessages);
+            allPassed &= RunTest("Workflow_ClientScoreAndPassedStatusCopiedFromEngine", Test_Workflow_ClientScoreAndPassedStatusCopiedFromEngine, logMessages);
+            allPassed &= RunTest("Workflow_DuplicateCompletionDoesNotCreateSecondAttempt", Test_Workflow_DuplicateCompletionDoesNotCreateSecondAttempt, logMessages);
+            allPassed &= RunTest("Workflow_PrematureCompletionCannotFinalizeAttempt", Test_Workflow_PrematureCompletionCannotFinalizeAttempt, logMessages);
 
             return allPassed;
         }
@@ -1788,6 +1793,216 @@ namespace IndustrialSafetyAR.Tests
                 if (iterationResult.Passed != firstResult.Passed)
                     throw new Exception($"Drift detected in Passed status on iteration {i}");
             }
+        }
+
+        public static void Test_Workflow_AssessmentStartsOnlyAfterFinalFireCompletion()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+
+            workflow.ConfirmHazardDetected(bus, out _);
+            workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            workflow.SubmitDistanceDecision(2.5f, bus, out _);
+
+            if (workflow.LatestAttempt != null)
+                throw new Exception("LatestAttempt should be null mid-training");
+            if (workflow.IsAssessmentCompleted)
+                throw new Exception("IsAssessmentCompleted should be false mid-training");
+
+            var earlyEval = workflow.EvaluateAssessment(bus);
+            if (earlyEval != null)
+                throw new Exception("EvaluateAssessment should return null before terminal stage");
+            if (workflow.LatestAttempt != null)
+                throw new Exception("LatestAttempt should remain null after premature evaluation attempt");
+
+            workflow.SubmitPullPin(bus, out _);
+            workflow.SubmitAim(bus, out _);
+            workflow.SubmitSqueeze(bus, out _);
+            workflow.SubmitSweep(bus, out _);
+            workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+
+            // Still at RouteEvacuated before Step 9 completion
+            if (workflow.IsAssessmentCompleted)
+                throw new Exception("Assessment should not be completed before reaching assembly point");
+
+            // Complete Step 9
+            bool s9 = workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+            if (!s9) throw new Exception("Step 9 failed");
+
+            if (workflow.CurrentStage != FireWorkflowStage.AssemblyPointReached)
+                throw new Exception($"Expected stage AssemblyPointReached, got {workflow.CurrentStage}");
+            if (!workflow.IsAssessmentCompleted)
+                throw new Exception("Assessment must be completed after reaching assembly point");
+            if (workflow.LatestAttempt == null)
+                throw new Exception("LatestAttempt must not be null after reaching assembly point");
+            if (workflow.LatestAssessment == null)
+                throw new Exception("LatestAssessment must not be null after reaching assembly point");
+        }
+
+        public static void Test_Workflow_FinalCompletionEvaluatesSteps1To9Events()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var workflow = new FireTrainingWorkflow();
+            workflow.WorkerId = "worker-fire-specialist-01";
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+
+            workflow.ConfirmHazardDetected(bus, out _);
+            workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            workflow.SubmitDistanceDecision(2.5f, bus, out _);
+            workflow.SubmitPullPin(bus, out _);
+            workflow.SubmitAim(bus, out _);
+            workflow.SubmitSqueeze(bus, out _);
+            workflow.SubmitSweep(bus, out _);
+            workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            var attempt = workflow.LatestAttempt;
+            var assessment = workflow.LatestAssessment;
+
+            if (attempt == null || assessment == null)
+                throw new Exception("Attempt or Assessment was null");
+
+            if (attempt.Events.Count != 14)
+                throw new Exception($"Expected 14 events in attempt, got {attempt.Events.Count}");
+            if (assessment.RuleResults.Count != 9)
+                throw new Exception($"Expected 9 rule results, got {assessment.RuleResults.Count}");
+            if (attempt.ClientScore != 100.00f)
+                throw new Exception($"Expected 100.00 score, got {attempt.ClientScore}");
+            if (!attempt.Passed)
+                throw new Exception("Expected Passed to be true");
+            if (attempt.Status != TrainingAttempt.StatusCompleted)
+                throw new Exception($"Expected status completed, got {attempt.Status}");
+            if (attempt.WorkerId != "worker-fire-specialist-01")
+                throw new Exception($"WorkerId mismatch: {attempt.WorkerId}");
+            if (attempt.ModuleId != "fire-explosion-response")
+                throw new Exception($"ModuleId mismatch: {attempt.ModuleId}");
+            if (string.IsNullOrEmpty(attempt.CompletedAt))
+                throw new Exception("CompletedAt must be populated");
+        }
+
+        public static void Test_Workflow_ClientScoreAndPassedStatusCopiedFromEngine()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+
+            workflow.ConfirmHazardDetected(bus, out _);
+            // Incur identification penalty (-5)
+            workflow.SubmitHazardIdentification("hazard_chemical_spill", bus, out _);
+            workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            workflow.SubmitDistanceDecision(2.5f, bus, out _);
+            workflow.SubmitPullPin(bus, out _);
+            workflow.SubmitAim(bus, out _);
+            workflow.SubmitSqueeze(bus, out _);
+            workflow.SubmitSweep(bus, out _);
+            workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            if (workflow.LatestAssessment.ClientScore != 95.00f)
+                throw new Exception($"Assessment ClientScore was {workflow.LatestAssessment.ClientScore}, expected 95.00");
+            if (workflow.LatestAttempt.ClientScore != workflow.LatestAssessment.ClientScore)
+                throw new Exception("Attempt ClientScore must match Assessment ClientScore exactly");
+            if (workflow.LatestAttempt.Passed != workflow.LatestAssessment.Passed)
+                throw new Exception("Attempt Passed status must match Assessment Passed status exactly");
+            if (!workflow.LatestAttempt.Passed)
+                throw new Exception("Attempt with 95% must pass");
+        }
+
+        public static void Test_Workflow_DuplicateCompletionDoesNotCreateSecondAttempt()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+
+            workflow.ConfirmHazardDetected(bus, out _);
+            workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            workflow.SubmitDistanceDecision(2.5f, bus, out _);
+            workflow.SubmitPullPin(bus, out _);
+            workflow.SubmitAim(bus, out _);
+            workflow.SubmitSqueeze(bus, out _);
+            workflow.SubmitSweep(bus, out _);
+            workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out _);
+
+            string initialAttemptId = workflow.LatestAttempt.ClientAttemptId;
+            var initialAssessment = workflow.LatestAssessment;
+
+            // Attempt duplicate completion call
+            bool secondCall = workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out var dupEvt);
+            if (secondCall)
+                throw new Exception("Duplicate SubmitReachAssemblyPoint must return false");
+            if (dupEvt != null)
+                throw new Exception("Duplicate call should not emit an event");
+
+            // Evaluate assessment again
+            var secondEval = workflow.EvaluateAssessment(bus);
+
+            if (workflow.LatestAttempt.ClientAttemptId != initialAttemptId)
+                throw new Exception("ClientAttemptId changed on duplicate evaluation!");
+            if (!ReferenceEquals(workflow.LatestAssessment, initialAssessment))
+                throw new Exception("LatestAssessment reference changed on duplicate evaluation!");
+            if (!ReferenceEquals(secondEval, initialAssessment))
+                throw new Exception("Returned assessment should be cached instance");
+        }
+
+        public static void Test_Workflow_PrematureCompletionCannotFinalizeAttempt()
+        {
+            var bus = new TrainingEventBus();
+            bus.Clear();
+            var workflow = new FireTrainingWorkflow();
+            workflow.SetStage(FireWorkflowStage.HazardPlaced);
+
+            // Attempt Step 9 from HazardPlaced
+            bool premature1 = workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out var evt1);
+            if (premature1) throw new Exception("Premature Step 9 from HazardPlaced must return false");
+            if (evt1 != null) throw new Exception("Premature call must not emit event");
+            if (workflow.LatestAttempt != null) throw new Exception("LatestAttempt must be null");
+            if (workflow.IsAssessmentCompleted) throw new Exception("IsAssessmentCompleted must be false");
+
+            // Advance to mid-transit
+            workflow.ConfirmHazardDetected(bus, out _);
+            workflow.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+            workflow.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm, bus, out _);
+            workflow.SubmitSelectExtinguisher(FireTrainingWorkflow.TargetExtinguisherCO2, bus, out _);
+            workflow.SubmitDistanceDecision(2.5f, bus, out _);
+            workflow.SubmitPullPin(bus, out _);
+            workflow.SubmitAim(bus, out _);
+            workflow.SubmitSqueeze(bus, out _);
+            workflow.SubmitSweep(bus, out _);
+            workflow.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB, bus, out _);
+            workflow.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+
+            // Attempt Step 9 during evacuation route
+            bool premature2 = workflow.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, bus, out var evt2);
+            if (premature2) throw new Exception("Premature Step 9 during evacuation route must return false");
+            if (evt2 != null) throw new Exception("Premature call must not emit event");
+            if (workflow.LatestAttempt != null) throw new Exception("LatestAttempt must be null");
+            if (workflow.IsAssessmentCompleted) throw new Exception("IsAssessmentCompleted must be false");
         }
     }
 }

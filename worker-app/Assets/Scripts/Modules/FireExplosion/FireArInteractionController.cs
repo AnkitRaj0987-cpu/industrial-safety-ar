@@ -13,6 +13,7 @@
 using System;
 using IndustrialSafetyAR.AR;
 using IndustrialSafetyAR.Core.Events;
+using IndustrialSafetyAR.Assessment;
 using UnityEngine;
 using UnityEngine.EventSystems;
 #if ENABLE_INPUT_SYSTEM
@@ -102,6 +103,10 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public System.Collections.Generic.IReadOnlyList<AssemblyPointMarker> ActiveAssemblyMarkers => _activeAssemblyMarkers;
         public string CurrentStepId => _workflow.CurrentStepId;
 
+        public TrainingAttempt LatestAttempt => _workflow.LatestAttempt;
+        public AssessmentResult LatestAssessment => _workflow.LatestAssessment;
+        public bool IsAssessmentCompleted => _workflow.IsAssessmentCompleted;
+
         public event Action<FireInteractionState> OnStateChanged;
         public event Action<FireHazardMarker> OnHazardPlaced;
         public event Action<FireHazardMarker, TrainingEvent> OnHazardDetected;
@@ -117,6 +122,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         public event Action<TrainingEvent> OnEvacuationCompleted;
         public event Action<TrainingEvent> OnAssemblyPointReached;
         public event Action<TrainingEvent> OnTrainingCompleted;
+        public event Action<TrainingAttempt, AssessmentResult> OnAssessmentCompleted;
         public event Action<string> OnFeedbackChanged;
 
         private void Awake()
@@ -144,12 +150,19 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
             _workflow.OnStageChanged += HandleWorkflowStageChanged;
             _workflow.OnFeedbackChanged += HandleWorkflowFeedbackChanged;
+            _workflow.OnAssessmentCompleted += HandleWorkflowAssessmentCompleted;
         }
 
         private void OnDestroy()
         {
             _workflow.OnStageChanged -= HandleWorkflowStageChanged;
             _workflow.OnFeedbackChanged -= HandleWorkflowFeedbackChanged;
+            _workflow.OnAssessmentCompleted -= HandleWorkflowAssessmentCompleted;
+        }
+
+        private void HandleWorkflowAssessmentCompleted(TrainingAttempt attempt, AssessmentResult assessment)
+        {
+            OnAssessmentCompleted?.Invoke(attempt, assessment);
         }
 
         private void Start()
