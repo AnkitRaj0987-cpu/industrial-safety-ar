@@ -157,6 +157,28 @@ namespace IndustrialSafetyAR.UI
         {
             switch (state)
             {
+                case FireInteractionState.WaitingForTracking:
+                    ClearActionButtons();
+                    if (_bannerBg != null) _bannerBg.color = new Color(0.10f, 0.12f, 0.16f, 0.90f);
+                    if (_successBadge != null) _successBadge.SetActive(false);
+                    if (_promptText != null)
+                    {
+                        _promptText.text = "Searching for surfaces... Move phone slowly.";
+                        _promptText.color = new Color(0.95f, 0.95f, 0.95f);
+                    }
+                    break;
+
+                case FireInteractionState.ReadyToPlace:
+                    ClearActionButtons();
+                    if (_bannerBg != null) _bannerBg.color = new Color(0.10f, 0.12f, 0.16f, 0.90f);
+                    if (_successBadge != null) _successBadge.SetActive(false);
+                    if (_promptText != null)
+                    {
+                        _promptText.text = "Surface detected! Tap anywhere on the surface to place the Fire Hazard.";
+                        _promptText.color = new Color(0.95f, 0.95f, 0.95f);
+                    }
+                    break;
+
                 case FireInteractionState.HazardPlaced:
                     ShowHazardPlacedUI();
                     break;

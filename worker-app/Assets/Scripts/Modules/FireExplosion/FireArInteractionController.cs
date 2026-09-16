@@ -526,38 +526,48 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             return false;
         }
 
+        /// <summary>
+        /// Places a fire hazard marker at the given pose and advances stage to HazardPlaced.
+        /// Useful for testing, headless simulation, and direct placement.
+        /// </summary>
+        public FireHazardMarker PlaceHazardAtPose(Pose hitPose)
+        {
+            if (_hazardPrefab != null)
+            {
+                _activeHazard = Instantiate(_hazardPrefab, hitPose.position, hitPose.rotation);
+            }
+            else
+            {
+                GameObject hazardObj = new GameObject("FireHazardMarker");
+                hazardObj.transform.position = hitPose.position;
+                hazardObj.transform.rotation = hitPose.rotation;
+                _activeHazard = hazardObj.AddComponent<FireHazardMarker>();
+            }
+
+            // Face the camera on spawn (keeping upright)
+            if (_arCamera != null)
+            {
+                Vector3 lookDir = _arCamera.transform.position - _activeHazard.transform.position;
+                lookDir.y = 0;
+                if (lookDir != Vector3.zero)
+                {
+                    _activeHazard.transform.rotation = Quaternion.LookRotation(lookDir);
+                }
+            }
+
+            _workflow.SetStage(FireWorkflowStage.HazardPlaced);
+            OnHazardPlaced?.Invoke(_activeHazard);
+            Debug.Log($"[FireArInteractionController] Placed fire hazard marker at {hitPose.position}");
+            return _activeHazard;
+        }
+
         private void TryPlaceHazard(Vector2 screenPosition)
         {
             if (_raycastService == null) return;
 
             if (_raycastService.TryRaycastPlane(screenPosition, out Pose hitPose))
             {
-                if (_hazardPrefab != null)
-                {
-                    _activeHazard = Instantiate(_hazardPrefab, hitPose.position, hitPose.rotation);
-                }
-                else
-                {
-                    GameObject hazardObj = new GameObject("FireHazardMarker");
-                    hazardObj.transform.position = hitPose.position;
-                    hazardObj.transform.rotation = hitPose.rotation;
-                    _activeHazard = hazardObj.AddComponent<FireHazardMarker>();
-                }
-
-                // Face the camera on spawn (keeping upright)
-                if (_arCamera != null)
-                {
-                    Vector3 lookDir = _arCamera.transform.position - _activeHazard.transform.position;
-                    lookDir.y = 0;
-                    if (lookDir != Vector3.zero)
-                    {
-                        _activeHazard.transform.rotation = Quaternion.LookRotation(lookDir);
-                    }
-                }
-
-                _workflow.SetStage(FireWorkflowStage.HazardPlaced);
-                OnHazardPlaced?.Invoke(_activeHazard);
-                Debug.Log($"[FireArInteractionController] Placed fire hazard marker at {hitPose.position}");
+                PlaceHazardAtPose(hitPose);
             }
         }
 
@@ -1218,7 +1228,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         /// ArSessionFacade is loaded, eliminating manual scene wiring and scene merge conflicts.
         /// </summary>
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void AutoBootstrapInArScene()
+        public static GameObject AutoBootstrapInArScene()
         {
             var facade = FindAnyObjectByType<ArSessionFacade>();
             if (facade != null && FindAnyObjectByType<FireArInteractionController>() == null)
@@ -1228,7 +1238,9 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 go.AddComponent<IndustrialSafetyAR.UI.FireInteractionFeedbackUI>();
                 go.AddComponent<IndustrialSafetyAR.UI.FireAssessmentSummaryUI>();
                 Debug.Log("[FireArInteractionController] Auto-bootstrapped Fire AR Interaction and Assessment Summary in AR scene.");
+                return go;
             }
+            return null;
         }
     }
 }
