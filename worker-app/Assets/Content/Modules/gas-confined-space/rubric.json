@@ -1,0 +1,121 @@
+{
+  "schema_version": "1.0.0",
+  "module_id": "gas-confined-space",
+  "content_version": "1.0.0",
+  "pass_percent": 70.00,
+  "max_score": 100.00,
+  "rules": [
+    {
+      "rule_id": "rule_hazard_recognition",
+      "step_id": "step_gas_recognize_hazard",
+      "required": true,
+      "event_type": "gas_hazard_recognized",
+      "match": {
+        "outcome": "success"
+      },
+      "points": 10.00,
+      "award_limit": 1,
+      "penalty_points": 0.00
+    },
+    {
+      "rule_id": "rule_danger_zone",
+      "step_id": "step_gas_danger_zone",
+      "required": true,
+      "event_type": "danger_zone_recognized",
+      "match": {
+        "outcome": "success"
+      },
+      "points": 10.00,
+      "award_limit": 1,
+      "penalty_points": 5.00,
+      "penalty_event_type": "unsafe_zone_entry",
+      "penalty_match": {
+        "outcome": "failure"
+      }
+    },
+    {
+      "rule_id": "rule_atmospheric_test",
+      "step_id": "step_gas_atmospheric_test",
+      "required": true,
+      "event_type": "atmosphere_assessment_completed",
+      "match": {
+        "outcome": "success"
+      },
+      "points": 20.00,
+      "award_limit": 1,
+      "penalty_points": 0.00
+    },
+    {
+      "rule_id": "rule_select_ppe",
+      "step_id": "step_gas_select_ppe",
+      "required": true,
+      "event_type": "ppe_selected",
+      "match": {
+        "outcome": "success"
+      },
+      "points": 10.00,
+      "award_limit": 1,
+      "penalty_points": 5.00,
+      "penalty_event_type": "ppe_selection_incorrect",
+      "penalty_match": {
+        "outcome": "failure"
+      }
+    },
+    {
+      "rule_id": "rule_verify_ppe",
+      "step_id": "step_gas_verify_ppe",
+      "required": true,
+      "event_type": "ppe_verified",
+      "match": {
+        "outcome": "success"
+      },
+      "points": 5.00,
+      "award_limit": 1,
+      "penalty_points": 5.00,
+      "penalty_event_type": "ppe_verification_failed",
+      "penalty_match": {
+        "outcome": "failure"
+      }
+    },
+    {
+      "rule_id": "rule_buddy_system",
+      "step_id": "step_gas_buddy_system",
+      "required": true,
+      "event_type": "communication_checked",
+      "match": {
+        "outcome": "success"
+      },
+      "points": 10.00,
+      "award_limit": 1,
+      "penalty_points": 0.00
+    },
+    {
+      "rule_id": "rule_entry_decision",
+      "step_id": "step_gas_entry_decision",
+      "required": true,
+      "event_type": "safe_entry_decision",
+      "match": {
+        "outcome": "success"
+      },
+      "points": 15.00,
+      "award_limit": 1,
+      "penalty_points": 15.00,
+      "penalty_event_type": "unsafe_entry_attempt",
+      "penalty_match": {
+        "outcome": "failure"
+      }
+    },
+    {
+      "rule_id": "rule_emergency_response",
+      "step_id": "step_gas_emergency_response",
+      "required": true,
+      "event_type": "emergency_procedure_completed",
+      "match": {
+        "outcome": "success"
+      },
+      "points": 20.00,
+      "award_limit": 1,
+      "penalty_points": 0.00
+    }
+  ]
+}

@@ -112,6 +112,52 @@ namespace IndustrialSafetyAR.UI
                 "VIEW ASSESSMENT →", "✓ Assembly Point reached! Worker accounted for."));
         }
 
+        public string ModuleId { get; set; } = "fire-explosion-response";
+
+        /// <summary>
+        /// Populates the standard 9-step Gas Leak &amp; Confined Space curriculum.
+        /// </summary>
+        public void InitializeDefaultGasSteps()
+        {
+            ModuleId = "gas-confined-space";
+            _steps.Clear();
+            _steps.Add(new GuidedStepInfo(1, "step_gas_recognize_hazard", "RECOGNIZE HAZARD",
+                "Confined space opening located! Tap [ACKNOWLEDGE GAS HAZARD →] below to confirm recognition:",
+                "NEXT: DANGER ZONE →", "✓ Gas hazard acknowledged. Next: Mark danger zone."));
+
+            _steps.Add(new GuidedStepInfo(2, "step_gas_danger_zone", "DANGER ZONE",
+                "Hazard perimeter! Tap [MARK 3m DANGER PERIMETER →] below to establish boundary:",
+                "NEXT: ATMOSPHERIC TEST →", "✓ Danger perimeter marked. Next: Atmospheric testing."));
+
+            _steps.Add(new GuidedStepInfo(3, "step_gas_atmospheric_test", "ATMOSPHERIC TEST",
+                "OSHA testing sequence: Tap [TEST ATMOSPHERE (O2 -> LEL -> H2S) →] below:",
+                "NEXT: SELECT PPE →", "✓ Atmospheric test complete: UNSAFE conditions detected. Next: Select PPE."));
+
+            _steps.Add(new GuidedStepInfo(4, "step_gas_select_ppe", "SELECT PPE",
+                "Dangerous atmosphere detected! Tap [SELECT REQUIRED PPE KIT →] below:",
+                "NEXT: VERIFY PPE →", "✓ PPE kit selected. Next: Inspect and verify PPE."));
+
+            _steps.Add(new GuidedStepInfo(5, "step_gas_verify_ppe", "VERIFY PPE",
+                "Verify PPE integrity! Tap [PERFORM FIT & SEAL CHECK →] below:",
+                "NEXT: BUDDY SYSTEM →", "✓ PPE verified. Next: Establish buddy/attendant communication."));
+
+            _steps.Add(new GuidedStepInfo(6, "step_gas_buddy_system", "BUDDY SYSTEM",
+                "Outside attendant standby! Tap [ASSIGN ATTENDANT & TEST RADIO →] below:",
+                "NEXT: ENTRY DECISION →", "✓ Attendant assigned outside. Next: Make entry decision."));
+
+            _steps.Add(new GuidedStepInfo(7, "step_gas_entry_decision", "ENTRY DECISION",
+                "Conditions UNSAFE! Tap [DO NOT ENTER (UNSAFE ATMOSPHERE) →] below:",
+                "NEXT: EMERGENCY RESPONSE →", "✓ Safe decision: DO NOT ENTER. Next: Follow emergency response."));
+
+            _steps.Add(new GuidedStepInfo(8, "step_gas_emergency_response", "EMERGENCY RESPONSE",
+                "Gas alarm active! Tap [EVACUATE UPWIND & ALERT SUPERVISOR →] below:",
+                "NEXT: SAFETY CHECK →", "✓ Emergency procedure completed. Next: Final safety check."));
+
+            _steps.Add(new GuidedStepInfo(9, "step_gas_final_safety_check", "FINAL SAFETY CHECK",
+                "Review compliance checklist: Tap [CONFIRM SAFETY CHECK & COMPLETE →] below:",
+                "VIEW ASSESSMENT →", "✓ Confined space safety training completed."));
+        }
+
         /// <summary>
         /// Allows configuring a custom step sequence (e.g. for Gas &amp; Toxic Vapors module).
         /// </summary>
@@ -135,21 +181,24 @@ namespace IndustrialSafetyAR.UI
         {
             var info = GetStepInfo(stepNumber);
             string fallback = info != null ? info.Title : $"STEP {stepNumber}";
-            return IndustrialSafetyAR.Core.LocaleService.Instance.Get($"fire_step{stepNumber}_title", fallback);
+            string prefix = string.Equals(ModuleId, "gas-confined-space", StringComparison.OrdinalIgnoreCase) ? "gas" : "fire";
+            return IndustrialSafetyAR.Core.LocaleService.Instance.Get($"{prefix}_step{stepNumber}_title", fallback);
         }
 
         public string GetStepInstruction(int stepNumber)
         {
             var info = GetStepInfo(stepNumber);
             string fallback = info != null ? info.Instruction : string.Empty;
-            return IndustrialSafetyAR.Core.LocaleService.Instance.Get($"fire_step{stepNumber}_prompt", fallback);
+            string prefix = string.Equals(ModuleId, "gas-confined-space", StringComparison.OrdinalIgnoreCase) ? "gas" : "fire";
+            return IndustrialSafetyAR.Core.LocaleService.Instance.Get($"{prefix}_step{stepNumber}_prompt", fallback);
         }
 
         public string GetNextLabel(int stepNumber)
         {
             var info = GetStepInfo(stepNumber);
             string fallback = info != null ? info.NextButtonLabel : "NEXT STEP →";
-            return IndustrialSafetyAR.Core.LocaleService.Instance.Get($"fire_step{stepNumber}_next", fallback);
+            string prefix = string.Equals(ModuleId, "gas-confined-space", StringComparison.OrdinalIgnoreCase) ? "gas" : "fire";
+            return IndustrialSafetyAR.Core.LocaleService.Instance.Get($"{prefix}_step{stepNumber}_next", fallback);
         }
 
         public string CurrentStepTitle => GetStepTitle(CurrentStepIndex);

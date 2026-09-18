@@ -152,19 +152,31 @@ namespace IndustrialSafetyAR.Editor
             {
                 LocalizationFontSetup.SetupFonts();
                 Debug.Log("[BuildWorkerApp] Running FireTrainingEventTests.RunAllTests()...");
-                bool passed = IndustrialSafetyAR.Tests.FireTrainingEventTests.RunAllTests(out var logs);
+                bool firePassed = IndustrialSafetyAR.Tests.FireTrainingEventTests.RunAllTests(out var fireLogs);
+
+                Debug.Log("[BuildWorkerApp] Running GasTrainingEventTests.RunAllTests()...");
+                bool gasPassed = IndustrialSafetyAR.Tests.GasTrainingEventTests.RunAllTests(out var gasLogs);
+
+                bool passed = firePassed && gasPassed;
                 string status = passed ? "SUCCESS" : "FAILED";
                 var sb = new System.Text.StringBuilder();
                 sb.AppendLine($"Status: {status}");
                 sb.AppendLine($"Timestamp: {DateTime.Now:o}");
-                sb.AppendLine($"TotalLogEntries: {logs.Count}");
-                sb.AppendLine("=== LOGS ===");
-                foreach (var line in logs)
+                sb.AppendLine($"FireTestsPassed: {firePassed} (Logs: {fireLogs.Count})");
+                sb.AppendLine($"GasTestsPassed: {gasPassed} (Logs: {gasLogs.Count})");
+                sb.AppendLine($"TotalLogEntries: {fireLogs.Count + gasLogs.Count}");
+                sb.AppendLine("=== FIRE LOGS ===");
+                foreach (var line in fireLogs)
+                {
+                    sb.AppendLine(line);
+                }
+                sb.AppendLine("=== GAS LOGS ===");
+                foreach (var line in gasLogs)
                 {
                     sb.AppendLine(line);
                 }
                 File.WriteAllText(logPath, sb.ToString());
-                Debug.Log($"[BuildWorkerApp] Finished FireTrainingEventTests: {status}");
+                Debug.Log($"[BuildWorkerApp] Finished All Tests: {status} (Fire: {firePassed}, Gas: {gasPassed})");
             }
             catch (Exception ex)
             {

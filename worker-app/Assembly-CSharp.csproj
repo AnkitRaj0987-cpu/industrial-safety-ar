@@ -69,10 +69,15 @@
     <Compile Include="Assets\Scripts\Modules\FireExplosion\FireArInteractionController.cs" />
     <Compile Include="Assets\Scripts\Assessment\LocalAssessmentEngine.cs" />
     <Compile Include="Assets\Scripts\UI\TapGatedButton.cs" />
+    <Compile Include="Assets\Scripts\Modules\GasConfinedSpace\GasAtmosphericSimulator.cs" />
+    <Compile Include="Assets\Scripts\Tests\GasTrainingEventTests.cs" />
+    <Compile Include="Assets\Scripts\AR\ARModeController.cs" />
     <Compile Include="Assets\Scripts\Modules\FireExplosion\IIdentifiableHazard.cs" />
+    <Compile Include="Assets\Scripts\Modules\GasConfinedSpace\GasPpeSystem.cs" />
     <Compile Include="Assets\Scripts\Modules\FireExplosion\TouchGestureFilter.cs" />
     <Compile Include="Assets\Scripts\Modules\FireExplosion\AssemblyPointMarker.cs" />
     <Compile Include="Assets\Scripts\Modules\FireExplosion\FireTrainingWorkflow.cs" />
+    <Compile Include="Assets\Scripts\Modules\GasConfinedSpace\GasTrainingWorkflow.cs" />
     <Compile Include="Assets\Scripts\AR\ARTrackingStatusUI.cs" />
     <Compile Include="Assets\Scripts\Core\Events\TrainingEvent.cs" />
     <Compile Include="Assets\Scripts\Modules\FireExplosion\EmergencyExitMarker.cs" />

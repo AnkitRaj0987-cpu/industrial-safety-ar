@@ -393,7 +393,37 @@ namespace IndustrialSafetyAR.Core
                 { "assessment_deduction_reason_smoke", "-5: Entered toxic smoke corridor during evacuation" },
                 { "assessment_btn_finish", "RETURN TO HOME" },
                 { "assessment_btn_retake", "RETAKE SCENARIO" },
-                { "assessment_btn_breakdown", "VIEW BREAKDOWN" }
+                { "assessment_btn_breakdown", "VIEW BREAKDOWN" },
+
+                // Gas & Confined Space Safety Module Keys
+                { "gas_header_title", "GAS LEAK & CONFINED SPACE SAFETY" },
+                { "gas_step1_title", "RECOGNIZE GAS HAZARD" },
+                { "gas_step1_prompt", "Confined space opening located! Tap [ACKNOWLEDGE GAS HAZARD →] below to confirm recognition:" },
+                { "gas_step1_next", "NEXT: DANGER ZONE →" },
+                { "gas_step2_title", "RECOGNIZE DANGER ZONE" },
+                { "gas_step2_prompt", "Identify the 3m hazardous zone around the opening. Tap [MARK 3m DANGER PERIMETER →] below:" },
+                { "gas_step2_next", "NEXT: ATMOSPHERIC TEST →" },
+                { "gas_step3_title", "ATMOSPHERIC TESTING" },
+                { "gas_step3_prompt", "Execute OSHA testing sequence (1. Oxygen -> 2. Flammable -> 3. Toxic). Tap [BEGIN ATMOSPHERIC TEST →] below:" },
+                { "gas_step3_next", "NEXT: SELECT PPE →" },
+                { "gas_step4_title", "SELECT PPE" },
+                { "gas_step4_prompt", "Select scenario PPE (Helmet, Harness, Gloves, Boots, SCBA). Tap [SELECT REQUIRED PPE KIT →] below:" },
+                { "gas_step4_next", "NEXT: VERIFY PPE →" },
+                { "gas_step5_title", "VERIFY PPE" },
+                { "gas_step5_prompt", "Perform SCBA seal check and harness inspection. Tap [PERFORM FIT & SEAL CHECK →] below:" },
+                { "gas_step5_next", "NEXT: BUDDY SYSTEM →" },
+                { "gas_step6_title", "BUDDY / ATTENDANT SYSTEM" },
+                { "gas_step6_prompt", "Station standby attendant outside and test communication. Tap [ASSIGN ATTENDANT & TEST RADIO →] below:" },
+                { "gas_step6_next", "NEXT: ENTRY DECISION →" },
+                { "gas_step7_title", "SAFE ENTRY DECISION" },
+                { "gas_step7_prompt", "Atmosphere is UNSAFE! PPE does NOT override unsafe air. Tap [DO NOT ENTER (UNSAFE ATMOSPHERE) →] below:" },
+                { "gas_step7_next", "NEXT: EMERGENCY RESPONSE →" },
+                { "gas_step8_title", "EMERGENCY RESPONSE" },
+                { "gas_step8_prompt", "Simulate gas alarm! Evacuate upwind, do NOT attempt rescue. Tap [EVACUATE UPWIND & ALERT SUPERVISOR →] below:" },
+                { "gas_step8_next", "NEXT: FINAL SAFETY CHECK →" },
+                { "gas_step9_title", "FINAL SAFETY CHECK" },
+                { "gas_step9_prompt", "Review compliance checklist. Tap [CONFIRM SAFETY CHECK & COMPLETE →] below:" },
+                { "gas_step9_next", "VIEW ASSESSMENT →" }
             };
             _catalog[LangEnglish] = en;
 
@@ -611,7 +641,37 @@ namespace IndustrialSafetyAR.Core
                 { "assessment_deduction_reason_smoke", "-5: निकासी के दौरान जहरीले धुएं में प्रवेश" },
                 { "assessment_btn_finish", "मुख्य मेनू पर वापस जाएं" },
                 { "assessment_btn_retake", "पुनः प्रयास करें" },
-                { "assessment_btn_breakdown", "विवरण देखें" }
+                { "assessment_btn_breakdown", "विवरण देखें" },
+
+                // Gas & Confined Space Safety Module Keys (Hindi)
+                { "gas_header_title", "गैस रिसाव एवं सीमित स्थान सुरक्षा" },
+                { "gas_step1_title", "गैस खतरे की पहचान" },
+                { "gas_step1_prompt", "सीमित स्थान प्रवेश द्वार स्थित! पहचान की पुष्टि करने के लिए नीचे [गैस खतरे की पुष्टि करें →] दबाएं:" },
+                { "gas_step1_next", "अगला: खतरा क्षेत्र →" },
+                { "gas_step2_title", "खतरा क्षेत्र की पहचान" },
+                { "gas_step2_prompt", "प्रवेश द्वार के चारों ओर 3 मीटर खतरनाक क्षेत्र की पहचान करें। नीचे [3मी खतरा सीमा चिह्नित करें →] दबाएं:" },
+                { "gas_step2_next", "अगला: वायुमंडलीय परीक्षण →" },
+                { "gas_step3_title", "वायुमंडलीय परीक्षण" },
+                { "gas_step3_prompt", "OSHA परीक्षण क्रम निष्पादित करें (1. ऑक्सीजन -> 2. ज्वलनशील -> 3. विषाक्त)। नीचे [वायुमंडलीय परीक्षण शुरू करें →] दबाएं:" },
+                { "gas_step3_next", "अगला: पीपीई चयन →" },
+                { "gas_step4_title", "पीपीई का चयन" },
+                { "gas_step4_prompt", "आवश्यक पीपीई चुनें (हेलमेट, हार्नेस, दस्ताने, जूते, एससीबीए)। नीचे [आवश्यक पीपीई किट चुनें →] दबाएं:" },
+                { "gas_step4_next", "अगला: पीपीई सत्यापन →" },
+                { "gas_step5_title", "पीपीई सत्यापन" },
+                { "gas_step5_prompt", "एससीबीए सील जांच और हार्नेस निरीक्षण करें। नीचे [फिट एवं सील जांच करें →] दबाएं:" },
+                { "gas_step5_next", "अगला: बडी/सहायक प्रणाली →" },
+                { "gas_step6_title", "बडी / सहायक प्रणाली" },
+                { "gas_step6_prompt", "बाहर सहायक को तैनात करें और संचार का परीक्षण करें। नीचे [सहायक नियुक्त करें एवं रेडियो जांचें →] दबाएं:" },
+                { "gas_step6_next", "अगला: प्रवेश निर्णय →" },
+                { "gas_step7_title", "सुरक्षित प्रवेश निर्णय" },
+                { "gas_step7_prompt", "वातावरण असुरक्षित है! पीपीई असुरक्षित हवा को सुरक्षित नहीं बनाता। नीचे [प्रवेश न करें (असुरक्षित वातावरण) →] दबाएं:" },
+                { "gas_step7_next", "अगला: आपातकालीन प्रतिक्रिया →" },
+                { "gas_step8_title", "आपातकालीन प्रतिक्रिया" },
+                { "gas_step8_prompt", "गैस अलार्म सक्रिय! हवा की विपरीत दिशा में जाएं, बचाव का प्रयास न करें। नीचे [सुरक्षित क्षेत्र जाएं एवं पर्यवेक्षक को सूचित करें →] दबाएं:" },
+                { "gas_step8_next", "अगला: अंतिम सुरक्षा जांच →" },
+                { "gas_step9_title", "अंतिम सुरक्षा जांच" },
+                { "gas_step9_prompt", "अनुपालन चेकलिस्ट की समीक्षा करें। नीचे [सुरक्षा जांच की पुष्टि करें एवं पूर्ण करें →] दबाएं:" },
+                { "gas_step9_next", "मूल्यांकन देखें →" }
             };
             _catalog[LangHindi] = hi;
 
@@ -829,7 +889,37 @@ namespace IndustrialSafetyAR.Core
                 { "assessment_deduction_reason_smoke", "-5: ᱫᱟᱹᱲ ᱚᱠᱛᱚ ᱵᱤᱥ ᱫᱷᱩᱶᱟᱹ ᱨᱮ ᱵᱚᱞᱚᱱ" },
                 { "assessment_btn_finish", "ᱢᱩᱬᱩᱛ ᱢᱮᱱᱩ ᱨᱩᱣᱟᱹᱲ" },
                 { "assessment_btn_retake", "ᱫᱚᱦᱲᱟ ᱮᱦᱚᱵ" },
-                { "assessment_btn_breakdown", "ᱵᱤᱵᱚᱨᱚᱬ ᱧᱮᱞ" }
+                { "assessment_btn_breakdown", "ᱵᱤᱵᱚᱨᱚᱬ ᱧᱮᱞ" },
+
+                // Gas & Confined Space Safety Module Keys (Santali Ol Chiki)
+                { "gas_header_title", "ᱜᱮᱥ ᱞᱤᱠ ᱟᱨ ᱥᱤᱢᱤᱛ ᱴᱷᱟᱶ ᱨᱩᱠᱷᱤᱭᱟᱹ" },
+                { "gas_step1_title", "ᱜᱮᱥ ᱵᱚᱛᱚᱨ ᱧᱟᱢ" },
+                { "gas_step1_prompt", "ᱥᱤᱢᱤᱛ ᱴᱷᱟᱶ ᱵᱚᱞᱚᱱ ᱫᱩᱣᱟᱹᱨ ᱧᱟᱢ ᱮᱱᱟ! ᱴᱷᱟᱹᱣᱠᱟᱹᱭ ᱞᱟᱹᱜᱤᱫ ᱞᱟᱛᱟᱨ ᱨᱮ [ᱜᱮᱥ ᱵᱚᱛᱚᱨ ᱴᱷᱟᱹᱣᱠᱟᱹᱭ ᱢᱮ →] ᱞᱤᱱ ᱢᱮ:" },
+                { "gas_step1_next", "ᱞᱟᱦᱟ: ᱵᱚᱛᱚᱨ ᱴᱷᱟᱶ →" },
+                { "gas_step2_title", "ᱵᱚᱛᱚᱨ ᱴᱷᱟᱶ ᱧᱟᱢ" },
+                { "gas_step2_prompt", "ᱫᱩᱣᱟᱹᱨ ᱟᱰᱮᱯᱟᱥᱮ 3 ᱢᱤᱴᱟᱨ ᱵᱚᱛᱚᱨ ᱴᱷᱟᱶ ᱧᱟᱢ ᱢᱮ᱾ ᱞᱟᱛᱟᱨ ᱨᱮ [3 ᱢᱤᱴᱟᱨ ᱵᱚᱛᱚᱨ ᱥᱤᱢᱟᱹ ᱪᱤᱱᱦᱟᱹᱭ ᱢᱮ →] ᱞᱤᱱ ᱢᱮ:" },
+                { "gas_step2_next", "ᱞᱟᱦᱟ: ᱦᱚᱭ-ᱦᱤᱥᱤᱫ ᱯᱚᱨᱚᱠ →" },
+                { "gas_step3_title", "ᱦᱚᱭ-ᱦᱤᱥᱤᱫ ᱯᱚᱨᱚᱠ" },
+                { "gas_step3_prompt", "OSHA ᱯᱚᱨᱚᱠ ᱱᱤᱭᱟᱹᱢ (1. ᱚᱠᱥᱤᱡᱮᱱ -> 2. ᱡᱩᱞᱩᱜ ᱜᱮᱥ -> 3. ᱵᱤᱥ ᱜᱮᱥ)᱾ ᱞᱟᱛᱟᱨ ᱨᱮ [ᱦᱚᱭ-ᱦᱤᱥᱤᱫ ᱯᱚᱨᱚᱠ ᱮᱦᱚᱵ ᱢᱮ →] ᱞᱤᱱ ᱢᱮ:" },
+                { "gas_step3_next", "ᱞᱟᱦᱟ: PPE ᱵᱟᱪᱷᱟᱣ →" },
+                { "gas_step4_title", "PPE ᱵᱟᱪᱷᱟᱣ" },
+                { "gas_step4_prompt", "ᱞᱟᱹᱠᱛᱤᱭᱟᱱ PPE ᱵᱟᱪᱷᱟᱣ ᱢᱮ (ᱦᱮᱞᱢᱮᱴ, ᱦᱟᱨᱱᱮᱥ, ᱜᱞᱚᱵᱷᱥ, ᱡᱩᱛᱟᱹ, SCBA)᱾ ᱞᱟᱛᱟᱨ ᱨᱮ [ᱞᱟᱹᱠᱛᱤᱭᱟᱱ PPE ᱠᱤᱴ ᱵᱟᱪᱷᱟᱣ ᱢᱮ →] ᱞᱤᱱ ᱢᱮ:" },
+                { "gas_step4_next", "ᱞᱟᱦᱟ: PPE ᱯᱚᱨᱚᱠ →" },
+                { "gas_step5_title", "PPE ᱯᱚᱨᱚᱠ" },
+                { "gas_step5_prompt", "SCBA ᱥᱤᱞ ᱟᱨ ᱦᱟᱨᱱᱮᱥ ᱯᱚᱨᱚᱠ ᱢᱮ᱾ ᱞᱟᱛᱟᱨ ᱨᱮ [ᱯᱷᱤᱴ ᱟᱨ ᱥᱤᱞ ᱯᱚᱨᱚᱠ ᱢᱮ →] ᱞᱤᱱ ᱢᱮ:" },
+                { "gas_step5_next", "ᱞᱟᱦᱟ: ᱜᱟᱛᱮ/ᱜᱚᱲᱚᱭᱤᱡ ᱱᱤᱭᱟᱹᱢ →" },
+                { "gas_step6_title", "ᱜᱟᱛᱮ / ᱜᱚᱲᱚᱭᱤᱡ ᱱᱤᱭᱟᱹᱢ" },
+                { "gas_step6_prompt", "ᱵᱟᱦᱨᱮ ᱜᱚᱲᱚᱭᱤᱡ ᱛᱤᱸᱜᱩᱭ ᱢᱮ ᱟᱨ ᱨᱮᱰᱤᱭᱳ ᱯᱚᱨᱚᱠ ᱢᱮ᱾ ᱞᱟᱛᱟᱨ ᱨᱮ [ᱜᱚᱲᱚᱭᱤᱡ ᱴᱷᱟᱹᱣᱠᱟᱹᱭ ᱢᱮ ᱟᱨ ᱨᱮᱰᱤᱭᱳ ᱧᱮᱞ ᱢᱮ →] ᱞᱤᱱ ᱢᱮ:" },
+                { "gas_step6_next", "ᱞᱟᱦᱟ: ᱵᱚᱞᱚᱱ ᱜᱚᱴᱟ →" },
+                { "gas_step7_title", "ᱨᱩᱠᱷᱤᱭᱟᱹ ᱵᱚᱞᱚᱱ ᱜᱚᱴᱟ" },
+                { "gas_step7_prompt", "ᱦᱚᱭ-ᱦᱤᱥᱤᱫ ᱵᱚᱛᱚᱨ ᱜᱮᱭᱟ! PPE ᱵᱚᱛᱚᱨ ᱦᱚᱭ ᱵᱟᱭ ᱵᱮᱥᱟ᱾ ᱞᱟᱛᱟᱨ ᱨᱮ [ᱟᱞᱚᱢ ᱵᱚᱞᱚᱱᱟ (ᱵᱚᱛᱚᱨ ᱦᱚᱭ) →] ᱞᱤᱱ ᱢᱮ:" },
+                { "gas_step7_next", "ᱞᱟᱦᱟ: ᱟᱯᱟᱛᱠᱟᱞᱤᱱ ᱠᱟᱹᱢᱤ →" },
+                { "gas_step8_title", "ᱟᱯᱟᱛᱠᱟᱞᱤᱱ ᱠᱟᱹᱢᱤ" },
+                { "gas_step8_prompt", "ᱜᱮᱥ ᱟᱞᱟᱨᱢ ᱥᱟᱰᱮ ᱠᱟᱱᱟ! ᱦᱚᱭ ᱵᱤᱨᱩᱫᱷ ᱨᱮ ᱚᱰᱚᱠᱚᱜ ᱢᱮ, ᱵᱟᱧᱪᱟᱣ ᱟᱞᱚᱢ ᱠᱩᱨᱩᱢᱩᱴᱩᱭᱟ᱾ ᱞᱟᱛᱟᱨ ᱨᱮ [ᱨᱩᱠᱷᱤᱭᱟᱹ ᱴᱷᱟᱶ ᱪᱟᱞᱟᱜ ᱢᱮ ᱟᱨ ᱥᱩᱯᱚᱨᱵᱷᱟᱭᱡᱚᱨ ᱞᱟᱹᱭᱟᱭ ᱢᱮ →] ᱞᱤᱱ ᱢᱮ:" },
+                { "gas_step8_next", "ᱞᱟᱦᱟ: ᱢᱩᱪᱟᱹᱫ ᱨᱩᱠᱷᱤᱭᱟᱹ ᱯᱚᱨᱚᱠ →" },
+                { "gas_step9_title", "ᱢᱩᱪᱟᱹᱫ ᱨᱩᱠᱷᱤᱭᱟᱹ ᱯᱚᱨᱚᱠ" },
+                { "gas_step9_prompt", "ᱨᱩᱠᱷᱤᱭᱟᱹ ᱞᱤᱥᱴᱤ ᱧᱮᱞ ᱢᱮ᱾ ᱞᱟᱛᱟᱨ ᱨᱮ [ᱨᱩᱠᱷᱤᱭᱟᱹ ᱯᱚᱨᱚᱠ ᱴᱷᱟᱹᱣᱠᱟᱹᱭ ᱢᱮ ᱟᱨ ᱯᱩᱨᱟᱹᱣ ᱢᱮ →] ᱞᱤᱱ ᱢᱮ:" },
+                { "gas_step9_next", "ᱚᱨᱡᱚ ᱧᱮᱞ ᱢᱮ →" }
             };
             _catalog[LangSantali] = sat;
         }

@@ -1,0 +1,242 @@
+{
+  "schema_version": "1.0.0",
+  "module_id": "gas-confined-space",
+  "content_version": "1.0.0",
+  "title_key": "module.gas_confined_space.title",
+  "description_key": "module.gas_confined_space.description",
+  "domain": "gas_confined_space",
+  "pass_percent": 70.00,
+  "estimated_duration_seconds": 360,
+  "initial_step_id": "step_gas_recognize_hazard",
+  "steps": [
+    {
+      "step_id": "step_gas_recognize_hazard",
+      "sequence": 1,
+      "type": "instruction",
+      "prompt_key": "module.gas_confined_space.step.recognize_hazard",
+      "required": true,
+      "allowed_actions": [
+        "recognize_hazard",
+        "complete_step"
+      ],
+      "vfx_cue": "cue_confined_space_gas_haze",
+      "next_step_id": "step_gas_danger_zone",
+      "failure_next_step_id": null,
+      "timeout_ms": 30000,
+      "is_terminal": false,
+      "success_criteria": {
+        "matcher": "equals",
+        "event_type": "gas_hazard_recognized",
+        "payload_key": "action_id",
+        "expected_value": "hazard_recognized"
+      }
+    },
+    {
+      "step_id": "step_gas_danger_zone",
+      "sequence": 2,
+      "type": "mark_location",
+      "prompt_key": "module.gas_confined_space.step.danger_zone",
+      "required": true,
+      "allowed_actions": [
+        "mark_danger_zone",
+        "stay_outside_zone"
+      ],
+      "vfx_cue": "cue_danger_zone_perimeter",
+      "next_step_id": "step_gas_atmospheric_test",
+      "failure_next_step_id": "step_gas_danger_zone",
+      "timeout_ms": 45000,
+      "is_terminal": false,
+      "success_criteria": {
+        "matcher": "equals",
+        "event_type": "danger_zone_recognized",
+        "payload_key": "action_id",
+        "expected_value": "perimeter_marked"
+      }
+    },
+    {
+      "step_id": "step_gas_atmospheric_test",
+      "sequence": 3,
+      "type": "use_item",
+      "prompt_key": "module.gas_confined_space.step.atmospheric_test",
+      "required": true,
+      "allowed_actions": [
+        "test_oxygen",
+        "test_flammable",
+        "test_toxic",
+        "complete_atmospheric_test"
+      ],
+      "vfx_cue": "cue_gas_detector_display",
+      "next_step_id": "step_gas_select_ppe",
+      "failure_next_step_id": null,
+      "timeout_ms": 60000,
+      "is_terminal": false,
+      "metadata": {
+        "sequence_standard": "OSHA_29CFR_1910_146",
+        "test_sequence": [
+          "O2",
+          "LEL",
+          "H2S"
+        ]
+      },
+      "success_criteria": {
+        "matcher": "equals",
+        "event_type": "atmosphere_assessment_completed",
+        "payload_key": "overall_status",
+        "expected_value": "unsafe"
+      }
+    },
+    {
+      "step_id": "step_gas_select_ppe",
+      "sequence": 4,
+      "type": "select_item",
+      "prompt_key": "module.gas_confined_space.step.select_ppe",
+      "required": true,
+      "allowed_actions": [
+        "select_ppe"
+      ],
+      "vfx_cue": "cue_ppe_palette",
+      "next_step_id": "step_gas_verify_ppe",
+      "failure_next_step_id": null,
+      "timeout_ms": 45000,
+      "is_terminal": false,
+      "metadata": {
+        "required_ppe": [
+          "ppe_helmet",
+          "ppe_harness",
+          "ppe_gloves",
+          "ppe_boots",
+          "ppe_scba"
+        ]
+      },
+      "success_criteria": {
+        "matcher": "equals",
+        "event_type": "ppe_selected",
+        "payload_key": "outcome",
+        "expected_value": "success"
+      }
+    },
+    {
+      "step_id": "step_gas_verify_ppe",
+      "sequence": 5,
+      "type": "make_decision",
+      "prompt_key": "module.gas_confined_space.step.verify_ppe",
+      "required": true,
+      "allowed_actions": [
+        "verify_ppe",
+        "fit_check"
+      ],
+      "vfx_cue": "cue_ppe_verification_check",
+      "next_step_id": "step_gas_buddy_system",
+      "failure_next_step_id": null,
+      "timeout_ms": 30000,
+      "is_terminal": false,
+      "success_criteria": {
+        "matcher": "equals",
+        "event_type": "ppe_verified",
+        "payload_key": "verification_status",
+        "expected_value": "verified"
+      }
+    },
+    {
+      "step_id": "step_gas_buddy_system",
+      "sequence": 6,
+      "type": "make_decision",
+      "prompt_key": "module.gas_confined_space.step.buddy_system",
+      "required": true,
+      "allowed_actions": [
+        "assign_attendant",
+        "check_communication"
+      ],
+      "vfx_cue": "cue_attendant_station",
+      "next_step_id": "step_gas_entry_decision",
+      "failure_next_step_id": null,
+      "timeout_ms": 45000,
+      "is_terminal": false,
+      "metadata": {
+        "attendant_position": "outside_confined_space",
+        "communication_type": "two_way_intrinsically_safe_radio"
+      },
+      "success_criteria": {
+        "matcher": "equals",
+        "event_type": "communication_checked",
+        "payload_key": "outcome",
+        "expected_value": "success"
+      }
+    },
+    {
+      "step_id": "step_gas_entry_decision",
+      "sequence": 7,
+      "type": "make_decision",
+      "prompt_key": "module.gas_confined_space.step.entry_decision",
+      "required": true,
+      "allowed_actions": [
+        "decide_entry"
+      ],
+      "vfx_cue": "cue_entry_portal_barrier",
+      "next_step_id": "step_gas_emergency_response",
+      "failure_next_step_id": "step_gas_emergency_response",
+      "timeout_ms": 30000,
+      "is_terminal": false,
+      "metadata": {
+        "safety_principle": "PPE_DOES_NOT_OVERRIDE_UNSAFE_ATMOSPHERE",
+        "atmospheric_condition": "unsafe"
+      },
+      "success_criteria": {
+        "matcher": "equals",
+        "event_type": "safe_entry_decision",
+        "payload_key": "decision_id",
+        "expected_value": "do_not_enter"
+      }
+    },
+    {
+      "step_id": "step_gas_emergency_response",
+      "sequence": 8,
+      "type": "evacuate",
+      "prompt_key": "module.gas_confined_space.step.emergency_response",
+      "required": true,
+      "allowed_actions": [
+        "acknowledge_alarm",
+        "evacuate_to_safe_area",
+        "alert_supervisor",
+        "complete_emergency_procedure"
+      ],
+      "vfx_cue": "cue_gas_alarm_evacuate",
+      "next_step_id": "step_gas_final_safety_check",
+      "failure_next_step_id": null,
+      "timeout_ms": 60000,
+      "is_terminal": false,
+      "metadata": {
+        "rescue_principle": "ALERT_ISOLATE_COMMUNICATE_TRAINED_RESCUE_ONLY",
+        "prohibit_improvised_rescue": true
+      },
+      "success_criteria": {
+        "matcher": "equals",
+        "event_type": "emergency_procedure_completed",
+        "payload_key": "outcome",
+        "expected_value": "success"
+      }
+    },
+    {
+      "step_id": "step_gas_final_safety_check",
+      "sequence": 9,
+      "type": "assemble",
+      "prompt_key": "module.gas_confined_space.step.final_safety_check",
+      "required": true,
+      "allowed_actions": [
+        "complete_training",
+        "verify_summary"
+      ],
+      "vfx_cue": "cue_safe_muster_check",
+      "next_step_id": null,
+      "failure_next_step_id": null,
+      "timeout_ms": 30000,
+      "is_terminal": true,
+      "success_criteria": {
+        "matcher": "equals",
+        "event_type": "gas_training_completed",
+        "payload_key": "outcome",
+        "expected_value": "success"
+      }
+    }
+  ]
+}

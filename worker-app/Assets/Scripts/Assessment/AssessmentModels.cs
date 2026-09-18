@@ -499,6 +499,8 @@ namespace IndustrialSafetyAR.Assessment
                 vm.DurationSeconds = secs;
             }
 
+            bool isGasModule = string.Equals(vm.ModuleId, RubricLoader.GasModuleId, StringComparison.OrdinalIgnoreCase);
+
             if (assessment != null)
             {
                 vm.ClientScore = assessment.ClientScore;
@@ -506,19 +508,32 @@ namespace IndustrialSafetyAR.Assessment
                 vm.PassPercent = assessment.PassPercent;
                 vm.Passed = assessment.Passed;
 
-                // Step 1 to 9 rule mappings
-                var stepDefs = new (int num, string ruleId, string stepId, string title, float maxPts)[]
-                {
-                    (1, "rule_detect_hazard", "step_detect_hazard", "Step 1: Detect Hazard", 5f),
-                    (2, "rule_identify_hazard", "step_identify_hazard", "Step 2: Identify Hazard", 15f),
-                    (3, "rule_raise_alarm", "step_raise_alarm", "Step 3: Raise Alarm", 15f),
-                    (4, "rule_select_extinguisher", "step_select_extinguisher", "Step 4: Select Extinguisher", 15f),
-                    (5, "rule_maintain_distance", "step_maintain_distance", "Step 5: Maintain Safe Distance", 10f),
-                    (6, "rule_use_extinguisher", "step_use_extinguisher", "Step 6: PASS Extinguisher Procedure", 15f),
-                    (7, "rule_identify_exit", "step_identify_exit", "Step 7: Identify Emergency Exit", 10f),
-                    (8, "rule_evacuate_route", "step_evacuate_route", "Step 8: Evacuate Designated Route", 10f),
-                    (9, "rule_reach_assembly", "step_reach_assembly", "Step 9: Reach Assembly Point", 5f),
-                };
+                // Step 1 to 9 rule mappings (differentiated by module)
+                var stepDefs = isGasModule
+                    ? new (int num, string ruleId, string stepId, string title, float maxPts)[]
+                    {
+                        (1, "rule_hazard_recognition", "step_gas_recognize_hazard", "Step 1: Recognize Gas Hazard", 10f),
+                        (2, "rule_danger_zone", "step_gas_danger_zone", "Step 2: Recognize Danger Zone", 10f),
+                        (3, "rule_atmospheric_test", "step_gas_atmospheric_test", "Step 3: Atmospheric Testing", 20f),
+                        (4, "rule_select_ppe", "step_gas_select_ppe", "Step 4: Select PPE", 10f),
+                        (5, "rule_verify_ppe", "step_gas_verify_ppe", "Step 5: Verify PPE", 5f),
+                        (6, "rule_buddy_system", "step_gas_buddy_system", "Step 6: Buddy / Attendant System", 10f),
+                        (7, "rule_entry_decision", "step_gas_entry_decision", "Step 7: Safe Entry Decision", 15f),
+                        (8, "rule_emergency_response", "step_gas_emergency_response", "Step 8: Emergency Response", 20f),
+                        (9, "rule_final_check", "step_gas_final_safety_check", "Step 9: Final Safety Check", 0f),
+                    }
+                    : new (int num, string ruleId, string stepId, string title, float maxPts)[]
+                    {
+                        (1, "rule_detect_hazard", "step_detect_hazard", "Step 1: Detect Hazard", 5f),
+                        (2, "rule_identify_hazard", "step_identify_hazard", "Step 2: Identify Hazard", 15f),
+                        (3, "rule_raise_alarm", "step_raise_alarm", "Step 3: Raise Alarm", 15f),
+                        (4, "rule_select_extinguisher", "step_select_extinguisher", "Step 4: Select Extinguisher", 15f),
+                        (5, "rule_maintain_distance", "step_maintain_distance", "Step 5: Maintain Safe Distance", 10f),
+                        (6, "rule_use_extinguisher", "step_use_extinguisher", "Step 6: PASS Extinguisher Procedure", 15f),
+                        (7, "rule_identify_exit", "step_identify_exit", "Step 7: Identify Emergency Exit", 10f),
+                        (8, "rule_evacuate_route", "step_evacuate_route", "Step 8: Evacuate Designated Route", 10f),
+                        (9, "rule_reach_assembly", "step_reach_assembly", "Step 9: Reach Assembly Point", 5f),
+                    };
 
                 foreach (var def in stepDefs)
                 {
@@ -546,25 +561,51 @@ namespace IndustrialSafetyAR.Assessment
                     if (penalty > 0)
                     {
                         string reason;
-                        if (def.ruleId == "rule_evacuate_route")
+                        if (isGasModule)
                         {
-                            reason = "Evacuation route penalty: Unsafe route selected before reaching the safe route.";
-                        }
-                        else if (def.ruleId == "rule_identify_hazard")
-                        {
-                            reason = "Hazard identification penalty: Incorrect classification selected before Class E electrical confirmation.";
-                        }
-                        else if (def.ruleId == "rule_select_extinguisher")
-                        {
-                            reason = "Extinguisher selection penalty: Inappropriate extinguisher type selected before CO2.";
-                        }
-                        else if (def.ruleId == "rule_use_extinguisher")
-                        {
-                            reason = "P.A.S.S. procedure penalty: Out-of-order action attempted during extinguisher discharge sequence.";
+                            if (def.ruleId == "rule_danger_zone")
+                            {
+                                reason = "Danger zone penalty: Worker entered or approached unsafe confined space perimeter.";
+                            }
+                            else if (def.ruleId == "rule_select_ppe")
+                            {
+                                reason = "PPE selection penalty: Inappropriate respiratory or protective equipment selected.";
+                            }
+                            else if (def.ruleId == "rule_verify_ppe")
+                            {
+                                reason = "PPE verification penalty: Incomplete inspection or failed equipment seal check.";
+                            }
+                            else if (def.ruleId == "rule_entry_decision")
+                            {
+                                reason = "CRITICAL PENALTY: Attempted entry into hazardous unsafe atmosphere! Unsafe atmosphere requires DO NOT ENTER.";
+                            }
+                            else
+                            {
+                                reason = ruleRes?.Details ?? "Confined space safety penalty deduction incurred.";
+                            }
                         }
                         else
                         {
-                            reason = ruleRes?.Details ?? "Procedure penalty deduction incurred.";
+                            if (def.ruleId == "rule_evacuate_route")
+                            {
+                                reason = "Evacuation route penalty: Unsafe route selected before reaching the safe route.";
+                            }
+                            else if (def.ruleId == "rule_identify_hazard")
+                            {
+                                reason = "Hazard identification penalty: Incorrect classification selected before Class E electrical confirmation.";
+                            }
+                            else if (def.ruleId == "rule_select_extinguisher")
+                            {
+                                reason = "Extinguisher selection penalty: Inappropriate extinguisher type selected before CO2.";
+                            }
+                            else if (def.ruleId == "rule_use_extinguisher")
+                            {
+                                reason = "P.A.S.S. procedure penalty: Out-of-order action attempted during extinguisher discharge sequence.";
+                            }
+                            else
+                            {
+                                reason = ruleRes?.Details ?? "Procedure penalty deduction incurred.";
+                            }
                         }
 
                         vm.Penalties.Add($"{def.title}: (-{penalty:0.00} pts) {reason}");
@@ -577,7 +618,9 @@ namespace IndustrialSafetyAR.Assessment
             {
                 if (vm.Penalties.Count == 0 && vm.ClientScore >= 100f)
                 {
-                    vm.SafetyFeedback = "Flawless emergency performance! All 9 industrial fire response protocols were executed with 100% compliance.";
+                    vm.SafetyFeedback = isGasModule
+                        ? "Flawless confined space safety performance! All atmospheric testing, PPE verification, attendant communication, and emergency procedures were executed with 100% compliance."
+                        : "Flawless emergency performance! All 9 industrial fire response protocols were executed with 100% compliance.";
                 }
                 else
                 {
@@ -610,6 +653,7 @@ namespace IndustrialSafetyAR.Assessment
     public static class RubricLoader
     {
         public const string FireModuleId = "fire-explosion-response";
+        public const string GasModuleId = "gas-confined-space";
 
         /// <summary>
         /// Optional override path for testing or dynamic loading.
@@ -622,6 +666,14 @@ namespace IndustrialSafetyAR.Assessment
         public static RubricDefinition LoadFireExplosionRubric()
         {
             return LoadRubric(FireModuleId);
+        }
+
+        /// <summary>
+        /// Loads the Gas Leak &amp; Confined Space rubric from local bundled assets.
+        /// </summary>
+        public static RubricDefinition LoadGasConfinedSpaceRubric()
+        {
+            return LoadRubric(GasModuleId);
         }
 
         /// <summary>
@@ -646,6 +698,11 @@ namespace IndustrialSafetyAR.Assessment
             if (string.Equals(moduleId, FireModuleId, StringComparison.OrdinalIgnoreCase))
             {
                 return RubricDefinition.FromJson(BundledFireRubricJson);
+            }
+
+            if (string.Equals(moduleId, GasModuleId, StringComparison.OrdinalIgnoreCase))
+            {
+                return RubricDefinition.FromJson(BundledGasRubricJson);
             }
 
             throw new FileNotFoundException($"Could not load rubric for module '{moduleId}' from assets or bundled fallback.");
@@ -862,6 +919,132 @@ namespace IndustrialSafetyAR.Assessment
         ""outcome"": ""success""
       },
       ""points"": 5.00,
+      ""award_limit"": 1,
+      ""penalty_points"": 0.00
+    }
+  ]
+}";
+
+        /// <summary>
+        /// Offline-bundled exact copy of worker-app/Assets/Content/Modules/gas-confined-space/rubric.json.
+        /// Guarantees offline availability when filesystem access is restricted (e.g. mobile player sandbox).
+        /// </summary>
+        public const string BundledGasRubricJson = @"{
+  ""schema_version"": ""1.0.0"",
+  ""module_id"": ""gas-confined-space"",
+  ""content_version"": ""1.0.0"",
+  ""pass_percent"": 70.00,
+  ""max_score"": 100.00,
+  ""rules"": [
+    {
+      ""rule_id"": ""rule_hazard_recognition"",
+      ""step_id"": ""step_gas_recognize_hazard"",
+      ""required"": true,
+      ""event_type"": ""gas_hazard_recognized"",
+      ""match"": {
+        ""outcome"": ""success""
+      },
+      ""points"": 10.00,
+      ""award_limit"": 1,
+      ""penalty_points"": 0.00
+    },
+    {
+      ""rule_id"": ""rule_danger_zone"",
+      ""step_id"": ""step_gas_danger_zone"",
+      ""required"": true,
+      ""event_type"": ""danger_zone_recognized"",
+      ""match"": {
+        ""outcome"": ""success""
+      },
+      ""points"": 10.00,
+      ""award_limit"": 1,
+      ""penalty_points"": 5.00,
+      ""penalty_event_type"": ""unsafe_zone_entry"",
+      ""penalty_match"": {
+        ""outcome"": ""failure""
+      }
+    },
+    {
+      ""rule_id"": ""rule_atmospheric_test"",
+      ""step_id"": ""step_gas_atmospheric_test"",
+      ""required"": true,
+      ""event_type"": ""atmosphere_assessment_completed"",
+      ""match"": {
+        ""outcome"": ""success""
+      },
+      ""points"": 20.00,
+      ""award_limit"": 1,
+      ""penalty_points"": 0.00
+    },
+    {
+      ""rule_id"": ""rule_select_ppe"",
+      ""step_id"": ""step_gas_select_ppe"",
+      ""required"": true,
+      ""event_type"": ""ppe_selected"",
+      ""match"": {
+        ""outcome"": ""success""
+      },
+      ""points"": 10.00,
+      ""award_limit"": 1,
+      ""penalty_points"": 5.00,
+      ""penalty_event_type"": ""ppe_selection_incorrect"",
+      ""penalty_match"": {
+        ""outcome"": ""failure""
+      }
+    },
+    {
+      ""rule_id"": ""rule_verify_ppe"",
+      ""step_id"": ""step_gas_verify_ppe"",
+      ""required"": true,
+      ""event_type"": ""ppe_verified"",
+      ""match"": {
+        ""outcome"": ""success""
+      },
+      ""points"": 5.00,
+      ""award_limit"": 1,
+      ""penalty_points"": 5.00,
+      ""penalty_event_type"": ""ppe_verification_failed"",
+      ""penalty_match"": {
+        ""outcome"": ""failure""
+      }
+    },
+    {
+      ""rule_id"": ""rule_buddy_system"",
+      ""step_id"": ""step_gas_buddy_system"",
+      ""required"": true,
+      ""event_type"": ""communication_checked"",
+      ""match"": {
+        ""outcome"": ""success""
+      },
+      ""points"": 10.00,
+      ""award_limit"": 1,
+      ""penalty_points"": 0.00
+    },
+    {
+      ""rule_id"": ""rule_entry_decision"",
+      ""step_id"": ""step_gas_entry_decision"",
+      ""required"": true,
+      ""event_type"": ""safe_entry_decision"",
+      ""match"": {
+        ""outcome"": ""success""
+      },
+      ""points"": 15.00,
+      ""award_limit"": 1,
+      ""penalty_points"": 15.00,
+      ""penalty_event_type"": ""unsafe_entry_attempt"",
+      ""penalty_match"": {
+        ""outcome"": ""failure""
+      }
+    },
+    {
+      ""rule_id"": ""rule_emergency_response"",
+      ""step_id"": ""step_gas_emergency_response"",
+      ""required"": true,
+      ""event_type"": ""emergency_procedure_completed"",
+      ""match"": {
+        ""outcome"": ""success""
+      },
+      ""points"": 20.00,
       ""award_limit"": 1,
       ""penalty_points"": 0.00
     }
