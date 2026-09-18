@@ -258,7 +258,7 @@ namespace IndustrialSafetyAR.UI
             alarmLabelRect.offsetMax = Vector2.zero;
             _alarmButtonText = alarmLabelObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _alarmButtonText.font = font;
-            _alarmButtonText.text = "<b>🔊 ALARM ON</b>";
+            _alarmButtonText.text = "<b>ALARM ON</b>";
             _alarmButtonText.fontSize = 13;
             _alarmButtonText.enableAutoSizing = true;
             _alarmButtonText.fontSizeMin = 10;
@@ -293,8 +293,8 @@ namespace IndustrialSafetyAR.UI
             soundLabelRect.offsetMax = Vector2.zero;
             _soundButtonText = soundLabelObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _soundButtonText.font = font;
-            _soundButtonText.text = "<b>🔊</b>";
-            _soundButtonText.fontSize = 20;
+            _soundButtonText.text = "<b>SND</b>";
+            _soundButtonText.fontSize = 14;
             _soundButtonText.alignment = TextAlignmentOptions.Center;
             _soundButtonText.color = new Color(0.96f, 0.82f, 0.25f);
             UpdateSoundButtonVisual();
@@ -555,7 +555,7 @@ namespace IndustrialSafetyAR.UI
                 audio.IsSoundEnabled = !audio.IsSoundEnabled;
                 UpdateSoundButtonVisual();
                 var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
-                string fb = audio.IsSoundEnabled ? loc.Get("feedback_sound_enabled", "Sound Alerts: Enabled 🔊") : loc.Get("feedback_sound_muted", "Sound Alerts: Muted 🔇");
+                string fb = audio.IsSoundEnabled ? loc.Get("feedback_sound_enabled", "Sound Alerts: Enabled") : loc.Get("feedback_sound_muted", "Sound Alerts: Muted");
                 SetFeedback(fb);
             }
         }
@@ -566,7 +566,7 @@ namespace IndustrialSafetyAR.UI
             {
                 bool enabled = IndustrialSafetyAR.Core.Audio.FireAudioService.Instance == null ||
                                IndustrialSafetyAR.Core.Audio.FireAudioService.Instance.IsSoundEnabled;
-                _soundButtonText.text = enabled ? "<b>🔊</b>" : "<b>🔇</b>";
+                _soundButtonText.text = enabled ? "<b>SND</b>" : "<b>MUTE</b>";
             }
         }
 
@@ -578,7 +578,7 @@ namespace IndustrialSafetyAR.UI
                 audio.IsEmergencyAlarmEnabled = !audio.IsEmergencyAlarmEnabled;
                 UpdateAlarmButtonVisual();
                 var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
-                string fb = audio.IsEmergencyAlarmEnabled ? loc.Get("feedback_alarm_enabled", "Emergency Alarm: Enabled 🔊") : loc.Get("feedback_alarm_muted", "Emergency Alarm: Muted 🔇");
+                string fb = audio.IsEmergencyAlarmEnabled ? loc.Get("feedback_alarm_enabled", "Emergency Alarm: Enabled") : loc.Get("feedback_alarm_muted", "Emergency Alarm: Muted");
                 SetFeedback(fb);
             }
         }
@@ -590,7 +590,7 @@ namespace IndustrialSafetyAR.UI
                 var audio = IndustrialSafetyAR.Core.Audio.FireAudioService.Instance;
                 bool enabled = audio == null || audio.IsEmergencyAlarmEnabled;
                 var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
-                string text = enabled ? loc.Get("btn_alarm_on", "🔊 ALARM ON") : loc.Get("btn_alarm_off", "🔇 ALARM OFF");
+                string text = enabled ? loc.Get("btn_alarm_on", "ALARM ON") : loc.Get("btn_alarm_off", "ALARM OFF");
                 _alarmButtonText.text = $"<b>{text}</b>";
                 _alarmButtonText.color = enabled ? new Color(1f, 0.5f, 0.5f) : new Color(0.7f, 0.7f, 0.7f);
             }

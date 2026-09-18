@@ -196,6 +196,10 @@ namespace IndustrialSafetyAR.Tests
             if (!RunTest("Localization_MissingKeyDoesNotCrash", Test_Localization_MissingKeyDoesNotCrash, logMessages)) allPassed = false;
             if (!RunTest("Localization_EnglishFallbackWhenTranslationMissing", Test_Localization_EnglishFallbackWhenTranslationMissing, logMessages)) allPassed = false;
             if (!RunTest("Localization_FontFallbackAssetsPresent", Test_Localization_FontFallbackAssetsPresent, logMessages)) allPassed = false;
+            if (!RunTest("WorkerHome_BottomNavigationTabsWork", Test_WorkerHome_BottomNavigationTabsWork, logMessages)) allPassed = false;
+            if (!RunTest("WorkerHome_CertificatesNavigation_SafeState", Test_WorkerHome_CertificatesNavigation_SafeState, logMessages)) allPassed = false;
+            if (!RunTest("WorkerHome_ProfileNavigation_DisplaysWorkerData", Test_WorkerHome_ProfileNavigation_DisplaysWorkerData, logMessages)) allPassed = false;
+            if (!RunTest("WorkerHome_ScreenStateIsolation_MutuallyExclusive", Test_WorkerHome_ScreenStateIsolation_MutuallyExclusive, logMessages)) allPassed = false;
 
             return allPassed;
         }
@@ -6177,7 +6181,11 @@ namespace IndustrialSafetyAR.Tests
                 "fire_step9_title", "fire_step9_prompt", "fire_step9_opt1", "fire_step9_opt2",
                 "assessment_title", "assessment_status_passed", "assessment_status_failed",
                 "assessment_score_label", "assessment_duration_label", "assessment_sync_ready",
-                "assessment_btn_finish", "assessment_btn_retake", "assessment_btn_breakdown"
+                "assessment_btn_finish", "assessment_btn_retake", "assessment_btn_breakdown",
+                "welcome_back", "safety_training", "status_completed", "status_in_progress",
+                "available_offline", "btn_continue_training", "nav_home", "nav_certificates",
+                "nav_profile", "certificates_title", "certificates_empty_desc",
+                "preferred_language_label", "badge_ar"
             };
 
             string[] languages = new[] { LocaleService.LangEnglish, LocaleService.LangHindi, LocaleService.LangSantali };
@@ -6341,6 +6349,170 @@ namespace IndustrialSafetyAR.Tests
                 throw new Exception("Devanagari font asset is not linked in fallback font tables");
             if (!hasOl)
                 throw new Exception("Ol Chiki font asset is not linked in fallback font tables");
+        }
+
+        public static void Test_WorkerHome_BottomNavigationTabsWork()
+        {
+            var go = new GameObject("TestBottomNavTabs");
+            try
+            {
+                var ctrl = go.AddComponent<WorkerHomeController>();
+                ctrl.ShowHome();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Home)
+                    throw new Exception("Expected state Home after ShowHome()");
+                if (!ctrl.IsHomeVisible)
+                    throw new Exception("Home view should be visible");
+                if (ctrl.IsCertificatesVisible)
+                    throw new Exception("Certificates view should be hidden in Home");
+                if (ctrl.IsProfileVisible)
+                    throw new Exception("Profile view should be hidden in Home");
+
+                ctrl.ShowCertificates();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Certificates)
+                    throw new Exception("Expected state Certificates after ShowCertificates()");
+                if (!ctrl.IsCertificatesVisible)
+                    throw new Exception("Certificates view should be visible");
+                if (ctrl.IsProfileVisible)
+                    throw new Exception("Profile view should be hidden in Certificates");
+
+                ctrl.ShowProfile();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Profile)
+                    throw new Exception("Expected state Profile after ShowProfile()");
+                if (!ctrl.IsProfileVisible)
+                    throw new Exception("Profile view should be visible");
+                if (ctrl.IsCertificatesVisible)
+                    throw new Exception("Certificates view should be hidden in Profile");
+
+                ctrl.ShowHome();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Home)
+                    throw new Exception("Expected state Home after ShowHome()");
+                if (!ctrl.IsHomeVisible)
+                    throw new Exception("Home view should be visible after returning");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_WorkerHome_CertificatesNavigation_SafeState()
+        {
+            var go = new GameObject("TestCertificatesSafeState");
+            try
+            {
+                var ctrl = go.AddComponent<WorkerHomeController>();
+                ctrl.ShowCertificates();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Certificates)
+                    throw new Exception("Expected state Certificates");
+                if (!ctrl.IsCertificatesVisible)
+                    throw new Exception("Certificates screen must be visible");
+
+                string certDesc = LocaleService.Instance.Get("certificates_empty_desc");
+                if (string.IsNullOrEmpty(certDesc) || !certDesc.Contains("synchronization"))
+                    throw new Exception($"Expected clean un-issued placeholder in Certificates, got: {certDesc}");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_WorkerHome_ProfileNavigation_DisplaysWorkerData()
+        {
+            var go = new GameObject("TestProfileData");
+            try
+            {
+                var ctrl = go.AddComponent<WorkerHomeController>();
+                ctrl.WorkerName = "Test Operator Sahu";
+                ctrl.ShowProfile();
+
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Profile)
+                    throw new Exception("Expected state Profile");
+                if (!ctrl.IsProfileVisible)
+                    throw new Exception("Profile screen must be visible");
+                if (ctrl.WorkerName != "Test Operator Sahu")
+                    throw new Exception("Worker name must match");
+                if (string.IsNullOrEmpty(ctrl.WorkerId))
+                    throw new Exception("Worker ID must not be empty");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_WorkerHome_ScreenStateIsolation_MutuallyExclusive()
+        {
+            var go = new GameObject("TestScreenStateIsolation");
+            var fireMgrObj = new GameObject("TestFireMgrState");
+            try
+            {
+                var ctrl = go.AddComponent<WorkerHomeController>();
+                var fireCtrl = fireMgrObj.AddComponent<FireArInteractionController>();
+                var fireUI = fireMgrObj.AddComponent<FireInteractionFeedbackUI>();
+                fireUI.Controller = fireCtrl;
+
+                // 1. Home state
+                ctrl.ShowHome();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Home)
+                    throw new Exception("State should be Home");
+                if (!ctrl.IsHomeVisible)
+                    throw new Exception("Home must be visible in Home state");
+                if (ctrl.IsSettingsVisible)
+                    throw new Exception("Settings must be hidden in Home state");
+                if (ctrl.IsCertificatesVisible)
+                    throw new Exception("Certificates must be hidden in Home state");
+                if (ctrl.IsProfileVisible)
+                    throw new Exception("Profile must be hidden in Home state");
+
+                // 2. Settings state
+                ctrl.OpenSettings();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Settings)
+                    throw new Exception("State should be Settings");
+                if (!ctrl.IsSettingsVisible)
+                    throw new Exception("Settings must be visible in Settings state");
+
+                // 3. Certificates state
+                ctrl.ShowCertificates();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Certificates)
+                    throw new Exception("State should be Certificates");
+                if (ctrl.IsSettingsVisible)
+                    throw new Exception("Settings must be hidden in Certificates state");
+                if (!ctrl.IsCertificatesVisible)
+                    throw new Exception("Certificates must be visible in Certificates state");
+                if (ctrl.IsProfileVisible)
+                    throw new Exception("Profile must be hidden in Certificates state");
+
+                // 4. Profile state
+                ctrl.ShowProfile();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Profile)
+                    throw new Exception("State should be Profile");
+                if (!ctrl.IsProfileVisible)
+                    throw new Exception("Profile must be visible in Profile state");
+                if (ctrl.IsCertificatesVisible)
+                    throw new Exception("Certificates must be hidden in Profile state");
+
+                // 5. Fire Training state
+                ctrl.StartFireTraining();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.TrainingFire)
+                    throw new Exception("State should be TrainingFire");
+                if (ctrl.IsHomeVisible)
+                    throw new Exception("Home shell must be hidden during TrainingFire");
+                if (ctrl.IsSettingsVisible)
+                    throw new Exception("Settings must be hidden during TrainingFire");
+
+                // 6. Return to Home
+                ctrl.ReturnToHome();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Home)
+                    throw new Exception("State should be Home after return");
+                if (!ctrl.IsHomeVisible)
+                    throw new Exception("Home must be restored after return");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(go);
+                GameObject.DestroyImmediate(fireMgrObj);
+            }
         }
     }
 }

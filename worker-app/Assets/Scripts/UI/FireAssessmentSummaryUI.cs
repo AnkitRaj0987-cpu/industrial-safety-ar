@@ -155,7 +155,7 @@ namespace IndustrialSafetyAR.UI
             }
             if (_finishButtonText != null)
             {
-                _finishButtonText.text = "✓ Finalized for Sync";
+                _finishButtonText.text = "Finalized for Sync";
             }
         }
 
@@ -181,7 +181,7 @@ namespace IndustrialSafetyAR.UI
             {
                 _currentViewModel.SyncPrepared = true;
                 if (_finishButton != null) _finishButton.interactable = false;
-                if (_finishButtonText != null) _finishButtonText.text = "✓ Finalized for Sync";
+                if (_finishButtonText != null) _finishButtonText.text = "Finalized for Sync";
             }
             else
             {
@@ -279,7 +279,7 @@ namespace IndustrialSafetyAR.UI
                 {
                     foreach (var step in _currentViewModel.StepSummaries)
                     {
-                        string mark = step.IsSatisfied ? (step.PenaltyDeducted > 0 ? "[!]" : "[✓]") : "[X]";
+                        string mark = step.IsSatisfied ? (step.PenaltyDeducted > 0 ? "[!]" : "[OK]") : "[X]";
                         string colorTag = step.IsSatisfied
                             ? (step.PenaltyDeducted > 0 ? "<color=#FFB74D>" : "<color=#81C784>")
                             : "<color=#E57373>";
@@ -295,7 +295,7 @@ namespace IndustrialSafetyAR.UI
             {
                 string syncReady = loc.Get("assessment_sync_ready", "Prepared for Outbox Sync");
                 _syncStatusText.text = _currentViewModel.SyncPrepared
-                    ? $"<color=#81C784>✓ {syncReady} (Attempt: {_currentViewModel.ClientAttemptId?.Substring(0, Math.Min(8, _currentViewModel.ClientAttemptId.Length))}...)</color>"
+                    ? $"<color=#81C784>● {syncReady} (Attempt: {_currentViewModel.ClientAttemptId?.Substring(0, Math.Min(8, _currentViewModel.ClientAttemptId.Length))}...)</color>"
                     : loc.Get("assessment_sync_pending", "Offline session stored locally. Ready for sync confirmation.");
             }
 
@@ -306,7 +306,7 @@ namespace IndustrialSafetyAR.UI
             {
                 if (_currentViewModel.SyncPrepared)
                 {
-                    _finishButtonText.text = $"✓ {loc.Get("assessment_outbox_prepared", "Finalized for Sync")}";
+                    _finishButtonText.text = loc.Get("assessment_outbox_prepared", "Finalized for Sync");
                 }
                 else
                 {
@@ -557,7 +557,7 @@ namespace IndustrialSafetyAR.UI
                     }
                     if (_finishButtonText != null)
                     {
-                        _finishButtonText.text = "✓ Finalized for Sync";
+                        _finishButtonText.text = "Finalized for Sync";
                     }
                     UpdateUIContents();
                     Debug.Log($"[FireAssessmentSummaryUI] Finish Session: Attempt {attempt?.ClientAttemptId} finalized and prepared for offline outbox sync.");
@@ -576,7 +576,7 @@ namespace IndustrialSafetyAR.UI
                 }
                 if (_finishButtonText != null)
                 {
-                    _finishButtonText.text = "✓ Finalized for Sync";
+                    _finishButtonText.text = "Finalized for Sync";
                 }
                 UpdateUIContents();
                 Debug.Log($"[FireAssessmentSummaryUI] Finish Session (standalone): Attempt {_currentViewModel.ClientAttemptId} prepared for offline outbox sync.");

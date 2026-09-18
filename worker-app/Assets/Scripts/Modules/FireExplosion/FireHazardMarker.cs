@@ -211,12 +211,12 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
             if (_floatingLabel != null)
             {
-                _floatingLabel.SetText("🚨 ALARM ACTIVE");
+                _floatingLabel.SetText("! ALARM ACTIVE");
                 _floatingLabel.SetColor(alarmColor);
             }
             else if (_labelMesh != null)
             {
-                _labelMesh.text = "🚨 ALARM ACTIVE";
+                _labelMesh.text = "! ALARM ACTIVE";
                 _labelMesh.color = alarmColor;
             }
 
@@ -423,7 +423,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             var signTmp = signTextObj.AddComponent<TextMeshPro>();
             var defaultFont = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF") ?? TMP_Settings.defaultFontAsset;
             if (defaultFont != null) signTmp.font = defaultFont;
-            signTmp.text = "⚡ DANGER: 480V\nELECTRICAL HAZARD";
+            signTmp.text = "DANGER: 480V\nELECTRICAL HAZARD";
             signTmp.fontSize = 0.52f;
             signTmp.alignment = TextAlignmentOptions.Center;
             signTmp.color = Color.black;
@@ -521,7 +521,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             _floatingLabel = ArFloatingLabel.Create(
                 gameObject,
                 new Vector3(0f, 0.68f, 0f),
-                "⚡ CLASS E: ELECTRICAL FIRE",
+                "CLASS E: ELECTRICAL FIRE",
                 ColorActiveHazard,
                 width: 0.36f,
                 height: 0.09f,
