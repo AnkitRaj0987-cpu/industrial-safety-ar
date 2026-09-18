@@ -1,9 +1,13 @@
 // FireInteractionFeedbackUI.cs
 // Namespace : IndustrialSafetyAR.UI
 //
-// Minimal worker-facing feedback UI displaying instructions, identification choices,
-// and emergency alarm trigger without cluttering the screen with debug diagnostics.
+// Worker-facing feedback and guided navigation UI for the Fire & Explosion Response module.
+// Enforces explicit Step X/9 display, compact progress indicator (dots), explicit Action -> Success -> Next flow,
+// large high-contrast primary Next button, Back button for reviewing completed steps, step locking,
+// and phone-touch-friendly primary action buttons with TapGatedButton swipe rejection.
 
+using System;
+using IndustrialSafetyAR.Assessment;
 using IndustrialSafetyAR.Modules.FireExplosion;
 using TMPro;
 using UnityEngine;
@@ -12,7 +16,7 @@ using UnityEngine.UI;
 namespace IndustrialSafetyAR.UI
 {
     /// <summary>
-    /// Displays guidance, hazard classification buttons, and the emergency alarm trigger
+    /// Displays guided instructions, step progression, state feedback, and touch action buttons
     /// to the worker during AR Fire training.
     /// </summary>
     public class FireInteractionFeedbackUI : MonoBehaviour
@@ -29,8 +33,70 @@ namespace IndustrialSafetyAR.UI
         [SerializeField]
         private GameObject _successBadge;
 
+        private TextMeshProUGUI _headerTitleText;
+        private TextMeshProUGUI _stepBadgeText;
+        private TextMeshProUGUI _progressText;
+        private TextMeshProUGUI _feedbackText;
+        private Canvas _canvas;
         private Image _bannerBg;
+        private Image _feedbackBg;
+        private GameObject _backButtonObj;
+        private Button _backButton;
+        private TextMeshProUGUI _backButtonText;
         private GameObject _actionContainer;
+        private GameObject _optionsContainer;
+        private GameObject _nextButtonObj;
+        private Button _nextButton;
+        private TextMeshProUGUI _nextButtonText;
+        private GameObject _soundButtonObj;
+        private Button _soundButton;
+        private TextMeshProUGUI _soundButtonText;
+        private GameObject _alarmButtonObj;
+        private Button _alarmButton;
+        private TextMeshProUGUI _alarmButtonText;
+
+        private readonly GuidedStepNavigator _fallbackNavigator = new GuidedStepNavigator();
+        private static TMP_FontAsset s_CachedFont;
+
+        public Canvas Canvas => _canvas;
+
+        public FireArInteractionController Controller
+        {
+            get => _controller;
+            set
+            {
+                if (_controller != value)
+                {
+                    UnsubscribeEvents();
+                    _controller = value;
+                    SubscribeEvents();
+                }
+            }
+        }
+
+        public GuidedStepNavigator Navigator => _controller != null ? _controller.StepNavigator : _fallbackNavigator;
+
+        public Button NextButton => _nextButton;
+        public Button BackButton => _backButton;
+        public Button SoundButton => _soundButton;
+        public TextMeshProUGUI SoundButtonText => _soundButtonText;
+        public Button AlarmButton => _alarmButton;
+        public TextMeshProUGUI AlarmButtonText => _alarmButtonText;
+        public bool IsNextButtonVisible => _nextButtonObj != null && _nextButtonObj.activeSelf;
+        public bool IsBackButtonVisible => _backButtonObj != null && _backButtonObj.activeSelf;
+
+        /// <summary>
+        /// Retrieves the project default TMP font asset (LiberationSans SDF) from Resources.
+        /// </summary>
+        public static TMP_FontAsset GetDefaultFont()
+        {
+            if (s_CachedFont == null)
+            {
+                s_CachedFont = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF")
+                    ?? TMP_Settings.defaultFontAsset;
+            }
+            return s_CachedFont;
+        }
 
         private void Awake()
         {
@@ -41,100 +107,400 @@ namespace IndustrialSafetyAR.UI
 
             if (_controller == null)
             {
-                _controller = FindAnyObjectByType<FireArInteractionController>();
+                _controller = FindAnyObjectByType<FireArInteractionController>(FindObjectsInactive.Include);
             }
 
+            _canvas = GetOrCreateCanvas();
             EnsurePromptBanner();
             EnsureActionContainer();
+
+            // Strictly hide training UI at startup if Worker Home is the current state
+            if (WorkerHomeController.Instance == null || WorkerHomeController.Instance.CurrentState != WorkerHomeController.WorkerAppScreenState.TrainingFire)
+            {
+                HideTrainingUI();
+            }
         }
 
         private Canvas GetOrCreateCanvas()
         {
-            var canvas = FindAnyObjectByType<Canvas>();
-            if (canvas == null)
+            if (_canvas != null) return _canvas;
+
+            var existingObj = GameObject.Find("FireTrainingCanvas");
+            if (existingObj != null)
             {
-                var canvasObj = new GameObject("TrainingFeedbackCanvas");
-                canvas = canvasObj.AddComponent<Canvas>();
-                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                var scaler = canvasObj.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1080, 1920);
-                canvasObj.AddComponent<GraphicRaycaster>();
+                _canvas = existingObj.GetComponent<Canvas>();
+                if (_canvas != null) return _canvas;
             }
-            return canvas;
+
+            var canvasObj = new GameObject("FireTrainingCanvas");
+            _canvas = canvasObj.AddComponent<Canvas>();
+            _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            _canvas.sortingOrder = 100;
+
+            var scaler = canvasObj.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080, 1920);
+            scaler.matchWidthOrHeight = 0.5f;
+
+            canvasObj.AddComponent<GraphicRaycaster>();
+            return _canvas;
         }
 
         private void EnsurePromptBanner()
         {
-            if (_promptText != null) return;
+            if (_promptText != null && _headerTitleText != null && _progressText != null && _backButton != null && _alarmButton != null) return;
 
             var canvas = GetOrCreateCanvas();
             if (canvas == null) return;
 
-            var bannerObj = new GameObject("TrainingPromptBanner");
+            var font = GetDefaultFont();
+
+            // Main top card anchored inside mobile safe margins (leaves margin for camera notch)
+            var bannerObj = new GameObject("FireTrainingHeaderBanner");
             bannerObj.transform.SetParent(canvas.transform, false);
 
             var rect = bannerObj.AddComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0.06f, 0.88f);
-            rect.anchorMax = new Vector2(0.94f, 0.96f);
+            rect.anchorMin = new Vector2(0.04f, 0.74f);
+            rect.anchorMax = new Vector2(0.96f, 0.98f);
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
 
             _bannerBg = bannerObj.AddComponent<Image>();
-            _bannerBg.color = new Color(0.10f, 0.12f, 0.16f, 0.90f);
+            _bannerBg.color = new Color(0.06f, 0.08f, 0.12f, 0.97f);
 
+            // Top accent strip (Industrial Amber)
+            var accentObj = new GameObject("TopAccentStrip");
+            accentObj.transform.SetParent(bannerObj.transform, false);
+            var accentRect = accentObj.AddComponent<RectTransform>();
+            accentRect.anchorMin = new Vector2(0f, 0.98f);
+            accentRect.anchorMax = new Vector2(1f, 1f);
+            accentRect.offsetMin = Vector2.zero;
+            accentRect.offsetMax = Vector2.zero;
+            var accentImg = accentObj.AddComponent<Image>();
+            accentImg.color = new Color(0.95f, 0.60f, 0.10f, 1.0f);
+
+            // Back button (top-left inside header)
+            _backButtonObj = new GameObject("BackButton");
+            _backButtonObj.transform.SetParent(bannerObj.transform, false);
+            var backRect = _backButtonObj.AddComponent<RectTransform>();
+            backRect.anchorMin = new Vector2(0.02f, 0.80f);
+            backRect.anchorMax = new Vector2(0.20f, 0.96f);
+            backRect.offsetMin = Vector2.zero;
+            backRect.offsetMax = Vector2.zero;
+
+            var backImg = _backButtonObj.AddComponent<Image>();
+            backImg.color = new Color(0.16f, 0.20f, 0.28f, 0.98f);
+            _backButton = _backButtonObj.AddComponent<Button>();
+            _backButton.targetGraphic = backImg;
+
+            var backTapGated = _backButtonObj.AddComponent<TapGatedButton>();
+            backTapGated.Initialize(() => OnBackButtonClicked());
+
+            var backLabelObj = new GameObject("BackLabel");
+            backLabelObj.transform.SetParent(_backButtonObj.transform, false);
+            var backLabelRect = backLabelObj.AddComponent<RectTransform>();
+            backLabelRect.anchorMin = Vector2.zero;
+            backLabelRect.anchorMax = Vector2.one;
+            backLabelRect.offsetMin = Vector2.zero;
+            backLabelRect.offsetMax = Vector2.zero;
+            _backButtonText = backLabelObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _backButtonText.font = font;
+            _backButtonText.text = $"<b>{IndustrialSafetyAR.Core.LocaleService.Instance.Get("btn_back", "← BACK")}</b>";
+            _backButtonText.fontSize = 17;
+            _backButtonText.alignment = TextAlignmentOptions.Center;
+            _backButtonText.color = new Color(0.96f, 0.72f, 0.20f);
+
+            _backButtonObj.SetActive(true);
+
+            // Module Title Header
+            var headerObj = new GameObject("HeaderTitle");
+            headerObj.transform.SetParent(bannerObj.transform, false);
+            var headerRect = headerObj.AddComponent<RectTransform>();
+            headerRect.anchorMin = new Vector2(0.21f, 0.80f);
+            headerRect.anchorMax = new Vector2(0.60f, 0.96f);
+            headerRect.offsetMin = Vector2.zero;
+            headerRect.offsetMax = Vector2.zero;
+
+            _headerTitleText = headerObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _headerTitleText.font = font;
+            _headerTitleText.text = "FIRE & EXPLOSION RESPONSE";
+            _headerTitleText.fontSize = 18;
+            _headerTitleText.enableAutoSizing = true;
+            _headerTitleText.fontSizeMin = 13;
+            _headerTitleText.fontSizeMax = 20;
+            _headerTitleText.fontStyle = FontStyles.Bold;
+            _headerTitleText.alignment = TextAlignmentOptions.Center;
+            _headerTitleText.color = new Color(0.96f, 0.65f, 0.12f);
+
+            // Emergency Alarm Toggle Button (in header)
+            _alarmButtonObj = new GameObject("AlarmButton");
+            _alarmButtonObj.transform.SetParent(bannerObj.transform, false);
+            var alarmRect = _alarmButtonObj.AddComponent<RectTransform>();
+            alarmRect.anchorMin = new Vector2(0.61f, 0.80f);
+            alarmRect.anchorMax = new Vector2(0.85f, 0.96f);
+            alarmRect.offsetMin = Vector2.zero;
+            alarmRect.offsetMax = Vector2.zero;
+
+            var alarmImg = _alarmButtonObj.AddComponent<Image>();
+            alarmImg.color = new Color(0.20f, 0.16f, 0.22f, 0.98f);
+            _alarmButton = _alarmButtonObj.AddComponent<Button>();
+            _alarmButton.targetGraphic = alarmImg;
+
+            var alarmTapGated = _alarmButtonObj.AddComponent<TapGatedButton>();
+            alarmTapGated.Initialize(() => ToggleEmergencyAlarmEnabled());
+
+            var alarmLabelObj = new GameObject("AlarmLabel");
+            alarmLabelObj.transform.SetParent(_alarmButtonObj.transform, false);
+            var alarmLabelRect = alarmLabelObj.AddComponent<RectTransform>();
+            alarmLabelRect.anchorMin = Vector2.zero;
+            alarmLabelRect.anchorMax = Vector2.one;
+            alarmLabelRect.offsetMin = Vector2.zero;
+            alarmLabelRect.offsetMax = Vector2.zero;
+            _alarmButtonText = alarmLabelObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _alarmButtonText.font = font;
+            _alarmButtonText.text = "<b>🔊 ALARM ON</b>";
+            _alarmButtonText.fontSize = 13;
+            _alarmButtonText.enableAutoSizing = true;
+            _alarmButtonText.fontSizeMin = 10;
+            _alarmButtonText.fontSizeMax = 15;
+            _alarmButtonText.alignment = TextAlignmentOptions.Center;
+            _alarmButtonText.color = new Color(1f, 0.5f, 0.5f);
+            UpdateAlarmButtonVisual();
+
+            // Sound Toggle Button (top-right inside header)
+            _soundButtonObj = new GameObject("SoundButton");
+            _soundButtonObj.transform.SetParent(bannerObj.transform, false);
+            var soundRect = _soundButtonObj.AddComponent<RectTransform>();
+            soundRect.anchorMin = new Vector2(0.86f, 0.80f);
+            soundRect.anchorMax = new Vector2(0.98f, 0.96f);
+            soundRect.offsetMin = Vector2.zero;
+            soundRect.offsetMax = Vector2.zero;
+
+            var soundImg = _soundButtonObj.AddComponent<Image>();
+            soundImg.color = new Color(0.16f, 0.20f, 0.28f, 0.98f);
+            _soundButton = _soundButtonObj.AddComponent<Button>();
+            _soundButton.targetGraphic = soundImg;
+
+            var soundTapGated = _soundButtonObj.AddComponent<TapGatedButton>();
+            soundTapGated.Initialize(() => ToggleSoundEnabled());
+
+            var soundLabelObj = new GameObject("SoundLabel");
+            soundLabelObj.transform.SetParent(_soundButtonObj.transform, false);
+            var soundLabelRect = soundLabelObj.AddComponent<RectTransform>();
+            soundLabelRect.anchorMin = Vector2.zero;
+            soundLabelRect.anchorMax = Vector2.one;
+            soundLabelRect.offsetMin = Vector2.zero;
+            soundLabelRect.offsetMax = Vector2.zero;
+            _soundButtonText = soundLabelObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _soundButtonText.font = font;
+            _soundButtonText.text = "<b>🔊</b>";
+            _soundButtonText.fontSize = 20;
+            _soundButtonText.alignment = TextAlignmentOptions.Center;
+            _soundButtonText.color = new Color(0.96f, 0.82f, 0.25f);
+            UpdateSoundButtonVisual();
+
+            // Step Badge (e.g. STEP 3/9 • RAISE ALARM)
+            var badgeObj = new GameObject("StepBadge");
+            badgeObj.transform.SetParent(bannerObj.transform, false);
+            var badgeRect = badgeObj.AddComponent<RectTransform>();
+            badgeRect.anchorMin = new Vector2(0.04f, 0.63f);
+            badgeRect.anchorMax = new Vector2(0.96f, 0.79f);
+            badgeRect.offsetMin = Vector2.zero;
+            badgeRect.offsetMax = Vector2.zero;
+
+            _stepBadgeText = badgeObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _stepBadgeText.font = font;
+            _stepBadgeText.text = "<color=#5DADE2><b>STEP 1/9</b></color> • DETECT HAZARD";
+            _stepBadgeText.fontSize = 20;
+            _stepBadgeText.fontStyle = FontStyles.Bold;
+            _stepBadgeText.alignment = TextAlignmentOptions.Center;
+            _stepBadgeText.color = new Color(0.85f, 0.90f, 0.96f);
+
+            // Progress Indicator (e.g. ● ● ● ○ ○ ○ ○ ○ ○  3 / 9)
+            var progObj = new GameObject("ProgressIndicator");
+            progObj.transform.SetParent(bannerObj.transform, false);
+            var progRect = progObj.AddComponent<RectTransform>();
+            progRect.anchorMin = new Vector2(0.04f, 0.49f);
+            progRect.anchorMax = new Vector2(0.96f, 0.62f);
+            progRect.offsetMin = Vector2.zero;
+            progRect.offsetMax = Vector2.zero;
+
+            _progressText = progObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _progressText.font = font;
+            _progressText.text = "● ○ ○ ○ ○ ○ ○ ○ ○   1 / 9";
+            _progressText.fontSize = 17;
+            _progressText.alignment = TextAlignmentOptions.Center;
+            _progressText.color = new Color(0.80f, 0.84f, 0.90f);
+
+            // Instruction Text
             var textObj = new GameObject("PromptText");
             textObj.transform.SetParent(bannerObj.transform, false);
-
             var textRect = textObj.AddComponent<RectTransform>();
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.offsetMin = new Vector2(16, 4);
-            textRect.offsetMax = new Vector2(-16, -4);
+            textRect.anchorMin = new Vector2(0.04f, 0.23f);
+            textRect.anchorMax = new Vector2(0.96f, 0.48f);
+            textRect.offsetMin = Vector2.zero;
+            textRect.offsetMax = Vector2.zero;
 
             _promptText = textObj.AddComponent<TextMeshProUGUI>();
-            _promptText.fontSize = 30;
+            if (font != null) _promptText.font = font;
+            _promptText.fontSize = 21;
             _promptText.enableAutoSizing = true;
-            _promptText.fontSizeMin = 18;
-            _promptText.fontSizeMax = 36;
+            _promptText.fontSizeMin = 15;
+            _promptText.fontSizeMax = 25;
             _promptText.alignment = TextAlignmentOptions.Center;
-            _promptText.color = new Color(0.95f, 0.95f, 0.95f);
+            _promptText.color = Color.white;
             _promptText.text = "Initializing training module...";
+
+            // State Feedback Sub-banner
+            var feedbackBoxObj = new GameObject("StateFeedbackBanner");
+            feedbackBoxObj.transform.SetParent(bannerObj.transform, false);
+            var fbBoxRect = feedbackBoxObj.AddComponent<RectTransform>();
+            fbBoxRect.anchorMin = new Vector2(0.03f, 0.03f);
+            fbBoxRect.anchorMax = new Vector2(0.97f, 0.21f);
+            fbBoxRect.offsetMin = Vector2.zero;
+            fbBoxRect.offsetMax = Vector2.zero;
+
+            _feedbackBg = feedbackBoxObj.AddComponent<Image>();
+            _feedbackBg.color = new Color(0.12f, 0.16f, 0.24f, 0.95f);
+
+            var feedbackTextObj = new GameObject("FeedbackText");
+            feedbackTextObj.transform.SetParent(feedbackBoxObj.transform, false);
+            var fbTextRect = feedbackTextObj.AddComponent<RectTransform>();
+            fbTextRect.anchorMin = Vector2.zero;
+            fbTextRect.anchorMax = Vector2.one;
+            fbTextRect.offsetMin = new Vector2(10, 2);
+            fbTextRect.offsetMax = new Vector2(-10, -2);
+
+            _feedbackText = feedbackTextObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _feedbackText.font = font;
+            _feedbackText.fontSize = 17;
+            _feedbackText.enableAutoSizing = true;
+            _feedbackText.fontSizeMin = 13;
+            _feedbackText.fontSizeMax = 20;
+            _feedbackText.alignment = TextAlignmentOptions.Center;
+            _feedbackText.color = new Color(0.85f, 0.88f, 0.92f);
+            _feedbackText.text = "Scanning floor surfaces...";
         }
 
         private void EnsureActionContainer()
         {
-            if (_actionContainer != null) return;
+            if (_actionContainer != null && _optionsContainer != null && _nextButtonObj != null) return;
 
             var canvas = GetOrCreateCanvas();
             if (canvas == null) return;
 
+            // Placed inside safe area (y = 0.04 to 0.28), clear of Android navigation bar
             _actionContainer = new GameObject("TrainingActionContainer");
             _actionContainer.transform.SetParent(canvas.transform, false);
 
             var rect = _actionContainer.AddComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0.08f, 0.03f);
-            rect.anchorMax = new Vector2(0.92f, 0.26f);
+            rect.anchorMin = new Vector2(0.04f, 0.03f);
+            rect.anchorMax = new Vector2(0.96f, 0.27f);
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
+
+            // Sub-container 1: Action Options
+            _optionsContainer = new GameObject("OptionsContainer");
+            _optionsContainer.transform.SetParent(_actionContainer.transform, false);
+            var optRect = _optionsContainer.AddComponent<RectTransform>();
+            optRect.anchorMin = new Vector2(0f, 0.35f);
+            optRect.anchorMax = new Vector2(1f, 1f);
+            optRect.offsetMin = Vector2.zero;
+            optRect.offsetMax = Vector2.zero;
+
+            // Sub-container 2: Primary Next Button
+            _nextButtonObj = new GameObject("PrimaryNextButton");
+            _nextButtonObj.transform.SetParent(_actionContainer.transform, false);
+            var nextRect = _nextButtonObj.AddComponent<RectTransform>();
+            nextRect.anchorMin = new Vector2(0f, 0.02f);
+            nextRect.anchorMax = new Vector2(1f, 0.32f);
+            nextRect.offsetMin = Vector2.zero;
+            nextRect.offsetMax = Vector2.zero;
+
+            var nextImg = _nextButtonObj.AddComponent<Image>();
+            nextImg.color = new Color(0.12f, 0.58f, 0.28f, 0.98f); // High-contrast Emerald Green
+
+            _nextButton = _nextButtonObj.AddComponent<Button>();
+            _nextButton.targetGraphic = nextImg;
+
+            var nextTapGated = _nextButtonObj.AddComponent<TapGatedButton>();
+            nextTapGated.Initialize(() => OnNextButtonClicked());
+
+            var nextTextObj = new GameObject("NextLabel");
+            nextTextObj.transform.SetParent(_nextButtonObj.transform, false);
+            var nextTextRect = nextTextObj.AddComponent<RectTransform>();
+            nextTextRect.anchorMin = Vector2.zero;
+            nextTextRect.anchorMax = Vector2.one;
+            nextTextRect.offsetMin = new Vector2(12, 4);
+            nextTextRect.offsetMax = new Vector2(-12, -4);
+
+            _nextButtonText = nextTextObj.AddComponent<TextMeshProUGUI>();
+            var font = GetDefaultFont();
+            if (font != null) _nextButtonText.font = font;
+            _nextButtonText.text = "NEXT STEP →";
+            _nextButtonText.alignment = TextAlignmentOptions.Center;
+            _nextButtonText.fontSize = 24;
+            _nextButtonText.enableAutoSizing = true;
+            _nextButtonText.fontSizeMin = 16;
+            _nextButtonText.fontSizeMax = 28;
+            _nextButtonText.fontStyle = FontStyles.Bold;
+            _nextButtonText.color = Color.white;
+
+            _nextButtonObj.SetActive(false);
         }
 
         private void OnEnable()
+        {
+            SubscribeEvents();
+        }
+
+        private void OnDisable()
+        {
+            UnsubscribeEvents();
+        }
+
+        private void SubscribeEvents()
         {
             if (_controller != null)
             {
                 _controller.OnFeedbackChanged += HandleFeedbackChanged;
                 _controller.OnStateChanged += HandleStateChanged;
             }
+
+            Navigator.OnStepChanged += HandleNavigatorStepChanged;
+            Navigator.OnStepCompleted += HandleNavigatorStepCompleted;
+            Navigator.OnCompleteTrainingRequested += HandleCompleteTrainingRequested;
+            Navigator.OnFeedbackChanged += HandleFeedbackChanged;
+
+            if (IndustrialSafetyAR.Core.LocaleService.Instance != null)
+            {
+                IndustrialSafetyAR.Core.LocaleService.Instance.OnLanguageChanged -= HandleLanguageChanged;
+                IndustrialSafetyAR.Core.LocaleService.Instance.OnLanguageChanged += HandleLanguageChanged;
+            }
         }
 
-        private void OnDisable()
+        private void UnsubscribeEvents()
         {
             if (_controller != null)
             {
                 _controller.OnFeedbackChanged -= HandleFeedbackChanged;
                 _controller.OnStateChanged -= HandleStateChanged;
             }
+
+            Navigator.OnStepChanged -= HandleNavigatorStepChanged;
+            Navigator.OnStepCompleted -= HandleNavigatorStepCompleted;
+            Navigator.OnCompleteTrainingRequested -= HandleCompleteTrainingRequested;
+            Navigator.OnFeedbackChanged -= HandleFeedbackChanged;
+
+            if (IndustrialSafetyAR.Core.LocaleService.Instance != null)
+            {
+                IndustrialSafetyAR.Core.LocaleService.Instance.OnLanguageChanged -= HandleLanguageChanged;
+            }
+        }
+
+        private void HandleLanguageChanged(string newLang)
+        {
+            RefreshUI();
         }
 
         private void Start()
@@ -143,549 +509,687 @@ namespace IndustrialSafetyAR.UI
             {
                 _successBadge.SetActive(false);
             }
+
+            if (WorkerHomeController.Instance == null || WorkerHomeController.Instance.CurrentState != WorkerHomeController.WorkerAppScreenState.TrainingFire)
+            {
+                HideTrainingUI();
+                return;
+            }
+
+            if (_controller != null)
+            {
+                HandleStateChanged(_controller.State);
+            }
+            else
+            {
+                RefreshUI();
+            }
+        }
+
+        public void ShowTrainingUI()
+        {
+            EnsurePromptBanner();
+            EnsureActionContainer();
+            if (_canvas != null)
+            {
+                _canvas.gameObject.SetActive(true);
+            }
+            gameObject.SetActive(true);
+            RefreshUI();
+        }
+
+        public void HideTrainingUI()
+        {
+            if (_canvas != null)
+            {
+                _canvas.gameObject.SetActive(false);
+            }
+            ClearOptions();
+        }
+
+        public void ToggleSoundEnabled()
+        {
+            var audio = IndustrialSafetyAR.Core.Audio.FireAudioService.Instance;
+            if (audio != null)
+            {
+                audio.IsSoundEnabled = !audio.IsSoundEnabled;
+                UpdateSoundButtonVisual();
+                var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
+                string fb = audio.IsSoundEnabled ? loc.Get("feedback_sound_enabled", "Sound Alerts: Enabled 🔊") : loc.Get("feedback_sound_muted", "Sound Alerts: Muted 🔇");
+                SetFeedback(fb);
+            }
+        }
+
+        public void UpdateSoundButtonVisual()
+        {
+            if (_soundButtonText != null)
+            {
+                bool enabled = IndustrialSafetyAR.Core.Audio.FireAudioService.Instance == null ||
+                               IndustrialSafetyAR.Core.Audio.FireAudioService.Instance.IsSoundEnabled;
+                _soundButtonText.text = enabled ? "<b>🔊</b>" : "<b>🔇</b>";
+            }
+        }
+
+        public void ToggleEmergencyAlarmEnabled()
+        {
+            var audio = IndustrialSafetyAR.Core.Audio.FireAudioService.Instance;
+            if (audio != null)
+            {
+                audio.IsEmergencyAlarmEnabled = !audio.IsEmergencyAlarmEnabled;
+                UpdateAlarmButtonVisual();
+                var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
+                string fb = audio.IsEmergencyAlarmEnabled ? loc.Get("feedback_alarm_enabled", "Emergency Alarm: Enabled 🔊") : loc.Get("feedback_alarm_muted", "Emergency Alarm: Muted 🔇");
+                SetFeedback(fb);
+            }
+        }
+
+        public void UpdateAlarmButtonVisual()
+        {
+            if (_alarmButtonText != null)
+            {
+                var audio = IndustrialSafetyAR.Core.Audio.FireAudioService.Instance;
+                bool enabled = audio == null || audio.IsEmergencyAlarmEnabled;
+                var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
+                string text = enabled ? loc.Get("btn_alarm_on", "🔊 ALARM ON") : loc.Get("btn_alarm_off", "🔇 ALARM OFF");
+                _alarmButtonText.text = $"<b>{text}</b>";
+                _alarmButtonText.color = enabled ? new Color(1f, 0.5f, 0.5f) : new Color(0.7f, 0.7f, 0.7f);
+            }
+        }
+
+        public void OnNextButtonClicked()
+        {
+            Navigator.GoNext();
+        }
+
+        public void OnBackButtonClicked()
+        {
+            if (Navigator.CanGoBack)
+            {
+                Navigator.GoBack();
+            }
+            else
+            {
+                ExitTrainingToHome();
+            }
+        }
+
+        public void ExitTrainingToHome()
+        {
+            if (IndustrialSafetyAR.Core.Audio.FireAudioService.Instance != null)
+            {
+                IndustrialSafetyAR.Core.Audio.FireAudioService.Instance.StopEmergencyAlarm();
+                IndustrialSafetyAR.Core.Audio.FireAudioService.Instance.StopAllAudio();
+            }
+
+            HideTrainingUI();
+
+            if (_controller != null)
+            {
+                _controller.enabled = false;
+            }
+
+            if (WorkerHomeController.Instance != null)
+            {
+                WorkerHomeController.Instance.ReturnToHome();
+            }
+        }
+
+        private void HandleNavigatorStepChanged(int stepIndex)
+        {
+            RefreshUI();
+        }
+
+        private void HandleNavigatorStepCompleted(int stepIndex, string feedback)
+        {
+            RefreshUI();
+        }
+
+        private void HandleCompleteTrainingRequested()
+        {
+            var summaryUI = GetComponent<FireAssessmentSummaryUI>() ?? FindAnyObjectByType<FireAssessmentSummaryUI>();
+            if (summaryUI != null)
+            {
+                var vm = AssessmentSummaryViewModel.Build(_controller?.LatestAttempt, _controller?.LatestAssessment);
+                summaryUI.ShowSummary(vm);
+            }
         }
 
         private void HandleFeedbackChanged(string feedback)
         {
-            if (_promptText != null && !string.IsNullOrEmpty(feedback))
+            if (string.IsNullOrEmpty(feedback)) return;
+
+            bool isError = feedback.StartsWith("✗") || feedback.StartsWith("DANGER") || feedback.StartsWith("INCORRECT") || feedback.StartsWith("Unsafe");
+            bool isSuccess = feedback.StartsWith("✓") || feedback.StartsWith("CORRECT");
+
+            if (isError)
             {
-                _promptText.text = feedback;
+                SetFeedback(feedback, new Color(1f, 0.45f, 0.45f), new Color(0.35f, 0.12f, 0.12f, 0.95f));
+            }
+            else if (isSuccess)
+            {
+                SetFeedback(feedback, new Color(0.4f, 1f, 0.5f), new Color(0.1f, 0.28f, 0.15f, 0.95f));
+            }
+            else
+            {
+                SetFeedback(feedback, new Color(0.90f, 0.92f, 0.96f), new Color(0.12f, 0.16f, 0.24f, 0.95f));
+            }
+        }
+
+        public void SetFeedback(string message, Color? textColor = null, Color? bgColor = null)
+        {
+            if (_feedbackText != null)
+            {
+                _feedbackText.text = message;
+                _feedbackText.color = textColor ?? new Color(0.95f, 0.95f, 0.95f);
+            }
+            if (_feedbackBg != null)
+            {
+                _feedbackBg.color = bgColor ?? new Color(0.12f, 0.16f, 0.24f, 0.95f);
             }
         }
 
         private void HandleStateChanged(FireInteractionState state)
         {
-            switch (state)
+            var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
+            if (state == FireInteractionState.WaitingForTracking)
             {
-                case FireInteractionState.WaitingForTracking:
-                    ClearActionButtons();
-                    if (_bannerBg != null) _bannerBg.color = new Color(0.10f, 0.12f, 0.16f, 0.90f);
-                    if (_successBadge != null) _successBadge.SetActive(false);
-                    if (_promptText != null)
-                    {
-                        _promptText.text = "Searching for surfaces... Move phone slowly.";
-                        _promptText.color = new Color(0.95f, 0.95f, 0.95f);
-                    }
-                    break;
-
-                case FireInteractionState.ReadyToPlace:
-                    ClearActionButtons();
-                    if (_bannerBg != null) _bannerBg.color = new Color(0.10f, 0.12f, 0.16f, 0.90f);
-                    if (_successBadge != null) _successBadge.SetActive(false);
-                    if (_promptText != null)
-                    {
-                        _promptText.text = "Surface detected! Tap anywhere on the surface to place the Fire Hazard.";
-                        _promptText.color = new Color(0.95f, 0.95f, 0.95f);
-                    }
-                    break;
-
-                case FireInteractionState.HazardPlaced:
-                    ShowHazardPlacedUI();
-                    break;
-
-                case FireInteractionState.AwaitingIdentification:
-                    ShowIdentificationUI();
-                    break;
-
-                case FireInteractionState.AwaitingAlarm:
-                    ShowRaiseAlarmUI();
-                    break;
-
-                case FireInteractionState.AlarmRaised:
-                    ShowAlarmActivatedUI();
-                    break;
-
-                case FireInteractionState.AwaitingExtinguisherSelection:
-                    ShowExtinguisherSelectionUI();
-                    break;
-
-                case FireInteractionState.ExtinguisherSelected:
-                    ShowExtinguisherSelectedUI();
-                    break;
-
-                case FireInteractionState.AwaitingSafeDistance:
-                    ShowSafeDistanceUI();
-                    break;
-
-                case FireInteractionState.SafeDistanceMaintained:
-                    ShowPassPullPinUI();
-                    break;
-
-                case FireInteractionState.PinPulled:
-                    ShowPassAimUI();
-                    break;
-
-                case FireInteractionState.AimConfirmed:
-                    ShowPassSqueezeUI();
-                    break;
-
-                case FireInteractionState.HandleSqueezed:
-                    ShowPassSweepUI();
-                    break;
-
-                case FireInteractionState.ExtinguisherDischarged:
-                case FireInteractionState.AwaitingExitIdentification:
-                    ShowExitIdentificationUI();
-                    break;
-
-                case FireInteractionState.ExitIdentified:
-                case FireInteractionState.AwaitingEvacuationRoute:
-                case FireInteractionState.WaypointMainCorridorReached:
-                case FireInteractionState.WaypointBypassCrosscutReached:
-                    ShowEvacuationRouteUI();
-                    break;
-
-                case FireInteractionState.RouteEvacuated:
-                case FireInteractionState.AwaitingAssemblyPoint:
-                    ShowAssemblyPointUI();
-                    break;
-
-                case FireInteractionState.AssemblyPointReached:
-                    ShowAssemblyCompletedUI();
-                    break;
+                ClearOptions();
+                if (_backButtonObj != null) _backButtonObj.SetActive(false);
+                if (_nextButtonObj != null) _nextButtonObj.SetActive(false);
+                if (_stepBadgeText != null) _stepBadgeText.text = $"<color=#E67E22><b>{loc.Get("ar_calibration_badge", "AR CALIBRATION")}</b></color>";
+                if (_progressText != null) _progressText.text = "";
+                if (_promptText != null) _promptText.text = loc.Get("ar_calibration_prompt", "Searching for surfaces... Move phone slowly.");
+                SetFeedback(loc.Get("ar_calibration_feedback", "Keep camera pointed toward textured floor."));
+                return;
             }
+
+            if (state == FireInteractionState.ReadyToPlace)
+            {
+                ClearOptions();
+                if (_backButtonObj != null) _backButtonObj.SetActive(false);
+                if (_nextButtonObj != null) _nextButtonObj.SetActive(false);
+                if (_stepBadgeText != null) _stepBadgeText.text = $"<color=#2ECC71><b>{loc.Get("surface_detected_badge", "SURFACE DETECTED")}</b></color>";
+                if (_progressText != null) _progressText.text = "";
+                if (_promptText != null) _promptText.text = loc.Get("surface_detected_prompt", "Surface detected! Tap anywhere on the floor to place the Fire Hazard.");
+                SetFeedback(loc.Get("surface_detected_feedback", "Tap detected floor surface to spawn training scenario."));
+
+                CreateOptionButton(loc.Get("btn_place_hazard", "PLACE FIRE HAZARD HERE →"), new Vector2(0f, 0.15f), new Vector2(1f, 0.85f),
+                    new Color(0.18f, 0.55f, 0.30f, 0.96f), () =>
+                {
+                    _controller?.HandleTap(new Vector2(Screen.width * 0.5f, Screen.height * 0.5f));
+                });
+                return;
+            }
+
+            RefreshUI();
         }
 
-        private void ClearActionButtons()
+        /// <summary>
+        /// Updates all UI components to reflect the Navigator's active step state.
+        /// </summary>
+        public void RefreshUI()
         {
-            if (_actionContainer == null) return;
+            EnsurePromptBanner();
+            EnsureActionContainer();
 
-            for (int i = _actionContainer.transform.childCount - 1; i >= 0; i--)
+            var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
+            int step = Navigator.CurrentStepIndex;
+            string stepTitle = Navigator.GetStepTitle(step);
+            string instruction = Navigator.GetStepInstruction(step);
+            bool isCompleted = Navigator.IsStepCompleted(step);
+            bool inReviewMode = isCompleted && (step < Navigator.HighestCompletedStep);
+
+            // 1. Module Header Title & Buttons
+            if (_headerTitleText != null)
             {
-                Destroy(_actionContainer.transform.GetChild(i).gameObject);
+                _headerTitleText.text = loc.Get("fire_header_title", "FIRE & EXPLOSION RESPONSE");
             }
-        }
+            if (_backButtonText != null)
+            {
+                _backButtonText.text = $"<b>{loc.Get("btn_back", "← BACK")}</b>";
+            }
+            UpdateSoundButtonVisual();
+            UpdateAlarmButtonVisual();
 
-        private void ShowHazardPlacedUI()
-        {
-            ClearActionButtons();
-            if (_actionContainer == null) return;
+            // 2. Step Badge (e.g. STEP 3/9 • RAISE ALARM)
+            if (_stepBadgeText != null)
+            {
+                string badgeFmt = loc.Get("step_badge_format", "STEP {0}/{1}");
+                string badgePrefix = string.Format(badgeFmt, step, Navigator.TotalSteps);
+                _stepBadgeText.text = $"<color=#5DADE2><b>{badgePrefix}</b></color> • {stepTitle}";
+            }
 
+            // 3. Compact Progress Indicator (Dots)
+            if (_progressText != null)
+            {
+                _progressText.text = Navigator.FormatProgressIndicator();
+            }
+
+            // 4. Clear Step Instruction
             if (_promptText != null)
             {
-                _promptText.text = "Fire Hazard Located! Tap the 3D marker in AR or click below to confirm detection:";
-                _promptText.color = new Color(0.95f, 0.95f, 0.95f);
+                _promptText.text = instruction;
+                _promptText.color = Color.white;
             }
 
-            var confirmBtn = CreateActionButton("CONFIRM HAZARD DETECTION", new Vector2(0f, 0.15f), new Vector2(1f, 0.85f),
+            // 5. Back Button (always active during training: returns Home on Step 1, reviews completed steps on Steps 2-9)
+            if (_backButtonObj != null)
+            {
+                _backButtonObj.SetActive(true);
+            }
+
+            // 6. Next Button (visible ONLY when current step action is completed)
+            if (_nextButtonObj != null)
+            {
+                _nextButtonObj.SetActive(isCompleted);
+                if (_nextButtonText != null)
+                {
+                    _nextButtonText.text = Navigator.GetNextLabel(step);
+                }
+            }
+
+            // 7. Dynamic Feedback
+            if (isCompleted)
+            {
+                string successFb = Navigator.GetSuccessFeedback(step) ?? loc.Get("default_success_feedback", "✓ Action completed successfully.");
+                SetFeedback(successFb, new Color(0.4f, 1f, 0.5f), new Color(0.1f, 0.28f, 0.15f, 0.95f));
+            }
+            else
+            {
+                string actionReqFmt = loc.Get("action_required_format", "Action required for Step {0}: {1}");
+                SetFeedback(string.Format(actionReqFmt, step, stepTitle), new Color(0.90f, 0.92f, 0.96f), new Color(0.12f, 0.16f, 0.24f, 0.95f));
+            }
+
+            // 8. Action Options
+            ClearOptions();
+
+            if (inReviewMode)
+            {
+                ShowReviewModeUI(step);
+            }
+            else if (isCompleted)
+            {
+                ShowStepCompletedUI(step);
+            }
+            else
+            {
+                ShowStepActiveUI(step);
+            }
+        }
+
+        private void ClearOptions()
+        {
+            if (_optionsContainer == null) return;
+
+            for (int i = _optionsContainer.transform.childCount - 1; i >= 0; i--)
+            {
+                Destroy(_optionsContainer.transform.GetChild(i).gameObject);
+            }
+        }
+
+        private void ShowReviewModeUI(int step)
+        {
+            var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
+            string reviewFmt = loc.Get("step_review_format", "✓ Step {0} Completed [Review Mode]");
+            CreateStatusBadge(string.Format(reviewFmt, step), new Vector2(0f, 0.15f), new Vector2(1f, 0.85f),
+                new Color(0.12f, 0.35f, 0.22f, 0.95f));
+        }
+
+        private void ShowStepCompletedUI(int step)
+        {
+            var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
+            string completedText = step == 9
+                ? loc.Get("training_completed_notice", "✓ Training Completed! Tap View Assessment Below")
+                : string.Format(loc.Get("step_completed_format", "✓ Step {0} Completed! Tap Next Below"), step);
+
+            CreateStatusBadge(completedText, new Vector2(0f, 0.15f), new Vector2(1f, 0.85f),
+                new Color(0.12f, 0.45f, 0.25f, 0.95f));
+        }
+
+        private void ShowStepActiveUI(int step)
+        {
+            switch (step)
+            {
+                case 1:
+                    ShowDetectHazardOptions();
+                    break;
+                case 2:
+                    ShowIdentifyHazardOptions();
+                    break;
+                case 3:
+                    ShowRaiseAlarmOptions();
+                    break;
+                case 4:
+                    ShowSelectExtinguisherOptions();
+                    break;
+                case 5:
+                    ShowSafeDistanceOptions();
+                    break;
+                case 6:
+                    ShowPassProcedureOptions();
+                    break;
+                case 7:
+                    ShowEmergencyExitOptions();
+                    break;
+                case 8:
+                    ShowEvacuationRouteOptions();
+                    break;
+                case 9:
+                    ShowAssemblyPointOptions();
+                    break;
+            }
+        }
+
+        // ====================================================================
+        // Step 1: Detect / Acknowledge Hazard
+        // ====================================================================
+        private void ShowDetectHazardOptions()
+        {
+            var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
+            CreateOptionButton(loc.Get("fire_step1_btn_ack", "ACKNOWLEDGE FIRE HAZARD →"), new Vector2(0f, 0.15f), new Vector2(1f, 0.85f),
                 new Color(0.15f, 0.65f, 0.35f), () =>
             {
                 _controller?.ConfirmHazardDetected();
             });
-
-            var btnText = confirmBtn.GetComponentInChildren<TextMeshProUGUI>();
-            if (btnText != null)
-            {
-                btnText.fontSize = 30;
-                btnText.fontStyle = FontStyles.Bold;
-            }
         }
 
-        private void ShowIdentificationUI()
+        // ====================================================================
+        // Step 2: Identify Hazard Classification
+        // ====================================================================
+        private void ShowIdentifyHazardOptions()
         {
-            ClearActionButtons();
-            if (_actionContainer == null) return;
-
-            if (_promptText != null)
-            {
-                _promptText.text = "Hazard Spotted: Select the correct hazard classification:";
-                _promptText.color = new Color(1.0f, 0.85f, 0.3f); // Amber prompt
-            }
-
-            // Create 3 option buttons vertically stacked
-            CreateOptionButton("1. Class E: Electrical Conveyor Fire", new Vector2(0f, 0.68f), new Vector2(1f, 0.98f), () =>
+            var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
+            CreateOptionButton(loc.Get("fire_step2_opt1", "1. CLASS E: ELECTRICAL FIRE (480V) →"), new Vector2(0f, 0.68f), new Vector2(1f, 0.98f),
+                new Color(0.14f, 0.24f, 0.38f, 0.96f), () =>
             {
                 _controller?.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire);
             });
 
-            CreateOptionButton("2. Class A: Ordinary Combustible Material", new Vector2(0f, 0.35f), new Vector2(1f, 0.65f), () =>
+            CreateOptionButton(loc.Get("fire_step2_opt2", "2. Class A: Ordinary Combustible Material"), new Vector2(0f, 0.35f), new Vector2(1f, 0.65f),
+                new Color(0.14f, 0.18f, 0.26f, 0.96f), () =>
             {
                 _controller?.SubmitHazardIdentification("hazard_combustible_debris");
+                SetFeedback(loc.Get("fire_step2_err_classA", "✗ Incorrect: Conveyor is electrical machinery. Select Class E."), new Color(1f, 0.45f, 0.45f), new Color(0.35f, 0.12f, 0.12f, 0.95f));
             });
 
-            CreateOptionButton("3. Class B: Flammable Chemical / Solvent", new Vector2(0f, 0.02f), new Vector2(1f, 0.32f), () =>
+            CreateOptionButton(loc.Get("fire_step2_opt3", "3. Class B: Flammable Chemical / Solvent"), new Vector2(0f, 0.02f), new Vector2(1f, 0.32f),
+                new Color(0.14f, 0.18f, 0.26f, 0.96f), () =>
             {
                 _controller?.SubmitHazardIdentification("hazard_flammable_liquid");
+                SetFeedback(loc.Get("fire_step2_err_classB", "✗ Incorrect: Class B is for flammable liquids. Select Class E."), new Color(1f, 0.45f, 0.45f), new Color(0.35f, 0.12f, 0.12f, 0.95f));
             });
         }
 
-        private void ShowRaiseAlarmUI()
+        // ====================================================================
+        // Step 3: Raise Alarm (MCP)
+        // ====================================================================
+        private void ShowRaiseAlarmOptions()
         {
-            ClearActionButtons();
-            if (_actionContainer == null) return;
-
-            if (_promptText != null)
-            {
-                _promptText.text = "<color=#4CAF50>Class E Electrical Hazard Confirmed!</color>\nActivate Emergency Alarm Call Point immediately.";
-                _promptText.color = new Color(0.95f, 0.95f, 0.95f);
-            }
-
-            // Create prominent emergency alarm trigger button
-            var alarmBtn = CreateActionButton("PULL / PRESS EMERGENCY ALARM (MCP)", new Vector2(0f, 0.15f), new Vector2(1f, 0.85f),
-                new Color(0.85f, 0.15f, 0.15f), () =>
+            var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
+            CreateOptionButton(loc.Get("fire_step3_btn_alarm", "ACTIVATE MANUAL CALL POINT (ALARM) →"), new Vector2(0f, 0.15f), new Vector2(1f, 0.85f),
+                new Color(0.85f, 0.18f, 0.18f), () =>
             {
                 _controller?.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm);
             });
-
-            var btnText = alarmBtn.GetComponentInChildren<TextMeshProUGUI>();
-            if (btnText != null)
-            {
-                btnText.fontSize = 32;
-                btnText.fontStyle = FontStyles.Bold;
-            }
         }
 
-        private void ShowAlarmActivatedUI()
+        // ====================================================================
+        // Step 4: Select Extinguisher
+        // ====================================================================
+        private void ShowSelectExtinguisherOptions()
         {
-            ClearActionButtons();
-
-            if (_promptText != null)
-            {
-                _promptText.text = "EMERGENCY ALARM ACTIVATED!\n<size=80%>Manual Call Point (MCP) Triggered • Siren Sounding</size>";
-                _promptText.color = new Color(1f, 0.3f, 0.2f);
-            }
-
-            if (_bannerBg != null)
-            {
-                _bannerBg.color = new Color(0.4f, 0.08f, 0.08f, 0.94f);
-            }
-        }
-
-        private void ShowExtinguisherSelectionUI()
-        {
-            ClearActionButtons();
-            if (_actionContainer == null) return;
-
-            if (_promptText != null)
-            {
-                _promptText.text = "Alarm Active! Select extinguisher for Class E electrical fire:";
-                _promptText.color = new Color(1.0f, 0.85f, 0.3f);
-            }
-
-            // Option 1: CO2 Extinguisher (Correct)
-            CreateOptionButton("1. CO2 Extinguisher (Carbon Dioxide) - Class E", new Vector2(0f, 0.68f), new Vector2(1f, 0.98f), () =>
+            var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
+            CreateOptionButton(loc.Get("fire_step4_opt1", "1. CO2 EXTINGUISHER (CARBON DIOXIDE) →"), new Vector2(0f, 0.68f), new Vector2(1f, 0.98f),
+                new Color(0.14f, 0.24f, 0.38f, 0.96f), () =>
             {
                 _controller?.SubmitExtinguisherSelection(FireTrainingWorkflow.TargetExtinguisherCO2);
             });
 
-            // Option 2: Water Extinguisher (Incorrect)
-            CreateOptionButton("2. Water Extinguisher (H2O)", new Vector2(0f, 0.35f), new Vector2(1f, 0.65f), () =>
+            CreateOptionButton(loc.Get("fire_step4_opt2", "2. Water Extinguisher (H2O) [Electrical Shock Hazard]"), new Vector2(0f, 0.35f), new Vector2(1f, 0.65f),
+                new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
             {
                 _controller?.SubmitExtinguisherSelection(FireTrainingWorkflow.TargetExtinguisherWater);
+                SetFeedback(loc.Get("fire_step4_err_water", "✗ Incorrect extinguisher! Water conducts electricity. Select CO2."), new Color(1f, 0.45f, 0.45f), new Color(0.35f, 0.12f, 0.12f, 0.95f));
             });
 
-            // Option 3: Foam Extinguisher (Incorrect)
-            CreateOptionButton("3. Foam Extinguisher (AFFF)", new Vector2(0f, 0.02f), new Vector2(1f, 0.32f), () =>
+            CreateOptionButton(loc.Get("fire_step4_opt3", "3. Foam Extinguisher (AFFF) [Conductive Risk]"), new Vector2(0f, 0.02f), new Vector2(1f, 0.32f),
+                new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
             {
                 _controller?.SubmitExtinguisherSelection(FireTrainingWorkflow.TargetExtinguisherFoam);
+                SetFeedback(loc.Get("fire_step4_err_foam", "✗ Incorrect extinguisher! Foam is water-based. Select CO2."), new Color(1f, 0.45f, 0.45f), new Color(0.35f, 0.12f, 0.12f, 0.95f));
             });
         }
 
-        private void ShowExtinguisherSelectedUI()
+        // ====================================================================
+        // Step 5: Safe Distance Decision
+        // ====================================================================
+        private void ShowSafeDistanceOptions()
         {
-            ClearActionButtons();
-
-            if (_promptText != null)
-            {
-                _promptText.text = "CORRECT: CO2 Extinguisher Selected!\n<size=80%>Non-conductive agent safe for energized electrical fires</size>";
-                _promptText.color = new Color(0.25f, 0.95f, 0.4f);
-            }
-
-            if (_bannerBg != null)
-            {
-                _bannerBg.color = new Color(0.12f, 0.28f, 0.16f, 0.94f);
-            }
-        }
-
-        private void ShowSafeDistanceUI()
-        {
-            ClearActionButtons();
-            if (_actionContainer == null) return;
-
-            if (_promptText != null)
-            {
-                _promptText.text = "<b>STEP 5: MAINTAIN SAFE DISTANCE</b>\nTap floor outside the 2m RED circle, or select position:";
-                _promptText.color = new Color(1.0f, 0.85f, 0.3f);
-            }
-
-            if (_bannerBg != null)
-            {
-                _bannerBg.color = new Color(0.10f, 0.12f, 0.16f, 0.90f);
-            }
-
-            // Option 1: Maintain safe 2.5m standoff (Correct)
-            CreateOptionButton("1. Stand at Safe Distance (2.5m Standoff)", new Vector2(0f, 0.52f), new Vector2(1f, 0.95f), () =>
+            var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
+            CreateOptionButton(loc.Get("fire_step5_opt1", "STAND AT SAFE DISTANCE (2.5m) →"), new Vector2(0f, 0.52f), new Vector2(1f, 0.96f),
+                new Color(0.15f, 0.65f, 0.35f), () =>
             {
                 _controller?.SubmitDistanceDecision(2.5f);
             });
 
-            // Option 2: Move closer < 1.5m (Unsafe)
-            CreateActionButton("2. Approach Fire (1.2m - Danger Zone)", new Vector2(0f, 0.05f), new Vector2(1f, 0.48f), new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
+            CreateOptionButton(loc.Get("fire_step5_opt2", "Approach Fire (1.2m - Danger Zone)"), new Vector2(0f, 0.04f), new Vector2(1f, 0.48f),
+                new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
             {
                 _controller?.SubmitDistanceDecision(1.2f);
+                SetFeedback(loc.Get("fire_step5_err_danger", "✗ Unsafe distance! You entered the 2m danger zone. Move back."), new Color(1f, 0.45f, 0.45f), new Color(0.35f, 0.12f, 0.12f, 0.95f));
             });
         }
 
-        private void ShowPassPullPinUI()
+        // ====================================================================
+        // Step 6: PASS Procedure (PULL, AIM, SQUEEZE, SWEEP)
+        // ====================================================================
+        private void ShowPassProcedureOptions()
         {
-            ClearActionButtons();
-            if (_actionContainer == null) return;
+            var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
+            var stage = _controller != null ? _controller.WorkflowStage : FireWorkflowStage.SafeDistanceMaintained;
 
-            if (_promptText != null)
+            if (stage == FireWorkflowStage.SafeDistanceMaintained)
             {
-                _promptText.text = "<b>STEP 6: USE EXTINGUISHER</b>\nPASS — Pull the pin to unlock extinguisher:";
-                _promptText.color = new Color(1.0f, 0.85f, 0.3f);
+                CreateOptionButton(loc.Get("fire_step6_btn_pull", "1. PULL SAFETY PIN →"), new Vector2(0f, 0.15f), new Vector2(1f, 0.85f),
+                    new Color(0.18f, 0.35f, 0.60f), () =>
+                {
+                    _controller?.SubmitPullPin();
+                    SetFeedback(loc.Get("fire_step6_fb_pin", "✓ Pin pulled! Extinguisher unlocked. Next: Aim nozzle."), new Color(0.4f, 1f, 0.5f), new Color(0.1f, 0.28f, 0.15f, 0.95f));
+                });
             }
-
-            if (_bannerBg != null)
+            else if (stage == FireWorkflowStage.PinPulled)
             {
-                _bannerBg.color = new Color(0.10f, 0.12f, 0.16f, 0.90f);
+                CreateOptionButton(loc.Get("fire_step6_btn_aim", "2. AIM NOZZLE AT BASE OF FIRE →"), new Vector2(0f, 0.15f), new Vector2(1f, 0.85f),
+                    new Color(0.18f, 0.35f, 0.60f), () =>
+                {
+                    _controller?.SubmitAim();
+                    SetFeedback(loc.Get("fire_step6_fb_aim", "✓ Nozzle aimed at fire base. Next: Squeeze handle."), new Color(0.4f, 1f, 0.5f), new Color(0.1f, 0.28f, 0.15f, 0.95f));
+                });
             }
-
-            CreateActionButton("1. PULL Safety Pin (P.A.S.S.)", new Vector2(0f, 0.15f), new Vector2(1f, 0.85f), new Color(0.18f, 0.22f, 0.30f, 0.94f), () =>
+            else if (stage == FireWorkflowStage.AimConfirmed)
             {
-                _controller?.SubmitPullPin();
-            });
-        }
-
-        private void ShowPassAimUI()
-        {
-            ClearActionButtons();
-            if (_actionContainer == null) return;
-
-            if (_promptText != null)
-            {
-                _promptText.text = "<b>STEP 6: USE EXTINGUISHER</b>\nAim at the base of the fire (tap base target or button):";
-                _promptText.color = new Color(0.0f, 0.9f, 1.0f);
+                CreateOptionButton(loc.Get("fire_step6_btn_squeeze", "3. SQUEEZE OPERATING LEVER →"), new Vector2(0f, 0.15f), new Vector2(1f, 0.85f),
+                    new Color(0.70f, 0.35f, 0.15f), () =>
+                {
+                    _controller?.SubmitSqueeze();
+                    SetFeedback(loc.Get("fire_step6_fb_squeeze", "✓ CO2 gas discharging! Next: Sweep across fire base."), new Color(0.4f, 1f, 0.5f), new Color(0.1f, 0.28f, 0.15f, 0.95f));
+                });
             }
-
-            // Option 1: Aim at base of fire (Correct)
-            CreateOptionButton("2. AIM at Base of Fire", new Vector2(0f, 0.52f), new Vector2(1f, 0.95f), () =>
+            else if (stage == FireWorkflowStage.HandleSqueezed)
             {
-                _controller?.SubmitAim();
-            });
-
-            // Option 2: Aim into flames (Incorrect)
-            CreateActionButton("Aim into flames (Incorrect)", new Vector2(0f, 0.05f), new Vector2(1f, 0.48f), new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
-            {
-                _controller?.SubmitExtinguisherAction("aim_flames");
-            });
-        }
-
-        private void ShowPassSqueezeUI()
-        {
-            ClearActionButtons();
-            if (_actionContainer == null) return;
-
-            if (_promptText != null)
-            {
-                _promptText.text = "<b>STEP 6: USE EXTINGUISHER</b>\nSQUEEZE — Press the handle to discharge CO2 agent:";
-                _promptText.color = new Color(1.0f, 0.85f, 0.3f);
+                CreateOptionButton(loc.Get("fire_step6_btn_sweep", "4. SWEEP NOZZLE SIDE TO SIDE →"), new Vector2(0f, 0.15f), new Vector2(1f, 0.85f),
+                    new Color(0.15f, 0.65f, 0.35f), () =>
+                {
+                    _controller?.SubmitSweep();
+                });
             }
-
-            CreateActionButton("3. SQUEEZE Handle / Lever", new Vector2(0f, 0.15f), new Vector2(1f, 0.85f), new Color(0.18f, 0.22f, 0.30f, 0.94f), () =>
+            else
             {
-                _controller?.SubmitSqueeze();
-            });
-        }
-
-        private void ShowPassSweepUI()
-        {
-            ClearActionButtons();
-            if (_actionContainer == null) return;
-
-            if (_promptText != null)
-            {
-                _promptText.text = "<b>STEP 6: USE EXTINGUISHER</b>\nSWEEP — Move side to side across the base of the fire:";
-                _promptText.color = new Color(0.25f, 0.95f, 0.4f);
-            }
-
-            CreateActionButton("4. SWEEP Side-to-Side across Base", new Vector2(0f, 0.15f), new Vector2(1f, 0.85f), new Color(0.15f, 0.32f, 0.20f, 0.94f), () =>
-            {
-                _controller?.SubmitSweep();
-            });
-        }
-
-        private void ShowPassCompletedUI()
-        {
-            ClearActionButtons();
-
-            if (_promptText != null)
-            {
-                _promptText.text = "<color=#4CAF50>FIRE SUPPRESSED!</color>\n<size=80%>PASS Procedure Completed • Conveyor Fire Extinguished</size>";
-                _promptText.color = new Color(0.25f, 0.95f, 0.4f);
-            }
-
-            if (_bannerBg != null)
-            {
-                _bannerBg.color = new Color(0.12f, 0.28f, 0.16f, 0.94f);
+                ShowStepCompletedUI(6);
             }
         }
 
-        private void ShowExitIdentificationUI()
+        // ====================================================================
+        // Step 7: Emergency Exit Identification
+        // ====================================================================
+        private void ShowEmergencyExitOptions()
         {
-            ClearActionButtons();
-            if (_actionContainer == null) return;
-
-            if (_promptText != null)
-            {
-                _promptText.text = "<b>STEP 7: IDENTIFY EMERGENCY EXIT</b>\nLocate and tap the green illuminated Emergency Exit sign in AR space.";
-                _promptText.color = new Color(0.25f, 0.95f, 0.4f);
-            }
-
-            if (_bannerBg != null)
-            {
-                _bannerBg.color = new Color(0.10f, 0.12f, 0.16f, 0.90f);
-            }
-
-            // 1. Sector B Emergency Exit (Green Sign) - Correct
-            CreateOptionButton("1. MARK: Sector B Emergency Exit (Green Sign)", new Vector2(0f, 0.68f), new Vector2(1f, 0.98f), () =>
+            var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
+            CreateOptionButton(loc.Get("fire_step7_opt1", "SECTOR B EMERGENCY EXIT →"), new Vector2(0f, 0.68f), new Vector2(1f, 0.98f),
+                new Color(0.14f, 0.24f, 0.38f, 0.96f), () =>
             {
                 _controller?.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB);
             });
 
-            // 2. Freight Elevator (Elevator Shaft - Unsafe) - Incorrect
-            CreateActionButton("2. MARK: Freight Elevator (Elevator Shaft - Unsafe)", new Vector2(0f, 0.35f), new Vector2(1f, 0.65f), new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
+            CreateOptionButton(loc.Get("fire_step7_opt2", "Freight Elevator (DO NOT USE IN FIRE)"), new Vector2(0f, 0.35f), new Vector2(1f, 0.65f),
+                new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
             {
                 _controller?.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitFreightElevator);
+                SetFeedback(loc.Get("fire_step7_err_elevator", "✗ Unsafe! Never use elevators during fire evacuation. Select Sector B."), new Color(1f, 0.45f, 0.45f), new Color(0.35f, 0.12f, 0.12f, 0.95f));
             });
 
-            // 3. Sector A Route (Smoke Blocked - Unsafe) - Incorrect
-            CreateActionButton("3. MARK: Sector A Route (Smoke Blocked - Unsafe)", new Vector2(0f, 0.02f), new Vector2(1f, 0.32f), new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
+            CreateOptionButton(loc.Get("fire_step7_opt3", "Sector A Route (Smoke Blocked - Unsafe)"), new Vector2(0f, 0.02f), new Vector2(1f, 0.32f),
+                new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
             {
                 _controller?.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitBlockedCorridor);
+                SetFeedback(loc.Get("fire_step7_err_blocked", "✗ Unsafe! Sector A corridor is blocked by toxic smoke. Select Sector B."), new Color(1f, 0.45f, 0.45f), new Color(0.35f, 0.12f, 0.12f, 0.95f));
             });
         }
 
-        private void ShowExitIdentifiedUI()
+        // ====================================================================
+        // Step 8: Evacuation Route Waypoints (Strict 1 -> 2 -> 3 Guided Flow)
+        // ====================================================================
+        private void ShowEvacuationRouteOptions()
         {
-            ClearActionButtons();
+            var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
+            var stage = _controller != null ? _controller.WorkflowStage : FireWorkflowStage.ExitIdentified;
 
-            if (_promptText != null)
+            if (stage == FireWorkflowStage.ExitIdentified || stage == FireWorkflowStage.AwaitingEvacuationRoute)
             {
-                _promptText.text = "<color=#4CAF50>EMERGENCY EXIT IDENTIFIED!</color>\n<size=80%>Sector B Exit Marked • Clear egress route verified.</size>";
-                _promptText.color = new Color(0.25f, 0.95f, 0.4f);
+                CreateOptionButton(loc.Get("fire_step8_wp1", "WAYPOINT 1: MAIN CORRIDOR →"), new Vector2(0f, 0.52f), new Vector2(1f, 0.96f),
+                    new Color(0.15f, 0.65f, 0.35f), () =>
+                {
+                    _controller?.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor);
+                    SetFeedback(loc.Get("fire_step8_fb_wp1", "✓ Waypoint 1 reached! Proceed through Bypass Crosscut."), new Color(0.4f, 1f, 0.5f), new Color(0.1f, 0.28f, 0.15f, 0.95f));
+                });
+
+                CreateOptionButton(loc.Get("fire_step8_unsafe_smoke", "⚠ Sector A Smoke Corridor (Unsafe)"), new Vector2(0f, 0.04f), new Vector2(1f, 0.48f),
+                    new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
+                {
+                    _controller?.SubmitEvacuationWaypoint(FireTrainingWorkflow.HazardSmokeCorridor);
+                    SetFeedback(loc.Get("fire_step8_err_smoke", "✗ Toxic smoke hazard! Do not enter Sector A. Use Main Corridor."), new Color(1f, 0.45f, 0.45f), new Color(0.35f, 0.12f, 0.12f, 0.95f));
+                });
             }
-
-            if (_bannerBg != null)
+            else if (stage == FireWorkflowStage.WaypointMainCorridorReached)
             {
-                _bannerBg.color = new Color(0.12f, 0.28f, 0.16f, 0.94f);
+                CreateOptionButton(loc.Get("fire_step8_wp2", "WAYPOINT 2: BYPASS CROSSCUT →"), new Vector2(0f, 0.52f), new Vector2(1f, 0.96f),
+                    new Color(0.15f, 0.65f, 0.35f), () =>
+                {
+                    _controller?.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut);
+                    SetFeedback(loc.Get("fire_step8_fb_wp2", "✓ Waypoint 2 reached! Proceed to Fire Door Exit."), new Color(0.4f, 1f, 0.5f), new Color(0.1f, 0.28f, 0.15f, 0.95f));
+                });
+
+                CreateOptionButton(loc.Get("fire_step8_unsafe_smoke", "⚠ Sector A Smoke Corridor (Unsafe)"), new Vector2(0f, 0.04f), new Vector2(1f, 0.48f),
+                    new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
+                {
+                    _controller?.SubmitEvacuationWaypoint(FireTrainingWorkflow.HazardSmokeCorridor);
+                    SetFeedback(loc.Get("fire_step8_err_smoke", "✗ Toxic smoke hazard! Do not enter Sector A. Use Bypass Crosscut."), new Color(1f, 0.45f, 0.45f), new Color(0.35f, 0.12f, 0.12f, 0.95f));
+                });
+            }
+            else if (stage == FireWorkflowStage.WaypointBypassCrosscutReached)
+            {
+                CreateOptionButton(loc.Get("fire_step8_wp3", "WAYPOINT 3: FIRE DOOR EXIT →"), new Vector2(0f, 0.52f), new Vector2(1f, 0.96f),
+                    new Color(0.15f, 0.65f, 0.35f), () =>
+                {
+                    _controller?.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit);
+                    SetFeedback(loc.Get("fire_step8_fb_wp3", "✓ Waypoint 3 reached! Route cleared safely."), new Color(0.4f, 1f, 0.5f), new Color(0.1f, 0.28f, 0.15f, 0.95f));
+                });
+
+                CreateOptionButton(loc.Get("fire_step8_unsafe_smoke", "⚠ Sector A Smoke Corridor (Unsafe)"), new Vector2(0f, 0.04f), new Vector2(1f, 0.48f),
+                    new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
+                {
+                    _controller?.SubmitEvacuationWaypoint(FireTrainingWorkflow.HazardSmokeCorridor);
+                    SetFeedback(loc.Get("fire_step8_err_smoke", "✗ Toxic smoke hazard! Do not enter Sector A. Use Fire Door Exit."), new Color(1f, 0.45f, 0.45f), new Color(0.35f, 0.12f, 0.12f, 0.95f));
+                });
+            }
+            else
+            {
+                ShowStepCompletedUI(8);
             }
         }
 
-        private void ShowEvacuationRouteUI()
+        // ====================================================================
+        // Step 9: Reach Assembly Point
+        // ====================================================================
+        private void ShowAssemblyPointOptions()
         {
-            ClearActionButtons();
-            if (_actionContainer == null) return;
-
-            if (_promptText != null)
-            {
-                _promptText.text = "<b>STEP 8: EMERGENCY EVACUATION ROUTE</b>\nFollow waypoints away from fire toward assembly point:";
-                _promptText.color = new Color(0.25f, 0.95f, 0.4f);
-            }
-
-            if (_bannerBg != null)
-            {
-                _bannerBg.color = new Color(0.10f, 0.12f, 0.16f, 0.90f);
-            }
-
-            // 1. Waypoint 1: Main Corridor (Clear route)
-            CreateOptionButton("1. WAYPOINT 1: Main Corridor (Clear Route)", new Vector2(0f, 0.74f), new Vector2(1f, 0.98f), () =>
-            {
-                _controller?.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor);
-            });
-
-            // 2. Waypoint 2: Bypass Crosscut (Smoke divert)
-            CreateOptionButton("2. WAYPOINT 2: Bypass Crosscut (Smoke Divert)", new Vector2(0f, 0.49f), new Vector2(1f, 0.73f), () =>
-            {
-                _controller?.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut);
-            });
-
-            // 3. Waypoint 3: Fire Door Exit (Egress boundary)
-            CreateOptionButton("3. WAYPOINT 3: Fire Door Exit (Egress Boundary)", new Vector2(0f, 0.24f), new Vector2(1f, 0.48f), () =>
-            {
-                _controller?.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit);
-            });
-
-            // 4. Hazard Alternative: Sector A Smoke Corridor (Unsafe)
-            CreateActionButton("4. DANGER: Sector A Smoke Corridor (Unsafe)", new Vector2(0f, 0.01f), new Vector2(1f, 0.23f), new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
-            {
-                _controller?.SubmitEvacuationWaypoint(FireTrainingWorkflow.HazardSmokeCorridor);
-            });
-        }
-
-        private void ShowAssemblyPointUI()
-        {
-            ClearActionButtons();
-            if (_actionContainer == null) return;
-
-            if (_promptText != null)
-            {
-                _promptText.text = "<b>STEP 9: REACH ASSEMBLY POINT</b>\nFollow the evacuation route and identify the designated assembly point.";
-                _promptText.color = new Color(0.25f, 0.95f, 0.4f);
-            }
-
-            if (_bannerBg != null)
-            {
-                _bannerBg.color = new Color(0.10f, 0.12f, 0.16f, 0.90f);
-            }
-
-            // 1. Primary designated assembly muster point
-            CreateOptionButton("1. ASSEMBLE: Muster Point Alpha (Designated Safe Area)", new Vector2(0f, 0.52f), new Vector2(1f, 0.96f), () =>
+            var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
+            CreateOptionButton(loc.Get("fire_step9_opt1", "REACH ASSEMBLY POINT (MUSTER ALPHA) →"), new Vector2(0f, 0.52f), new Vector2(1f, 0.96f),
+                new Color(0.15f, 0.65f, 0.35f), () =>
             {
                 _controller?.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint);
             });
 
-            // 2. Non-designated alternative (error testing / safety contrast)
-            CreateActionButton("2. WRONG: Perimeter Loading Gate (Unauthorized Area)", new Vector2(0f, 0.04f), new Vector2(1f, 0.48f), new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
+            CreateOptionButton(loc.Get("fire_step9_opt2", "Perimeter Loading Gate (Unauthorized Area)"), new Vector2(0f, 0.04f), new Vector2(1f, 0.48f),
+                new Color(0.45f, 0.15f, 0.15f, 0.92f), () =>
             {
                 _controller?.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyPointBeta);
+                SetFeedback(loc.Get("fire_step9_err_downwind", "✗ Loading Gate is not an assembly area! Proceed to Muster Point Alpha."), new Color(1f, 0.45f, 0.45f), new Color(0.35f, 0.12f, 0.12f, 0.95f));
             });
         }
 
-        private void ShowAssemblyCompletedUI()
+        private GameObject CreateStatusBadge(string text, Vector2 anchorMin, Vector2 anchorMax, Color bgColor)
         {
-            ClearActionButtons();
+            var badgeObj = new GameObject("StatusBadge");
+            badgeObj.transform.SetParent(_optionsContainer.transform, false);
 
-            if (_promptText != null)
-            {
-                _promptText.text = "<color=#4CAF50>FIRE & EXPLOSION RESPONSE COMPLETED!</color>\n<size=80%>Emergency Evacuation Verified • Worker Safe at Muster Point Alpha</size>";
-                _promptText.color = new Color(0.25f, 0.95f, 0.4f);
-            }
+            var rect = badgeObj.AddComponent<RectTransform>();
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.offsetMin = new Vector2(4, 2);
+            rect.offsetMax = new Vector2(-4, -2);
 
-            if (_bannerBg != null)
-            {
-                _bannerBg.color = new Color(0.12f, 0.28f, 0.16f, 0.94f);
-            }
+            var img = badgeObj.AddComponent<Image>();
+            img.color = bgColor;
 
-            if (_successBadge != null)
-            {
-                _successBadge.SetActive(true);
-            }
+            var labelObj = new GameObject("Label");
+            labelObj.transform.SetParent(badgeObj.transform, false);
+            var labelRect = labelObj.AddComponent<RectTransform>();
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = new Vector2(12, 4);
+            labelRect.offsetMax = new Vector2(-12, -4);
+
+            var tmp = labelObj.AddComponent<TextMeshProUGUI>();
+            var font = GetDefaultFont();
+            if (font != null) tmp.font = font;
+            tmp.text = $"<b>{text}</b>";
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.fontSize = 20;
+            tmp.color = Color.white;
+
+            return badgeObj;
         }
 
-        private Button CreateOptionButton(string label, Vector2 anchorMin, Vector2 anchorMax, System.Action onClick)
+        private Button CreateOptionButton(string label, Vector2 anchorMin, Vector2 anchorMax, Color bgColor, Action onClick)
         {
-            return CreateActionButton(label, anchorMin, anchorMax, new Color(0.18f, 0.22f, 0.28f, 0.92f), onClick);
-        }
-
-        private Button CreateActionButton(string label, Vector2 anchorMin, Vector2 anchorMax, Color bgColor, System.Action onClick)
-        {
-            var btnObj = new GameObject("ActionButton_" + label);
-            btnObj.transform.SetParent(_actionContainer.transform, false);
+            var btnObj = new GameObject("OptionBtn_" + label);
+            btnObj.transform.SetParent(_optionsContainer.transform, false);
 
             var rect = btnObj.AddComponent<RectTransform>();
             rect.anchorMin = anchorMin;
             rect.anchorMax = anchorMax;
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
+            rect.offsetMin = new Vector2(4, 2);
+            rect.offsetMax = new Vector2(-4, -2);
 
             var img = btnObj.AddComponent<Image>();
             img.color = bgColor;
 
             var btn = btnObj.AddComponent<Button>();
             btn.targetGraphic = img;
-            btn.onClick.AddListener(() => onClick?.Invoke());
+
+            var tapGated = btnObj.AddComponent<TapGatedButton>();
+            tapGated.Initialize(() => onClick?.Invoke());
 
             var textObj = new GameObject("Label");
             textObj.transform.SetParent(btnObj.transform, false);
@@ -693,16 +1197,19 @@ namespace IndustrialSafetyAR.UI
             var textRect = textObj.AddComponent<RectTransform>();
             textRect.anchorMin = Vector2.zero;
             textRect.anchorMax = Vector2.one;
-            textRect.offsetMin = new Vector2(10, 4);
-            textRect.offsetMax = new Vector2(-10, -4);
+            textRect.offsetMin = new Vector2(12, 4);
+            textRect.offsetMax = new Vector2(-12, -4);
 
             var tmp = textObj.AddComponent<TextMeshProUGUI>();
+            var font = GetDefaultFont();
+            if (font != null) tmp.font = font;
             tmp.text = label;
             tmp.alignment = TextAlignmentOptions.Center;
-            tmp.fontSize = 24;
+            tmp.fontSize = 22;
             tmp.enableAutoSizing = true;
             tmp.fontSizeMin = 14;
-            tmp.fontSizeMax = 28;
+            tmp.fontSizeMax = 26;
+            tmp.fontStyle = FontStyles.Bold;
             tmp.color = Color.white;
 
             return btn;

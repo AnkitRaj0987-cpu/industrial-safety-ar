@@ -2,8 +2,8 @@
 // Namespace : IndustrialSafetyAR.Modules.FireExplosion
 //
 // Represents an interactive 3D Emergency Assembly Point marker in AR space.
-// Provides lightweight procedural placeholder visuals using standard Unity primitives,
-// TextMeshPro 3D signage, ground halo directional indicators, and raycast detection.
+// Provides procedural visuals, ground halo directional indicators, raycast detection,
+// and camera-facing ArFloatingLabels with compact mobile AR scaling.
 
 using System;
 using TMPro;
@@ -41,6 +41,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         [SerializeField]
         private Renderer _haloRenderer;
 
+        private ArFloatingLabel _floatingLabel;
         private Material _signMaterial;
         private Material _haloMaterial;
         private bool _isReached;
@@ -117,9 +118,15 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 _signMaterial.color = ColorActiveCyan;
             }
 
-            if (_labelMesh != null)
+            string text = $"<b>{_pointName}</b>\n<color=#00FF88>[REACHED - EVACUATION COMPLETED]</color>";
+            if (_floatingLabel != null)
             {
-                _labelMesh.text = $"<b>{_pointName}</b>\n<color=#00FF88>[REACHED - EVACUATION COMPLETED]</color>";
+                _floatingLabel.SetText(text);
+                _floatingLabel.SetColor(ColorActiveCyan);
+            }
+            else if (_labelMesh != null)
+            {
+                _labelMesh.text = text;
                 _labelMesh.color = ColorActiveCyan;
             }
 
@@ -136,23 +143,29 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 _signMaterial.color = themeColor;
             }
 
-            if (_labelMesh != null)
+            string text;
+            if (_isReached)
             {
-                if (_isReached)
-                {
-                    _labelMesh.text = $"<b>{_pointName}</b>\n<color=#00FF88>[REACHED - EVACUATION COMPLETED]</color>";
-                    _labelMesh.color = ColorActiveCyan;
-                }
-                else if (_isDesignated)
-                {
-                    _labelMesh.text = $"<b>EMERGENCY ASSEMBLY POINT</b>\n{_pointName}";
-                    _labelMesh.color = ColorSafeGreen;
-                }
-                else
-                {
-                    _labelMesh.text = $"<b>UNAUTHORIZED AREA</b>\n{_pointName}\n(DO NOT ASSEMBLE)";
-                    _labelMesh.color = ColorUnauthorizedRed;
-                }
+                text = $"✓ {_pointName} [REACHED]";
+            }
+            else if (_isDesignated)
+            {
+                text = _pointName;
+            }
+            else
+            {
+                text = $"⚠ UNAUTHORIZED: {_pointName}";
+            }
+
+            if (_floatingLabel != null)
+            {
+                _floatingLabel.SetText(text);
+                _floatingLabel.SetColor(_isReached ? ColorActiveCyan : themeColor);
+            }
+            else if (_labelMesh != null)
+            {
+                _labelMesh.text = text;
+                _labelMesh.color = _isReached ? ColorActiveCyan : themeColor;
             }
         }
 
@@ -178,7 +191,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             haloObj.transform.localPosition = new Vector3(0f, 0.01f, 0f);
             haloObj.transform.localScale = new Vector3(2.2f, 0.005f, 2.2f);
             var haloCol = haloObj.GetComponent<Collider>();
-            if (haloCol != null) Destroy(haloCol);
+            if (haloCol != null) DestroyImmediate(haloCol);
 
             Color haloColVal = themeColor;
             haloColVal.a = 0.35f;
@@ -193,7 +206,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             baseObj.transform.localPosition = new Vector3(0f, 0.03f, 0f);
             baseObj.transform.localScale = new Vector3(1.6f, 0.03f, 1.6f);
             var baseCol = baseObj.GetComponent<Collider>();
-            if (baseCol != null) Destroy(baseCol);
+            if (baseCol != null) DestroyImmediate(baseCol);
             var baseMat = new Material(litShader) { color = new Color(0.18f, 0.20f, 0.24f) };
             baseObj.GetComponent<Renderer>().material = baseMat;
 
@@ -204,7 +217,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             postObj.transform.localPosition = new Vector3(0f, 0.9f, 0f);
             postObj.transform.localScale = new Vector3(0.08f, 0.9f, 0.08f);
             var postCol = postObj.GetComponent<Collider>();
-            if (postCol != null) Destroy(postCol);
+            if (postCol != null) DestroyImmediate(postCol);
             var postMat = new Material(litShader) { color = new Color(0.28f, 0.30f, 0.35f) };
             postObj.GetComponent<Renderer>().material = postMat;
 
@@ -215,20 +228,23 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             signObj.transform.localPosition = new Vector3(0f, 1.9f, 0f);
             signObj.transform.localScale = new Vector3(1.1f, 0.7f, 0.05f);
             var signCol = signObj.GetComponent<Collider>();
-            if (signCol != null) Destroy(signCol);
+            if (signCol != null) DestroyImmediate(signCol);
 
             _signMaterial = new Material(litShader) { color = themeColor };
             _signRenderer = signObj.GetComponent<Renderer>();
             _signRenderer.material = _signMaterial;
 
-            // 5. Floating 3D TextMeshPro Label
-            GameObject labelObj = new GameObject("SignLabel");
-            labelObj.transform.SetParent(transform, false);
-            labelObj.transform.localPosition = new Vector3(0f, 1.9f, -0.04f);
-            _labelMesh = labelObj.AddComponent<TextMeshPro>();
-            _labelMesh.fontSize = 2.4f;
-            _labelMesh.alignment = TextAlignmentOptions.Center;
-            _labelMesh.rectTransform.sizeDelta = new Vector2(3.5f, 1.4f);
+            // 5. Camera-Facing ArFloatingLabel (compact billboard badge)
+            _floatingLabel = ArFloatingLabel.Create(
+                gameObject,
+                new Vector3(0f, 2.25f, 0f),
+                _pointName,
+                themeColor,
+                width: 0.42f,
+                height: 0.09f,
+                fontSize: 0.72f,
+                ArBillboardMode.ScreenAligned);
+            _labelMesh = _floatingLabel.LabelMesh;
 
             ApplyTheme();
 

@@ -93,9 +93,8 @@ namespace IndustrialSafetyAR.Core
         /// </summary>
         private void Initialise()
         {
-            // TODO (STEP N): initialise config/settings loader.
-            // TODO (STEP N): open SQLite database for offline outbox.
-            // TODO (STEP N): start background sync queue.
+            LocaleService.Instance.LoadPersistedLanguage();
+            Audio.FireAudioService.Instance.LoadSettings();
         }
     }
 }

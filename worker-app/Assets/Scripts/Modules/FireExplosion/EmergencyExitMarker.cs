@@ -2,8 +2,8 @@
 // Namespace : IndustrialSafetyAR.Modules.FireExplosion
 //
 // Represents an interactive 3D Emergency Exit marker in AR space.
-// Provides lightweight procedural placeholder visuals using standard Unity primitives,
-// TextMeshPro 3D signage, ground halo directional indicators, and raycast detection.
+// Provides procedural signage, ground halo directional indicators, raycast detection,
+// and camera-facing ArFloatingLabels with compact mobile AR scaling.
 
 using System;
 using TMPro;
@@ -41,6 +41,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         [SerializeField]
         private Renderer _haloRenderer;
 
+        private ArFloatingLabel _floatingLabel;
         private Material _signMaterial;
         private Material _haloMaterial;
         private bool _isIdentified;
@@ -70,7 +71,6 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
             if (_isIdentified)
             {
-                // Steady luminous green pulse when identified
                 if (_haloMaterial != null)
                 {
                     float pulse = 0.85f + 0.15f * Mathf.Sin(_pulseTimer * 1.5f);
@@ -81,7 +81,6 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 return;
             }
 
-            // Subtle pulsing idle guide effect
             if (_haloMaterial != null)
             {
                 float pulse = 0.80f + 0.20f * Mathf.Sin(_pulseTimer);
@@ -120,9 +119,15 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 _signMaterial.color = ColorConfirmedGreen;
             }
 
-            if (_labelMesh != null)
+            string text = "EMERGENCY EXIT IDENTIFIED\nSector B — Egress Route Verified";
+            if (_floatingLabel != null)
             {
-                _labelMesh.text = "EMERGENCY EXIT IDENTIFIED\nSector B — Egress Route Verified";
+                _floatingLabel.SetText(text);
+                _floatingLabel.SetColor(ColorConfirmedGreen);
+            }
+            else if (_labelMesh != null)
+            {
+                _labelMesh.text = text;
                 _labelMesh.color = ColorConfirmedGreen;
             }
 
@@ -141,23 +146,33 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 _signMaterial.color = themeColor;
             }
 
-            if (_labelMesh != null)
+            string text;
+            if (_isIdentified)
             {
-                if (_isDesignatedSafeExit)
-                {
-                    _labelMesh.text = "EMERGENCY EXIT\nSector B";
-                    _labelMesh.color = ColorSafeExitGreen;
-                }
-                else if (_exitId.Contains("elevator"))
-                {
-                    _labelMesh.text = "FREIGHT ELEVATOR\nDO NOT USE IN FIRE!";
-                    _labelMesh.color = ColorProhibitedRed;
-                }
-                else
-                {
-                    _labelMesh.text = "CORRIDOR SECTOR A\nBLOCKED BY HEAVY SMOKE";
-                    _labelMesh.color = ColorSmokeAmber;
-                }
+                text = "✓ EXIT MARKED (SECTOR B)";
+            }
+            else if (_isDesignatedSafeExit)
+            {
+                text = "EMERGENCY EXIT (SECTOR B)";
+            }
+            else if (_exitId.Contains("elevator"))
+            {
+                text = "⚠ NO EXIT: FREIGHT ELEVATOR";
+            }
+            else
+            {
+                text = "⚠ BLOCKED: SMOKE HAZARD";
+            }
+
+            if (_floatingLabel != null)
+            {
+                _floatingLabel.SetText(text);
+                _floatingLabel.SetColor(themeColor);
+            }
+            else if (_labelMesh != null)
+            {
+                _labelMesh.text = text;
+                _labelMesh.color = themeColor;
             }
         }
 
@@ -171,42 +186,44 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 return;
             }
 
-            Shader unlitShader = Shader.Find("Universal Render Pipeline/Unlit")
-                ?? Shader.Find("Sprites/Default")
-                ?? Shader.Find("Standard");
+            Shader litShader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
 
-            Shader litShader = Shader.Find("Universal Render Pipeline/Lit")
-                ?? Shader.Find("Standard");
+            Color themeColor = _isDesignatedSafeExit
+                ? ColorSafeExitGreen
+                : (_exitId.Contains("elevator") ? ColorProhibitedRed : ColorSmokeAmber);
 
-            Color themeColor = _isDesignatedSafeExit ? ColorSafeExitGreen : ColorProhibitedRed;
+            // 1. Sign Post Pole
+            GameObject poleObj = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            poleObj.name = "SignPole";
+            poleObj.transform.SetParent(transform, false);
+            poleObj.transform.localPosition = new Vector3(0f, 0.95f, 0f);
+            poleObj.transform.localScale = new Vector3(0.06f, 0.95f, 0.06f);
+            var poleMat = new Material(litShader) { color = new Color(0.22f, 0.24f, 0.28f) };
+            poleObj.GetComponent<Renderer>().material = poleMat;
+            var poleCol = poleObj.GetComponent<Collider>();
+            if (poleCol != null) DestroyImmediate(poleCol);
 
-            // 1. Post / frame upright support
-            GameObject postObj = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            postObj.name = "SignPost";
-            postObj.transform.SetParent(transform, false);
-            postObj.transform.localPosition = new Vector3(0f, 0.90f, 0f);
-            postObj.transform.localScale = new Vector3(0.06f, 0.90f, 0.06f);
-            var postMat = new Material(litShader) { color = new Color(0.25f, 0.26f, 0.28f) };
-            postObj.GetComponent<Renderer>().material = postMat;
-
-            // 2. Signboard Header (illuminated green or warning red)
-            GameObject signBoardObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            signBoardObj.name = "SignBoard";
-            signBoardObj.transform.SetParent(transform, false);
-            signBoardObj.transform.localPosition = new Vector3(0f, 1.85f, 0f);
-            signBoardObj.transform.localScale = new Vector3(1.20f, 0.45f, 0.08f);
+            // 2. Sign Plaque Header (ISO Running Man / Green Exit Plate)
+            GameObject plateObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            plateObj.name = "SignPlate";
+            plateObj.transform.SetParent(transform, false);
+            plateObj.transform.localPosition = new Vector3(0f, 1.95f, 0f);
+            plateObj.transform.localScale = new Vector3(0.95f, 0.45f, 0.04f);
             _signMaterial = new Material(litShader) { color = themeColor };
-            _signRenderer = signBoardObj.GetComponent<Renderer>();
+            _signRenderer = plateObj.GetComponent<Renderer>();
             _signRenderer.material = _signMaterial;
 
-            // 3. Ground Halo Disc / Directional indicator
+            var plateCol = plateObj.GetComponent<Collider>();
+            if (plateCol != null) DestroyImmediate(plateCol);
+
+            // 3. Ground Directional Halo
             GameObject haloObj = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            haloObj.name = "ExitGroundHalo";
+            haloObj.name = "ExitHalo";
             haloObj.transform.SetParent(transform, false);
             haloObj.transform.localPosition = new Vector3(0f, 0.01f, 0f);
-            haloObj.transform.localScale = new Vector3(1.4f, 0.002f, 1.4f);
+            haloObj.transform.localScale = new Vector3(1.6f, 0.005f, 1.6f);
             var haloCol = haloObj.GetComponent<Collider>();
-            if (haloCol != null) Destroy(haloCol);
+            if (haloCol != null) DestroyImmediate(haloCol);
 
             Color haloColor = themeColor;
             haloColor.a = 0.30f;
@@ -214,14 +231,17 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             _haloRenderer = haloObj.GetComponent<Renderer>();
             _haloRenderer.material = _haloMaterial;
 
-            // 4. Floating 3D Text Label
-            GameObject labelObj = new GameObject("ExitLabel");
-            labelObj.transform.SetParent(transform, false);
-            labelObj.transform.localPosition = new Vector3(0f, 2.22f, 0f);
-            _labelMesh = labelObj.AddComponent<TextMeshPro>();
-            _labelMesh.fontSize = 2.2f;
-            _labelMesh.alignment = TextAlignmentOptions.Center;
-            _labelMesh.rectTransform.sizeDelta = new Vector2(3.0f, 1.0f);
+            // 4. Camera-Facing ArFloatingLabel (compact billboard badge)
+            _floatingLabel = ArFloatingLabel.Create(
+                gameObject,
+                new Vector3(0f, 2.18f, 0f),
+                "EMERGENCY EXIT (SECTOR B)",
+                themeColor,
+                width: 0.40f,
+                height: 0.09f,
+                fontSize: 0.72f,
+                ArBillboardMode.ScreenAligned);
+            _labelMesh = _floatingLabel.LabelMesh;
 
             ApplyTheme();
 

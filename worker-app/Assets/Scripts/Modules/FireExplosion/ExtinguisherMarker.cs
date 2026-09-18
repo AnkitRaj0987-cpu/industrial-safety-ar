@@ -3,7 +3,7 @@
 //
 // Represents an interactive 3D Fire Extinguisher prop/marker in AR space.
 // Supports physics raycast tapping, configuration of extinguisher type (CO2, Water, Foam),
-// procedural visual placeholder rendering, and selection confirmation.
+// procedural visual rendering, and camera-facing ArFloatingLabels.
 
 using System;
 using TMPro;
@@ -38,6 +38,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         [SerializeField]
         private TextMeshPro _labelMesh;
 
+        private ArFloatingLabel _floatingLabel;
         private Material _bodyMaterial;
         private bool _isSelected;
 
@@ -73,11 +74,19 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             {
                 _bodyMaterial.color = new Color(0.2f, 0.9f, 0.4f);
             }
-            if (_labelMesh != null)
+
+            Color selectColor = new Color(0.2f, 0.9f, 0.4f);
+            if (_floatingLabel != null)
+            {
+                _floatingLabel.SetText($"{_extinguisherName}\n[SELECTED]");
+                _floatingLabel.SetColor(selectColor);
+            }
+            else if (_labelMesh != null)
             {
                 _labelMesh.text = $"{_extinguisherName}\n[SELECTED]";
-                _labelMesh.color = new Color(0.2f, 0.9f, 0.4f);
+                _labelMesh.color = selectColor;
             }
+
             OnExtinguisherTapped?.Invoke(this);
         }
 
@@ -102,10 +111,16 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 _bodyMaterial.color = themeColor;
             }
 
-            if (_labelMesh != null)
+            Color textColor = _isCorrectForHazard ? new Color(0.2f, 0.9f, 0.4f) : new Color(1f, 0.8f, 0.2f);
+            if (_floatingLabel != null)
+            {
+                _floatingLabel.SetText(_extinguisherName);
+                _floatingLabel.SetColor(textColor);
+            }
+            else if (_labelMesh != null)
             {
                 _labelMesh.text = _extinguisherName;
-                _labelMesh.color = _isCorrectForHazard ? new Color(0.2f, 0.9f, 0.4f) : new Color(1f, 0.8f, 0.2f);
+                _labelMesh.color = textColor;
             }
         }
 
@@ -123,20 +138,23 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             cylinder.transform.localScale = new Vector3(0.18f, 0.35f, 0.18f);
 
             var col = cylinder.GetComponent<Collider>();
-            if (col != null) Destroy(col);
+            if (col != null) DestroyImmediate(col);
 
             _bodyMaterial = new Material(litShader) { color = new Color(0.2f, 0.2f, 0.22f) };
             _bodyRenderer = cylinder.GetComponent<Renderer>();
             _bodyRenderer.material = _bodyMaterial;
 
-            // Text label
-            GameObject labelObj = new GameObject("ExtinguisherLabel");
-            labelObj.transform.SetParent(transform, false);
-            labelObj.transform.localPosition = new Vector3(0f, 0.80f, 0f);
-            _labelMesh = labelObj.AddComponent<TextMeshPro>();
-            _labelMesh.fontSize = 2.0f;
-            _labelMesh.alignment = TextAlignmentOptions.Center;
-            _labelMesh.rectTransform.sizeDelta = new Vector2(2.5f, 0.8f);
+            // Camera-facing compact ArFloatingLabel (replaces giant static 3D label)
+            _floatingLabel = ArFloatingLabel.Create(
+                gameObject,
+                new Vector3(0f, 0.78f, 0f),
+                _extinguisherName,
+                _isCorrectForHazard ? new Color(0.2f, 0.9f, 0.4f) : new Color(1f, 0.8f, 0.2f),
+                width: 0.36f,
+                height: 0.10f,
+                fontSize: 0.76f,
+                ArBillboardMode.ScreenAligned);
+            _labelMesh = _floatingLabel.LabelMesh;
 
             ApplyTheme();
 

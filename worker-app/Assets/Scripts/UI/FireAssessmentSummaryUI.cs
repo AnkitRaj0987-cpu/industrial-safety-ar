@@ -36,13 +36,24 @@ namespace IndustrialSafetyAR.UI
         private bool _isBreakdownVisible;
         private Button _finishButton;
         private TextMeshProUGUI _finishButtonText;
+        private TextMeshProUGUI _reviewButtonText;
+        private TextMeshProUGUI _retakeButtonText;
+        private TextMeshProUGUI _returnHomeButtonText;
 
         private AssessmentSummaryViewModel _currentViewModel;
 
         public FireArInteractionController Controller
         {
             get => _controller;
-            set => _controller = value;
+            set
+            {
+                if (_controller != value)
+                {
+                    UnsubscribeEvents();
+                    _controller = value;
+                    SubscribeEvents();
+                }
+            }
         }
 
         public AssessmentSummaryViewModel CurrentViewModel => _currentViewModel;
@@ -56,21 +67,77 @@ namespace IndustrialSafetyAR.UI
             }
         }
 
+        private bool _isSummaryRequested;
+
         private void OnEnable()
+        {
+            SubscribeEvents();
+        }
+
+        private void OnDisable()
+        {
+            UnsubscribeEvents();
+        }
+
+        private void SubscribeEvents()
         {
             if (_controller != null)
             {
                 _controller.OnAssessmentCompleted += HandleAssessmentCompleted;
                 _controller.OnAttemptFinalizedForOutbox += HandleAttemptFinalizedForOutbox;
+                if (_controller.StepNavigator != null)
+                {
+                    _controller.StepNavigator.OnCompleteTrainingRequested += HandleCompleteTrainingRequested;
+                }
+            }
+
+            if (IndustrialSafetyAR.Core.LocaleService.Instance != null)
+            {
+                IndustrialSafetyAR.Core.LocaleService.Instance.OnLanguageChanged -= HandleLanguageChanged;
+                IndustrialSafetyAR.Core.LocaleService.Instance.OnLanguageChanged += HandleLanguageChanged;
             }
         }
 
-        private void OnDisable()
+        private void UnsubscribeEvents()
         {
             if (_controller != null)
             {
                 _controller.OnAssessmentCompleted -= HandleAssessmentCompleted;
                 _controller.OnAttemptFinalizedForOutbox -= HandleAttemptFinalizedForOutbox;
+                if (_controller.StepNavigator != null)
+                {
+                    _controller.StepNavigator.OnCompleteTrainingRequested -= HandleCompleteTrainingRequested;
+                }
+            }
+
+            if (IndustrialSafetyAR.Core.LocaleService.Instance != null)
+            {
+                IndustrialSafetyAR.Core.LocaleService.Instance.OnLanguageChanged -= HandleLanguageChanged;
+            }
+        }
+
+        private void HandleLanguageChanged(string newLang)
+        {
+            if (IsSummaryVisible)
+            {
+                UpdateUIContents();
+            }
+        }
+
+        public void HandleCompleteTrainingRequested()
+        {
+            _isSummaryRequested = true;
+            if (_currentViewModel != null)
+            {
+                ShowSummary(_currentViewModel);
+            }
+            else if (_controller != null && _controller.LatestAttempt != null && _controller.LatestAssessment != null)
+            {
+                ShowSummary(AssessmentSummaryViewModel.Build(_controller.LatestAttempt, _controller.LatestAssessment));
+            }
+            else
+            {
+                ShowSummary(new AssessmentSummaryViewModel());
             }
         }
 
@@ -94,8 +161,11 @@ namespace IndustrialSafetyAR.UI
 
         public void HandleAssessmentCompleted(TrainingAttempt attempt, AssessmentResult assessment)
         {
-            var vm = AssessmentSummaryViewModel.Build(attempt, assessment);
-            ShowSummary(vm);
+            _currentViewModel = AssessmentSummaryViewModel.Build(attempt, assessment);
+            if (_isSummaryRequested || _controller == null || _controller.StepNavigator == null)
+            {
+                ShowSummary(_currentViewModel);
+            }
         }
 
         /// <summary>
@@ -121,7 +191,17 @@ namespace IndustrialSafetyAR.UI
 
             if (_modalRoot != null)
             {
+                if (_modalRoot.transform.parent != null && !_modalRoot.transform.parent.gameObject.activeSelf)
+                {
+                    _modalRoot.transform.parent.gameObject.SetActive(true);
+                }
                 _modalRoot.SetActive(true);
+                _modalRoot.transform.SetAsLastSibling();
+            }
+
+            if (WorkerHomeController.Instance != null)
+            {
+                WorkerHomeController.Instance.SetState(WorkerHomeController.WorkerAppScreenState.Results);
             }
 
             UpdateUIContents();
@@ -142,9 +222,13 @@ namespace IndustrialSafetyAR.UI
         {
             if (_currentViewModel == null) return;
 
+            var loc = IndustrialSafetyAR.Core.LocaleService.Instance;
+
             if (_titleText != null)
             {
-                _titleText.text = $"<b>{_currentViewModel.ModuleTitle.ToUpper()}</b>\n<size=70%>Assessment Summary • Industrial Safety AR</size>";
+                string modTitle = loc.Get("module_fire_title", _currentViewModel.ModuleTitle ?? "Fire & Explosion Response").ToUpper();
+                string summarySub = $"{loc.Get("assessment_title", "Assessment Summary")} • {loc.Get("app_title", "Industrial Safety AR")}";
+                _titleText.text = $"<b>{modTitle}</b>\n<size=70%>{summarySub}</size>";
             }
 
             if (_badgeBackground != null)
@@ -156,24 +240,26 @@ namespace IndustrialSafetyAR.UI
 
             if (_scoreBadgeText != null)
             {
-                string statusText = _currentViewModel.Passed ? "PASS" : "FAILED — RETAKE REQUIRED";
+                string statusText = _currentViewModel.Passed ? loc.Get("assessment_status_passed", "PASS") : loc.Get("assessment_status_failed", "FAILED — RETAKE REQUIRED");
                 _scoreBadgeText.text = $"<size=120%><b>{_currentViewModel.ScoreDisplayText}</b></size>\n<size=85%><b>{statusText}</b></size>";
             }
 
             if (_metaText != null)
             {
-                _metaText.text = $"Duration: <b>{_currentViewModel.DurationText}</b>   |   Worker: <b>{_currentViewModel.WorkerId ?? "offline"}</b>   |   Pass Threshold: <b>{_currentViewModel.PassPercent:0}%</b>";
+                string durLabel = loc.Get("assessment_duration_label", "Duration");
+                string workerLabel = loc.Get("worker_id_label", "Worker ID");
+                _metaText.text = $"{durLabel}: <b>{_currentViewModel.DurationText}</b>   |   {workerLabel}: <b>{_currentViewModel.WorkerId ?? "offline"}</b>   |   Pass: <b>{_currentViewModel.PassPercent:0}%</b>";
             }
 
             if (_safetyFeedbackText != null)
             {
                 var sb = new StringBuilder();
-                sb.AppendLine($"<b>Safety Compliance Assessment:</b>");
+                sb.AppendLine($"<b>{loc.Get("assessment_breakdown_header", "Safety Compliance Assessment:")}</b>");
                 sb.AppendLine(_currentViewModel.SafetyFeedback);
 
                 if (_currentViewModel.Penalties != null && _currentViewModel.Penalties.Count > 0)
                 {
-                    sb.AppendLine("\n<color=#FF7043><b>Deductions & Identified Risks:</b></color>");
+                    sb.AppendLine($"\n<color=#FF7043><b>{loc.Get("assessment_deductions_label", "Deductions & Identified Risks:")}</b></color>");
                     foreach (var pen in _currentViewModel.Penalties)
                     {
                         sb.AppendLine($"• {pen}");
@@ -186,7 +272,7 @@ namespace IndustrialSafetyAR.UI
             if (_breakdownText != null)
             {
                 var sb = new StringBuilder();
-                sb.AppendLine("<b>Step-by-Step Scoring Breakdown:</b>");
+                sb.AppendLine($"<b>{loc.Get("assessment_breakdown_header", "Step-by-Step Scoring Breakdown:")}</b>");
                 sb.AppendLine("--------------------------------------------------");
 
                 if (_currentViewModel.StepSummaries != null)
@@ -207,9 +293,25 @@ namespace IndustrialSafetyAR.UI
 
             if (_syncStatusText != null)
             {
+                string syncReady = loc.Get("assessment_sync_ready", "Prepared for Outbox Sync");
                 _syncStatusText.text = _currentViewModel.SyncPrepared
-                    ? $"<color=#81C784>✓ Prepared for Outbox Sync (Attempt: {_currentViewModel.ClientAttemptId?.Substring(0, Math.Min(8, _currentViewModel.ClientAttemptId.Length))}...)</color>"
-                    : "Offline session stored locally. Ready for sync confirmation.";
+                    ? $"<color=#81C784>✓ {syncReady} (Attempt: {_currentViewModel.ClientAttemptId?.Substring(0, Math.Min(8, _currentViewModel.ClientAttemptId.Length))}...)</color>"
+                    : loc.Get("assessment_sync_pending", "Offline session stored locally. Ready for sync confirmation.");
+            }
+
+            if (_reviewButtonText != null) _reviewButtonText.text = $"1. {loc.Get("assessment_btn_breakdown", "Review Performance")}";
+            if (_retakeButtonText != null) _retakeButtonText.text = $"3. {loc.Get("assessment_btn_retake", "Retake Training")}";
+            if (_returnHomeButtonText != null) _returnHomeButtonText.text = $"← {loc.Get("assessment_btn_finish", "Return to Home Menu")}";
+            if (_finishButtonText != null)
+            {
+                if (_currentViewModel.SyncPrepared)
+                {
+                    _finishButtonText.text = $"✓ {loc.Get("assessment_outbox_prepared", "Finalized for Sync")}";
+                }
+                else
+                {
+                    _finishButtonText.text = $"2. {loc.Get("assessment_outbox_prepared", "Finish / Prepare Sync")}";
+                }
             }
         }
 
@@ -217,17 +319,26 @@ namespace IndustrialSafetyAR.UI
         {
             if (_modalRoot != null) return;
 
-            var canvas = FindAnyObjectByType<Canvas>();
+            var canvasObj = GameObject.Find("FireTrainingCanvas");
+            var canvas = canvasObj != null ? canvasObj.GetComponent<Canvas>() : null;
             if (canvas == null)
             {
-                var canvasObj = new GameObject("AssessmentCanvas");
-                canvas = canvasObj.AddComponent<Canvas>();
-                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                var scaler = canvasObj.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1080, 1920);
-                canvasObj.AddComponent<GraphicRaycaster>();
+                canvas = FindAnyObjectByType<Canvas>();
+                if (canvas == null)
+                {
+                    canvasObj = new GameObject("AssessmentCanvas");
+                    canvas = canvasObj.AddComponent<Canvas>();
+                    canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                    canvas.sortingOrder = 110;
+                    var scaler = canvasObj.AddComponent<CanvasScaler>();
+                    scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                    scaler.referenceResolution = new Vector2(1080, 1920);
+                    scaler.matchWidthOrHeight = 0.5f;
+                    canvasObj.AddComponent<GraphicRaycaster>();
+                }
             }
+
+            var defaultFont = FireInteractionFeedbackUI.GetDefaultFont();
 
             // Modal Background Overlay
             _modalRoot = new GameObject("AssessmentSummaryModal");
@@ -252,6 +363,7 @@ namespace IndustrialSafetyAR.UI
             titleRect.offsetMax = Vector2.zero;
 
             _titleText = titleObj.AddComponent<TextMeshProUGUI>();
+            if (defaultFont != null) _titleText.font = defaultFont;
             _titleText.alignment = TextAlignmentOptions.Center;
             _titleText.fontSize = 28;
             _titleText.enableAutoSizing = true;
@@ -280,6 +392,7 @@ namespace IndustrialSafetyAR.UI
             scoreRect.offsetMax = new Vector2(-12, -4);
 
             _scoreBadgeText = scoreTextObj.AddComponent<TextMeshProUGUI>();
+            if (defaultFont != null) _scoreBadgeText.font = defaultFont;
             _scoreBadgeText.alignment = TextAlignmentOptions.Center;
             _scoreBadgeText.fontSize = 32;
             _scoreBadgeText.enableAutoSizing = true;
@@ -297,6 +410,7 @@ namespace IndustrialSafetyAR.UI
             metaRect.offsetMax = Vector2.zero;
 
             _metaText = metaObj.AddComponent<TextMeshProUGUI>();
+            if (defaultFont != null) _metaText.font = defaultFont;
             _metaText.alignment = TextAlignmentOptions.Center;
             _metaText.fontSize = 18;
             _metaText.enableAutoSizing = true;
@@ -325,6 +439,7 @@ namespace IndustrialSafetyAR.UI
             fbTextRect.offsetMax = new Vector2(-16, -8);
 
             _safetyFeedbackText = feedbackTextObj.AddComponent<TextMeshProUGUI>();
+            if (defaultFont != null) _safetyFeedbackText.font = defaultFont;
             _safetyFeedbackText.alignment = TextAlignmentOptions.TopLeft;
             _safetyFeedbackText.fontSize = 18;
             _safetyFeedbackText.enableAutoSizing = true;
@@ -353,6 +468,7 @@ namespace IndustrialSafetyAR.UI
             bdTextRect.offsetMax = new Vector2(-14, -6);
 
             _breakdownText = bdTextObj.AddComponent<TextMeshProUGUI>();
+            if (defaultFont != null) _breakdownText.font = defaultFont;
             _breakdownText.alignment = TextAlignmentOptions.TopLeft;
             _breakdownText.fontSize = 16;
             _breakdownText.enableAutoSizing = true;
@@ -372,6 +488,7 @@ namespace IndustrialSafetyAR.UI
             syncRect.offsetMax = Vector2.zero;
 
             _syncStatusText = syncObj.AddComponent<TextMeshProUGUI>();
+            if (defaultFont != null) _syncStatusText.font = defaultFont;
             _syncStatusText.alignment = TextAlignmentOptions.Center;
             _syncStatusText.fontSize = 16;
             _syncStatusText.enableAutoSizing = true;
@@ -380,10 +497,11 @@ namespace IndustrialSafetyAR.UI
             _syncStatusText.color = new Color(0.70f, 0.75f, 0.82f);
 
             // Button 1: Review Performance (toggle breakdown)
-            CreateButton("1. Review Performance", new Vector2(0.06f, 0.11f), new Vector2(0.34f, 0.16f), new Color(0.20f, 0.35f, 0.55f, 0.95f), () =>
+            var btn1 = CreateButton("1. Review Performance", new Vector2(0.06f, 0.11f), new Vector2(0.34f, 0.16f), new Color(0.20f, 0.35f, 0.55f, 0.95f), () =>
             {
                 OnReviewPerformanceClicked();
             });
+            _reviewButtonText = btn1.GetComponentInChildren<TextMeshProUGUI>();
 
             // Button 2: Finish Session / Prepare Outbox Sync
             _finishButton = CreateButton("2. Finish / Prepare Sync", new Vector2(0.36f, 0.11f), new Vector2(0.64f, 0.16f), new Color(0.22f, 0.48f, 0.30f, 0.95f), () =>
@@ -393,10 +511,18 @@ namespace IndustrialSafetyAR.UI
             _finishButtonText = _finishButton.GetComponentInChildren<TextMeshProUGUI>();
 
             // Button 3: Retake Training
-            CreateButton("3. Retake Training", new Vector2(0.66f, 0.11f), new Vector2(0.94f, 0.16f), new Color(0.65f, 0.25f, 0.20f, 0.95f), () =>
+            var btn3 = CreateButton("3. Retake Training", new Vector2(0.66f, 0.11f), new Vector2(0.94f, 0.16f), new Color(0.65f, 0.25f, 0.20f, 0.95f), () =>
             {
                 OnRetakeTrainingClicked();
             });
+            _retakeButtonText = btn3.GetComponentInChildren<TextMeshProUGUI>();
+
+            // Button 4: Return to Home
+            var btn4 = CreateButton("← Return to Home Menu", new Vector2(0.15f, 0.04f), new Vector2(0.85f, 0.095f), new Color(0.18f, 0.25f, 0.38f, 0.98f), () =>
+            {
+                OnReturnToHomeClicked();
+            });
+            _returnHomeButtonText = btn4.GetComponentInChildren<TextMeshProUGUI>();
         }
 
         public void OnReviewPerformanceClicked()
@@ -460,6 +586,8 @@ namespace IndustrialSafetyAR.UI
         public void OnRetakeTrainingClicked()
         {
             HideSummary();
+            _isSummaryRequested = false;
+            _currentViewModel = null;
             if (_finishButton != null)
             {
                 _finishButton.interactable = true;
@@ -468,9 +596,43 @@ namespace IndustrialSafetyAR.UI
             {
                 _finishButtonText.text = "2. Finish / Prepare Sync";
             }
+            if (IndustrialSafetyAR.Core.Audio.FireAudioService.Instance != null)
+            {
+                IndustrialSafetyAR.Core.Audio.FireAudioService.Instance.StopEmergencyAlarm();
+                IndustrialSafetyAR.Core.Audio.FireAudioService.Instance.StopAllAudio();
+            }
             if (_controller != null)
             {
                 _controller.RetakeTraining();
+            }
+        }
+
+        public void OnReturnToHomeClicked()
+        {
+            HideSummary();
+            _isSummaryRequested = false;
+            _currentViewModel = null;
+
+            if (IndustrialSafetyAR.Core.Audio.FireAudioService.Instance != null)
+            {
+                IndustrialSafetyAR.Core.Audio.FireAudioService.Instance.StopEmergencyAlarm();
+                IndustrialSafetyAR.Core.Audio.FireAudioService.Instance.StopAllAudio();
+            }
+
+            var fireUI = FindAnyObjectByType<FireInteractionFeedbackUI>(FindObjectsInactive.Include);
+            if (fireUI != null)
+            {
+                fireUI.HideTrainingUI();
+            }
+
+            if (_controller != null)
+            {
+                _controller.enabled = false;
+            }
+
+            if (WorkerHomeController.Instance != null)
+            {
+                WorkerHomeController.Instance.ReturnToHome();
             }
         }
 
@@ -501,6 +663,8 @@ namespace IndustrialSafetyAR.UI
             textRect.offsetMax = new Vector2(-4, -2);
 
             var tmp = textObj.AddComponent<TextMeshProUGUI>();
+            var defaultFont = FireInteractionFeedbackUI.GetDefaultFont();
+            if (defaultFont != null) tmp.font = defaultFont;
             tmp.text = label;
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.fontSize = 18;

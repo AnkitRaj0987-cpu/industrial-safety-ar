@@ -2,8 +2,8 @@
 // Namespace : IndustrialSafetyAR.Modules.FireExplosion
 //
 // Represents an interactive 3D Evacuation Waypoint marker in AR space.
-// Provides lightweight procedural placeholder visuals using standard Unity primitives,
-// TextMeshPro 3D signage, ground chevron / halo directional indicators, and raycast detection.
+// Provides procedural visuals, ground halo directional indicators, raycast detection,
+// and camera-facing ArFloatingLabels with compact mobile AR scaling.
 
 using System;
 using TMPro;
@@ -45,6 +45,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         [SerializeField]
         private Renderer _haloRenderer;
 
+        private ArFloatingLabel _floatingLabel;
         private Material _markerMaterial;
         private Material _haloMaterial;
         private bool _isTraversed;
@@ -138,9 +139,15 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 _markerMaterial.color = ColorCompletedCyan;
             }
 
-            if (_labelMesh != null)
+            string text = $"{_waypointName}\n[PASSED]";
+            if (_floatingLabel != null)
             {
-                _labelMesh.text = $"{_waypointName}\n[PASSED]";
+                _floatingLabel.SetText(text);
+                _floatingLabel.SetColor(ColorCompletedCyan);
+            }
+            else if (_labelMesh != null)
+            {
+                _labelMesh.text = text;
                 _labelMesh.color = ColorCompletedCyan;
             }
 
@@ -159,11 +166,18 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 _markerMaterial.color = themeColor;
             }
 
-            if (_labelMesh != null)
+            string text = _isHazardousAlternative
+                ? "⚠ UNSAFE: SMOKE CORRIDOR"
+                : (_isTraversed ? $"✓ {_waypointName}" : _waypointName);
+
+            if (_floatingLabel != null)
             {
-                _labelMesh.text = _isHazardousAlternative
-                    ? $"{_waypointName}\nDO NOT ENTER (SMOKE HAZARD)"
-                    : (_isTraversed ? $"{_waypointName}\n[PASSED]" : _waypointName);
+                _floatingLabel.SetText(text);
+                _floatingLabel.SetColor(themeColor);
+            }
+            else if (_labelMesh != null)
+            {
+                _labelMesh.text = text;
                 _labelMesh.color = themeColor;
             }
         }
@@ -193,9 +207,8 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             _markerRenderer = discObj.GetComponent<Renderer>();
             _markerRenderer.material = _markerMaterial;
 
-            // Remove default mesh collider from primitive cylinder
             var meshCol = discObj.GetComponent<Collider>();
-            if (meshCol != null) Destroy(meshCol);
+            if (meshCol != null) DestroyImmediate(meshCol);
 
             // 2. Upright Guide Beacon / Marker Post
             GameObject beaconObj = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -207,7 +220,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             beaconObj.GetComponent<Renderer>().material = beaconMat;
 
             var beaconCol = beaconObj.GetComponent<Collider>();
-            if (beaconCol != null) Destroy(beaconCol);
+            if (beaconCol != null) DestroyImmediate(beaconCol);
 
             // 3. Ground Halo Ring
             GameObject haloObj = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -216,7 +229,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             haloObj.transform.localPosition = new Vector3(0f, 0.01f, 0f);
             haloObj.transform.localScale = new Vector3(1.3f, 0.002f, 1.3f);
             var haloCol = haloObj.GetComponent<Collider>();
-            if (haloCol != null) Destroy(haloCol);
+            if (haloCol != null) DestroyImmediate(haloCol);
 
             Color haloColVal = themeColor;
             haloColVal.a = 0.35f;
@@ -224,14 +237,17 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             _haloRenderer = haloObj.GetComponent<Renderer>();
             _haloRenderer.material = _haloMaterial;
 
-            // 4. Floating 3D TextMeshPro Label
-            GameObject labelObj = new GameObject("WaypointLabel");
-            labelObj.transform.SetParent(transform, false);
-            labelObj.transform.localPosition = new Vector3(0f, 1.15f, 0f);
-            _labelMesh = labelObj.AddComponent<TextMeshPro>();
-            _labelMesh.fontSize = 2.0f;
-            _labelMesh.alignment = TextAlignmentOptions.Center;
-            _labelMesh.rectTransform.sizeDelta = new Vector2(3.0f, 1.0f);
+            // 4. Camera-Facing ArFloatingLabel (compact billboard badge)
+            _floatingLabel = ArFloatingLabel.Create(
+                gameObject,
+                new Vector3(0f, 0.78f, 0f),
+                _waypointName,
+                themeColor,
+                width: 0.38f,
+                height: 0.09f,
+                fontSize: 0.72f,
+                ArBillboardMode.ScreenAligned);
+            _labelMesh = _floatingLabel.LabelMesh;
 
             ApplyTheme();
 

@@ -545,7 +545,29 @@ namespace IndustrialSafetyAR.Assessment
 
                     if (penalty > 0)
                     {
-                        vm.Penalties.Add($"{def.title}: -{penalty:0.00} pts deduction incurred ({ruleRes?.Details ?? "Procedure penalty"})");
+                        string reason;
+                        if (def.ruleId == "rule_evacuate_route")
+                        {
+                            reason = "Evacuation route penalty: Unsafe route selected before reaching the safe route.";
+                        }
+                        else if (def.ruleId == "rule_identify_hazard")
+                        {
+                            reason = "Hazard identification penalty: Incorrect classification selected before Class E electrical confirmation.";
+                        }
+                        else if (def.ruleId == "rule_select_extinguisher")
+                        {
+                            reason = "Extinguisher selection penalty: Inappropriate extinguisher type selected before CO2.";
+                        }
+                        else if (def.ruleId == "rule_use_extinguisher")
+                        {
+                            reason = "P.A.S.S. procedure penalty: Out-of-order action attempted during extinguisher discharge sequence.";
+                        }
+                        else
+                        {
+                            reason = ruleRes?.Details ?? "Procedure penalty deduction incurred.";
+                        }
+
+                        vm.Penalties.Add($"{def.title}: (-{penalty:0.00} pts) {reason}");
                     }
                 }
             }

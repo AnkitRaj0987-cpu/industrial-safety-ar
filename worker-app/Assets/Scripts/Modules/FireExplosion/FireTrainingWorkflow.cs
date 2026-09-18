@@ -816,35 +816,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             }
             else if (CurrentStage == FireWorkflowStage.WaypointMainCorridorReached)
             {
-                // Route branch A: canonical direct exit waypoint (waypoint_main_corridor -> waypoint_by_exit -> step_reach_assembly)
-                if (string.Equals(rawId, WaypointByExit, StringComparison.OrdinalIgnoreCase))
-                {
-                    emittedEvent = new TrainingEvent
-                    {
-                        ModuleId = ModuleId,
-                        ContentVersion = ContentVersion,
-                        StepId = StepEvacuateRoute,
-                        EventType = "evacuation_sequence_submitted",
-                        ActionId = ActionSubmitSequence,
-                        TargetId = WaypointByExit,
-                        Outcome = "success",
-                        Payload =
-                        {
-                            { "rule_id", RuleEvacuateRoute },
-                            { "action_id", ActionSubmitSequence },
-                            { "target_id", WaypointByExit },
-                            { "ordered_ids", $"{WaypointMainCorridor},{WaypointByExit}" },
-                            { "outcome", "success" }
-                        }
-                    };
-
-                    dispatcher?.Dispatch(emittedEvent);
-                    SetStage(FireWorkflowStage.RouteEvacuated);
-                    OnFeedbackChanged?.Invoke("EVACUATION ROUTE COMPLETED!\nSafe egress confirmed. Proceed to Assembly Muster Point.");
-                    return true;
-                }
-
-                // Route branch B: bypass crosscut (waypoint_main_corridor -> waypoint_bypass_crosscut -> waypoint_fire_door_exit)
+                // Strict sequential progression requires Waypoint 2: Bypass Crosscut before reaching Waypoint 3
                 if (string.Equals(rawId, WaypointBypassCrosscut, StringComparison.OrdinalIgnoreCase))
                 {
                     emittedEvent = new TrainingEvent

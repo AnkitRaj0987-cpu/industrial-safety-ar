@@ -11,9 +11,13 @@
 
 using System;
 using System.Collections.Generic;
+using IndustrialSafetyAR.Core;
 using IndustrialSafetyAR.Core.Events;
+using IndustrialSafetyAR.Core.Audio;
 using IndustrialSafetyAR.Assessment;
 using IndustrialSafetyAR.Modules.FireExplosion;
+using IndustrialSafetyAR.UI;
+using TMPro;
 using UnityEngine;
 
 namespace IndustrialSafetyAR.Tests
@@ -25,96 +29,173 @@ namespace IndustrialSafetyAR.Tests
             logMessages = new List<string>();
             bool allPassed = true;
 
-            allPassed &= RunTest("EventCreationMatchesSchema", Test_EventCreationMatchesSchema, logMessages);
-            allPassed &= RunTest("EventBusRecordsAndNotifies", Test_EventBusRecordsAndNotifies, logMessages);
-            allPassed &= RunTest("EventPayloadIntegrity", Test_EventPayloadIntegrity, logMessages);
-            allPassed &= RunTest("SuccessfulHazardIdentificationEvent", Test_SuccessfulHazardIdentificationEvent, logMessages);
-            allPassed &= RunTest("SuccessfulRaiseAlarmEvent", Test_SuccessfulRaiseAlarmEvent, logMessages);
-            allPassed &= RunTest("CorrectEventOrdering", Test_CorrectEventOrdering, logMessages);
-            allPassed &= RunTest("InvalidActionDoesNotAdvanceFlow", Test_InvalidActionDoesNotAdvanceFlow, logMessages);
-            allPassed &= RunTest("SuccessfulCO2ExtinguisherSelection", Test_SuccessfulCO2ExtinguisherSelection, logMessages);
-            allPassed &= RunTest("IncorrectWaterExtinguisherSelection", Test_IncorrectWaterExtinguisherSelection, logMessages);
-            allPassed &= RunTest("IncorrectFoamExtinguisherSelection", Test_IncorrectFoamExtinguisherSelection, logMessages);
-            allPassed &= RunTest("PrematureExtinguisherSelectionRejected", Test_PrematureExtinguisherSelectionRejected, logMessages);
-            allPassed &= RunTest("Step3ToStep4EventOrdering", Test_Step3ToStep4EventOrdering, logMessages);
-            allPassed &= RunTest("SuccessfulSafeDistanceAction", Test_SuccessfulSafeDistanceAction, logMessages);
-            allPassed &= RunTest("UnsafeTooCloseActionRejected", Test_UnsafeTooCloseActionRejected, logMessages);
-            allPassed &= RunTest("PrematureSafeDistanceActionRejected", Test_PrematureSafeDistanceActionRejected, logMessages);
-            allPassed &= RunTest("Step4ToStep5EventOrdering", Test_Step4ToStep5EventOrdering, logMessages);
-            allPassed &= RunTest("Step6CannotBeginBeforeStep5", Test_Step6CannotBeginBeforeStep5, logMessages);
-            allPassed &= RunTest("PullPinAccepted", Test_PullPinAccepted, logMessages);
-            allPassed &= RunTest("AimAcceptedOnlyAfterPin", Test_AimAcceptedOnlyAfterPin, logMessages);
-            allPassed &= RunTest("SqueezeAcceptedOnlyAfterAim", Test_SqueezeAcceptedOnlyAfterAim, logMessages);
-            allPassed &= RunTest("SweepAcceptedOnlyAfterSqueeze", Test_SweepAcceptedOnlyAfterSqueeze, logMessages);
-            allPassed &= RunTest("WrongOutOfOrderActionRejected", Test_WrongOutOfOrderActionRejected, logMessages);
-            allPassed &= RunTest("FinalProcedureCompletedEventFields", Test_FinalProcedureCompletedEventFields, logMessages);
-            allPassed &= RunTest("Steps1To6EventOrdering", Test_Steps1To6EventOrdering, logMessages);
-            allPassed &= RunTest("Step7CannotBeginBeforeStep6", Test_Step7CannotBeginBeforeStep6, logMessages);
-            allPassed &= RunTest("SuccessfulEmergencyExitIdentification", Test_SuccessfulEmergencyExitIdentification, logMessages);
-            allPassed &= RunTest("IncorrectElevatorExitRejected", Test_IncorrectElevatorExitRejected, logMessages);
-            allPassed &= RunTest("IncorrectBlockedCorridorExitRejected", Test_IncorrectBlockedCorridorExitRejected, logMessages);
-            allPassed &= RunTest("EmergencyExitEventMatchesRubricSchema", Test_EmergencyExitEventMatchesRubricSchema, logMessages);
-            allPassed &= RunTest("Steps1To7EventOrdering", Test_Steps1To7EventOrdering, logMessages);
-            allPassed &= RunTest("Step8CannotBeginBeforeStep7", Test_Step8CannotBeginBeforeStep7, logMessages);
-            allPassed &= RunTest("SuccessfulEvacuationSequence", Test_SuccessfulEvacuationSequence, logMessages);
-            allPassed &= RunTest("OutOfOrderWaypointRejected", Test_OutOfOrderWaypointRejected, logMessages);
-            allPassed &= RunTest("SmokeCorridorSelectionEmitsFailure", Test_SmokeCorridorSelectionEmitsFailure, logMessages);
-            allPassed &= RunTest("EvacuationRouteEventMatchesRubricSchema", Test_EvacuationRouteEventMatchesRubricSchema, logMessages);
-            allPassed &= RunTest("Steps1To8EventOrdering", Test_Steps1To8EventOrdering, logMessages);
-            allPassed &= RunTest("DuplicateEvacuationCompletionPrevented", Test_DuplicateEvacuationCompletionPrevented, logMessages);
-            allPassed &= RunTest("Step9CannotBeginBeforeStep8", Test_Step9CannotBeginBeforeStep8, logMessages);
-            allPassed &= RunTest("SuccessfulAssemblyPointIdentification", Test_SuccessfulAssemblyPointIdentification, logMessages);
-            allPassed &= RunTest("WrongAssemblyPointRejected", Test_WrongAssemblyPointRejected, logMessages);
-            allPassed &= RunTest("AssemblyPointEventMatchesRubricSchema", Test_AssemblyPointEventMatchesRubricSchema, logMessages);
-            allPassed &= RunTest("Step8ToStep9EventOrdering", Test_Step8ToStep9EventOrdering, logMessages);
-            allPassed &= RunTest("DuplicateAssemblyCompletionPrevented", Test_DuplicateAssemblyCompletionPrevented, logMessages);
-            allPassed &= RunTest("PrematureAssemblyPointActionRejected", Test_PrematureAssemblyPointActionRejected, logMessages);
-            allPassed &= RunTest("Assessment_PerfectStep1To9Sequence_Scores100AndPasses", Test_Assessment_PerfectStep1To9Sequence_Scores100AndPasses, logMessages);
-            allPassed &= RunTest("Assessment_WrongHazardIdentification_Deducts5Penalty", Test_Assessment_WrongHazardIdentification_Deducts5Penalty, logMessages);
-            allPassed &= RunTest("Assessment_WrongExtinguisher_Deducts5Penalty", Test_Assessment_WrongExtinguisher_Deducts5Penalty, logMessages);
-            allPassed &= RunTest("Assessment_UnsafeSmokeCorridor_Deducts5Penalty", Test_Assessment_UnsafeSmokeCorridor_Deducts5Penalty, logMessages);
-            allPassed &= RunTest("Assessment_RepeatedAward_RespectsAwardLimit", Test_Assessment_RepeatedAward_RespectsAwardLimit, logMessages);
-            allPassed &= RunTest("Assessment_ScoreBelow70_Fails", Test_Assessment_ScoreBelow70_Fails, logMessages);
-            allPassed &= RunTest("Assessment_PenaltiesCannotDriveScoreBelowZero", Test_Assessment_PenaltiesCannotDriveScoreBelowZero, logMessages);
-            allPassed &= RunTest("Assessment_DeterministicRepeatedEvaluation_GivesIdenticalResult", Test_Assessment_DeterministicRepeatedEvaluation_GivesIdenticalResult, logMessages);
-            allPassed &= RunTest("Workflow_AssessmentStartsOnlyAfterFinalFireCompletion", Test_Workflow_AssessmentStartsOnlyAfterFinalFireCompletion, logMessages);
-            allPassed &= RunTest("Workflow_FinalCompletionEvaluatesSteps1To9Events", Test_Workflow_FinalCompletionEvaluatesSteps1To9Events, logMessages);
-            allPassed &= RunTest("Workflow_ClientScoreAndPassedStatusCopiedFromEngine", Test_Workflow_ClientScoreAndPassedStatusCopiedFromEngine, logMessages);
-            allPassed &= RunTest("Workflow_DuplicateCompletionDoesNotCreateSecondAttempt", Test_Workflow_DuplicateCompletionDoesNotCreateSecondAttempt, logMessages);
-            allPassed &= RunTest("Workflow_PrematureCompletionCannotFinalizeAttempt", Test_Workflow_PrematureCompletionCannotFinalizeAttempt, logMessages);
-            allPassed &= RunTest("SummaryViewModel_BuildsCorrectlyForPassingAttempt", Test_SummaryViewModel_BuildsCorrectlyForPassingAttempt, logMessages);
-            allPassed &= RunTest("SummaryViewModel_BuildsCorrectlyForFailingAttempt", Test_SummaryViewModel_BuildsCorrectlyForFailingAttempt, logMessages);
-            allPassed &= RunTest("SummaryViewModel_StepBreakdownHasAllNineSteps", Test_SummaryViewModel_StepBreakdownHasAllNineSteps, logMessages);
-            allPassed &= RunTest("SummaryViewModel_CalculatesDurationCorrectly", Test_SummaryViewModel_CalculatesDurationCorrectly, logMessages);
-            allPassed &= RunTest("SummaryViewModel_CapturesPenaltiesCorrectly", Test_SummaryViewModel_CapturesPenaltiesCorrectly, logMessages);
-            allPassed &= RunTest("Workflow_RetakeCreatesNewUniqueAttemptId", Test_Workflow_RetakeCreatesNewUniqueAttemptId, logMessages);
-            allPassed &= RunTest("Assessment_RepeatedPenaltyCannotExceedRubricRules", Test_Assessment_RepeatedPenaltyCannotExceedRubricRules, logMessages);
-            allPassed &= RunTest("Assessment_ScoreThresholdAndRequiredRuleCompliance", Test_Assessment_ScoreThresholdAndRequiredRuleCompliance, logMessages);
-            allPassed &= RunTest("CompletedTrainingAttemptMatchesAttemptSchemaJson", Test_CompletedTrainingAttemptMatchesAttemptSchemaJson, logMessages);
-            allPassed &= RunTest("AssemblyPoint_PrematureAndDuplicateSubmissionsStrictlyRejected", Test_AssemblyPoint_PrematureAndDuplicateSubmissionsStrictlyRejected, logMessages);
-            allPassed &= RunTest("Retake_EnsuresZeroIdReuseAndCleanStateReset", Test_Retake_EnsuresZeroIdReuseAndCleanStateReset, logMessages);
-            allPassed &= RunTest("Workflow_DefaultWorkerId_IsValidNonEmptyUuid", Test_Workflow_DefaultWorkerId_IsValidNonEmptyUuid, logMessages);
-            allPassed &= RunTest("RubricLoader_LoadsBundledFireRubric", Test_RubricLoader_LoadsBundledFireRubric, logMessages);
-            allPassed &= RunTest("LoadedFireRubric_IdentityAndVersion", Test_LoadedFireRubric_IdentityAndVersion, logMessages);
-            allPassed &= RunTest("LoadedFireRubric_AllNineRulesAvailableAndConfigured", Test_LoadedFireRubric_AllNineRulesAvailableAndConfigured, logMessages);
-            allPassed &= RunTest("Workflow_UsesLoadedRubricForEvaluation", Test_Workflow_UsesLoadedRubricForEvaluation, logMessages);
-            allPassed &= RunTest("DualInput_Step1ToStep9Equivalence", Test_DualInput_Step1ToStep9Equivalence, logMessages);
-            allPassed &= RunTest("DualInput_InvalidInteractionsDoNotAdvanceWorkflow", Test_DualInput_InvalidInteractionsDoNotAdvanceWorkflow, logMessages);
-            allPassed &= RunTest("DualInput_DuplicateTapsPreventDuplicateEvents", Test_DualInput_DuplicateTapsPreventDuplicateEvents, logMessages);
-            allPassed &= RunTest("DualInput_FullScenarioMixedARAndUI_Scores100AndPasses", Test_DualInput_FullScenarioMixedARAndUI_Scores100AndPasses, logMessages);
-            allPassed &= RunTest("DualInput_InvalidMarker_IncursPenaltyAndAllowsRecovery", Test_DualInput_InvalidMarker_IncursPenaltyAndAllowsRecovery, logMessages);
-            allPassed &= RunTest("Workflow_FinalizeAttempt_CompletedAttempt_EmitsEventAndExposesAttempt", Test_Workflow_FinalizeAttempt_CompletedAttempt_EmitsEventAndExposesAttempt, logMessages);
-            allPassed &= RunTest("Workflow_FinalizeAttempt_PrematureCall_Rejected", Test_Workflow_FinalizeAttempt_PrematureCall_Rejected, logMessages);
-            allPassed &= RunTest("Workflow_FinalizeAttempt_DuplicateCall_RejectedAndZeroDuplicateEvents", Test_Workflow_FinalizeAttempt_DuplicateCall_RejectedAndZeroDuplicateEvents, logMessages);
-            allPassed &= RunTest("Workflow_FinalizeAttempt_NullOrResetAttempt_RejectedSafely", Test_Workflow_FinalizeAttempt_NullOrResetAttempt_RejectedSafely, logMessages);
-            allPassed &= RunTest("Workflow_FinalizeAttempt_PreservesScoreAndOutcomeUnchanged", Test_Workflow_FinalizeAttempt_PreservesScoreAndOutcomeUnchanged, logMessages);
-            allPassed &= RunTest("SummaryViewModel_SyncPreparedFlag_UpdatesOnFinalization", Test_SummaryViewModel_SyncPreparedFlag_UpdatesOnFinalization, logMessages);
-            allPassed &= RunTest("RuntimeE2E_CompleteNineStepJourney_AllStagesAndEvents", Test_RuntimeE2E_CompleteNineStepJourney_AllStagesAndEvents, logMessages);
-            allPassed &= RunTest("RuntimeE2E_InvalidActionsStrictlyRejectedAtEveryStep", Test_RuntimeE2E_InvalidActionsStrictlyRejectedAtEveryStep, logMessages);
-            allPassed &= RunTest("RuntimeE2E_AlreadyCompletedMarkersCannotBeRepeated", Test_RuntimeE2E_AlreadyCompletedMarkersCannotBeRepeated, logMessages);
-            allPassed &= RunTest("RuntimeE2E_OutboxFinalizationWorkflowAndHookContract", Test_RuntimeE2E_OutboxFinalizationWorkflowAndHookContract, logMessages);
-            allPassed &= RunTest("RuntimeE2E_AssessmentSummaryUI_DisplaysAndFinalizes", Test_RuntimeE2E_AssessmentSummaryUI_DisplaysAndFinalizes, logMessages);
-            allPassed &= RunTest("RuntimeE2E_Retake_ClearsAllFinalizationState_FreshAttemptId", Test_RuntimeE2E_Retake_ClearsAllFinalizationState_FreshAttemptId, logMessages);
+            if (!RunTest("EventCreationMatchesSchema", Test_EventCreationMatchesSchema, logMessages)) allPassed = false;
+            if (!RunTest("EventBusRecordsAndNotifies", Test_EventBusRecordsAndNotifies, logMessages)) allPassed = false;
+            if (!RunTest("EventPayloadIntegrity", Test_EventPayloadIntegrity, logMessages)) allPassed = false;
+            if (!RunTest("SuccessfulHazardIdentificationEvent", Test_SuccessfulHazardIdentificationEvent, logMessages)) allPassed = false;
+            if (!RunTest("SuccessfulRaiseAlarmEvent", Test_SuccessfulRaiseAlarmEvent, logMessages)) allPassed = false;
+            if (!RunTest("CorrectEventOrdering", Test_CorrectEventOrdering, logMessages)) allPassed = false;
+            if (!RunTest("InvalidActionDoesNotAdvanceFlow", Test_InvalidActionDoesNotAdvanceFlow, logMessages)) allPassed = false;
+            if (!RunTest("SuccessfulCO2ExtinguisherSelection", Test_SuccessfulCO2ExtinguisherSelection, logMessages)) allPassed = false;
+            if (!RunTest("IncorrectWaterExtinguisherSelection", Test_IncorrectWaterExtinguisherSelection, logMessages)) allPassed = false;
+            if (!RunTest("IncorrectFoamExtinguisherSelection", Test_IncorrectFoamExtinguisherSelection, logMessages)) allPassed = false;
+            if (!RunTest("PrematureExtinguisherSelectionRejected", Test_PrematureExtinguisherSelectionRejected, logMessages)) allPassed = false;
+            if (!RunTest("Step3ToStep4EventOrdering", Test_Step3ToStep4EventOrdering, logMessages)) allPassed = false;
+            if (!RunTest("SuccessfulSafeDistanceAction", Test_SuccessfulSafeDistanceAction, logMessages)) allPassed = false;
+            if (!RunTest("UnsafeTooCloseActionRejected", Test_UnsafeTooCloseActionRejected, logMessages)) allPassed = false;
+            if (!RunTest("PrematureSafeDistanceActionRejected", Test_PrematureSafeDistanceActionRejected, logMessages)) allPassed = false;
+            if (!RunTest("Step4ToStep5EventOrdering", Test_Step4ToStep5EventOrdering, logMessages)) allPassed = false;
+            if (!RunTest("Step6CannotBeginBeforeStep5", Test_Step6CannotBeginBeforeStep5, logMessages)) allPassed = false;
+            if (!RunTest("PullPinAccepted", Test_PullPinAccepted, logMessages)) allPassed = false;
+            if (!RunTest("AimAcceptedOnlyAfterPin", Test_AimAcceptedOnlyAfterPin, logMessages)) allPassed = false;
+            if (!RunTest("SqueezeAcceptedOnlyAfterAim", Test_SqueezeAcceptedOnlyAfterAim, logMessages)) allPassed = false;
+            if (!RunTest("SweepAcceptedOnlyAfterSqueeze", Test_SweepAcceptedOnlyAfterSqueeze, logMessages)) allPassed = false;
+            if (!RunTest("WrongOutOfOrderActionRejected", Test_WrongOutOfOrderActionRejected, logMessages)) allPassed = false;
+            if (!RunTest("FinalProcedureCompletedEventFields", Test_FinalProcedureCompletedEventFields, logMessages)) allPassed = false;
+            if (!RunTest("Steps1To6EventOrdering", Test_Steps1To6EventOrdering, logMessages)) allPassed = false;
+            if (!RunTest("Step7CannotBeginBeforeStep6", Test_Step7CannotBeginBeforeStep6, logMessages)) allPassed = false;
+            if (!RunTest("SuccessfulEmergencyExitIdentification", Test_SuccessfulEmergencyExitIdentification, logMessages)) allPassed = false;
+            if (!RunTest("IncorrectElevatorExitRejected", Test_IncorrectElevatorExitRejected, logMessages)) allPassed = false;
+            if (!RunTest("IncorrectBlockedCorridorExitRejected", Test_IncorrectBlockedCorridorExitRejected, logMessages)) allPassed = false;
+            if (!RunTest("EmergencyExitEventMatchesRubricSchema", Test_EmergencyExitEventMatchesRubricSchema, logMessages)) allPassed = false;
+            if (!RunTest("Steps1To7EventOrdering", Test_Steps1To7EventOrdering, logMessages)) allPassed = false;
+            if (!RunTest("Step8CannotBeginBeforeStep7", Test_Step8CannotBeginBeforeStep7, logMessages)) allPassed = false;
+            if (!RunTest("SuccessfulEvacuationSequence", Test_SuccessfulEvacuationSequence, logMessages)) allPassed = false;
+            if (!RunTest("OutOfOrderWaypointRejected", Test_OutOfOrderWaypointRejected, logMessages)) allPassed = false;
+            if (!RunTest("SmokeCorridorSelectionEmitsFailure", Test_SmokeCorridorSelectionEmitsFailure, logMessages)) allPassed = false;
+            if (!RunTest("EvacuationRouteEventMatchesRubricSchema", Test_EvacuationRouteEventMatchesRubricSchema, logMessages)) allPassed = false;
+            if (!RunTest("Steps1To8EventOrdering", Test_Steps1To8EventOrdering, logMessages)) allPassed = false;
+            if (!RunTest("DuplicateEvacuationCompletionPrevented", Test_DuplicateEvacuationCompletionPrevented, logMessages)) allPassed = false;
+            if (!RunTest("Step9CannotBeginBeforeStep8", Test_Step9CannotBeginBeforeStep8, logMessages)) allPassed = false;
+            if (!RunTest("SuccessfulAssemblyPointIdentification", Test_SuccessfulAssemblyPointIdentification, logMessages)) allPassed = false;
+            if (!RunTest("WrongAssemblyPointRejected", Test_WrongAssemblyPointRejected, logMessages)) allPassed = false;
+            if (!RunTest("AssemblyPointEventMatchesRubricSchema", Test_AssemblyPointEventMatchesRubricSchema, logMessages)) allPassed = false;
+            if (!RunTest("Step8ToStep9EventOrdering", Test_Step8ToStep9EventOrdering, logMessages)) allPassed = false;
+            if (!RunTest("DuplicateAssemblyCompletionPrevented", Test_DuplicateAssemblyCompletionPrevented, logMessages)) allPassed = false;
+            if (!RunTest("PrematureAssemblyPointActionRejected", Test_PrematureAssemblyPointActionRejected, logMessages)) allPassed = false;
+            if (!RunTest("Assessment_PerfectStep1To9Sequence_Scores100AndPasses", Test_Assessment_PerfectStep1To9Sequence_Scores100AndPasses, logMessages)) allPassed = false;
+            if (!RunTest("Assessment_WrongHazardIdentification_Deducts5Penalty", Test_Assessment_WrongHazardIdentification_Deducts5Penalty, logMessages)) allPassed = false;
+            if (!RunTest("Assessment_WrongExtinguisher_Deducts5Penalty", Test_Assessment_WrongExtinguisher_Deducts5Penalty, logMessages)) allPassed = false;
+            if (!RunTest("Assessment_UnsafeSmokeCorridor_Deducts5Penalty", Test_Assessment_UnsafeSmokeCorridor_Deducts5Penalty, logMessages)) allPassed = false;
+            if (!RunTest("Assessment_RepeatedAward_RespectsAwardLimit", Test_Assessment_RepeatedAward_RespectsAwardLimit, logMessages)) allPassed = false;
+            if (!RunTest("Assessment_ScoreBelow70_Fails", Test_Assessment_ScoreBelow70_Fails, logMessages)) allPassed = false;
+            if (!RunTest("Assessment_PenaltiesCannotDriveScoreBelowZero", Test_Assessment_PenaltiesCannotDriveScoreBelowZero, logMessages)) allPassed = false;
+            if (!RunTest("Assessment_DeterministicRepeatedEvaluation_GivesIdenticalResult", Test_Assessment_DeterministicRepeatedEvaluation_GivesIdenticalResult, logMessages)) allPassed = false;
+            if (!RunTest("Workflow_AssessmentStartsOnlyAfterFinalFireCompletion", Test_Workflow_AssessmentStartsOnlyAfterFinalFireCompletion, logMessages)) allPassed = false;
+            if (!RunTest("Workflow_FinalCompletionEvaluatesSteps1To9Events", Test_Workflow_FinalCompletionEvaluatesSteps1To9Events, logMessages)) allPassed = false;
+            if (!RunTest("Workflow_ClientScoreAndPassedStatusCopiedFromEngine", Test_Workflow_ClientScoreAndPassedStatusCopiedFromEngine, logMessages)) allPassed = false;
+            if (!RunTest("Workflow_DuplicateCompletionDoesNotCreateSecondAttempt", Test_Workflow_DuplicateCompletionDoesNotCreateSecondAttempt, logMessages)) allPassed = false;
+            if (!RunTest("Workflow_PrematureCompletionCannotFinalizeAttempt", Test_Workflow_PrematureCompletionCannotFinalizeAttempt, logMessages)) allPassed = false;
+            if (!RunTest("SummaryViewModel_BuildsCorrectlyForPassingAttempt", Test_SummaryViewModel_BuildsCorrectlyForPassingAttempt, logMessages)) allPassed = false;
+            if (!RunTest("SummaryViewModel_BuildsCorrectlyForFailingAttempt", Test_SummaryViewModel_BuildsCorrectlyForFailingAttempt, logMessages)) allPassed = false;
+            if (!RunTest("SummaryViewModel_StepBreakdownHasAllNineSteps", Test_SummaryViewModel_StepBreakdownHasAllNineSteps, logMessages)) allPassed = false;
+            if (!RunTest("SummaryViewModel_CalculatesDurationCorrectly", Test_SummaryViewModel_CalculatesDurationCorrectly, logMessages)) allPassed = false;
+            if (!RunTest("SummaryViewModel_CapturesPenaltiesCorrectly", Test_SummaryViewModel_CapturesPenaltiesCorrectly, logMessages)) allPassed = false;
+            if (!RunTest("Workflow_RetakeCreatesNewUniqueAttemptId", Test_Workflow_RetakeCreatesNewUniqueAttemptId, logMessages)) allPassed = false;
+            if (!RunTest("Assessment_RepeatedPenaltyCannotExceedRubricRules", Test_Assessment_RepeatedPenaltyCannotExceedRubricRules, logMessages)) allPassed = false;
+            if (!RunTest("Assessment_ScoreThresholdAndRequiredRuleCompliance", Test_Assessment_ScoreThresholdAndRequiredRuleCompliance, logMessages)) allPassed = false;
+            if (!RunTest("CompletedTrainingAttemptMatchesAttemptSchemaJson", Test_CompletedTrainingAttemptMatchesAttemptSchemaJson, logMessages)) allPassed = false;
+            if (!RunTest("AssemblyPoint_PrematureAndDuplicateSubmissionsStrictlyRejected", Test_AssemblyPoint_PrematureAndDuplicateSubmissionsStrictlyRejected, logMessages)) allPassed = false;
+            if (!RunTest("Retake_EnsuresZeroIdReuseAndCleanStateReset", Test_Retake_EnsuresZeroIdReuseAndCleanStateReset, logMessages)) allPassed = false;
+            if (!RunTest("Workflow_DefaultWorkerId_IsValidNonEmptyUuid", Test_Workflow_DefaultWorkerId_IsValidNonEmptyUuid, logMessages)) allPassed = false;
+            if (!RunTest("RubricLoader_LoadsBundledFireRubric", Test_RubricLoader_LoadsBundledFireRubric, logMessages)) allPassed = false;
+            if (!RunTest("LoadedFireRubric_IdentityAndVersion", Test_LoadedFireRubric_IdentityAndVersion, logMessages)) allPassed = false;
+            if (!RunTest("LoadedFireRubric_AllNineRulesAvailableAndConfigured", Test_LoadedFireRubric_AllNineRulesAvailableAndConfigured, logMessages)) allPassed = false;
+            if (!RunTest("Workflow_UsesLoadedRubricForEvaluation", Test_Workflow_UsesLoadedRubricForEvaluation, logMessages)) allPassed = false;
+            if (!RunTest("DualInput_Step1ToStep9Equivalence", Test_DualInput_Step1ToStep9Equivalence, logMessages)) allPassed = false;
+            if (!RunTest("DualInput_InvalidInteractionsDoNotAdvanceWorkflow", Test_DualInput_InvalidInteractionsDoNotAdvanceWorkflow, logMessages)) allPassed = false;
+            if (!RunTest("DualInput_DuplicateTapsPreventDuplicateEvents", Test_DualInput_DuplicateTapsPreventDuplicateEvents, logMessages)) allPassed = false;
+            if (!RunTest("DualInput_FullScenarioMixedARAndUI_Scores100AndPasses", Test_DualInput_FullScenarioMixedARAndUI_Scores100AndPasses, logMessages)) allPassed = false;
+            if (!RunTest("DualInput_InvalidMarker_IncursPenaltyAndAllowsRecovery", Test_DualInput_InvalidMarker_IncursPenaltyAndAllowsRecovery, logMessages)) allPassed = false;
+            if (!RunTest("Workflow_FinalizeAttempt_CompletedAttempt_EmitsEventAndExposesAttempt", Test_Workflow_FinalizeAttempt_CompletedAttempt_EmitsEventAndExposesAttempt, logMessages)) allPassed = false;
+            if (!RunTest("Workflow_FinalizeAttempt_PrematureCall_Rejected", Test_Workflow_FinalizeAttempt_PrematureCall_Rejected, logMessages)) allPassed = false;
+            if (!RunTest("Workflow_FinalizeAttempt_DuplicateCall_RejectedAndZeroDuplicateEvents", Test_Workflow_FinalizeAttempt_DuplicateCall_RejectedAndZeroDuplicateEvents, logMessages)) allPassed = false;
+            if (!RunTest("Workflow_FinalizeAttempt_NullOrResetAttempt_RejectedSafely", Test_Workflow_FinalizeAttempt_NullOrResetAttempt_RejectedSafely, logMessages)) allPassed = false;
+            if (!RunTest("Workflow_FinalizeAttempt_PreservesScoreAndOutcomeUnchanged", Test_Workflow_FinalizeAttempt_PreservesScoreAndOutcomeUnchanged, logMessages)) allPassed = false;
+            if (!RunTest("SummaryViewModel_SyncPreparedFlag_UpdatesOnFinalization", Test_SummaryViewModel_SyncPreparedFlag_UpdatesOnFinalization, logMessages)) allPassed = false;
+            if (!RunTest("RuntimeE2E_CompleteNineStepJourney_AllStagesAndEvents", Test_RuntimeE2E_CompleteNineStepJourney_AllStagesAndEvents, logMessages)) allPassed = false;
+            if (!RunTest("RuntimeE2E_InvalidActionsStrictlyRejectedAtEveryStep", Test_RuntimeE2E_InvalidActionsStrictlyRejectedAtEveryStep, logMessages)) allPassed = false;
+            if (!RunTest("RuntimeE2E_AlreadyCompletedMarkersCannotBeRepeated", Test_RuntimeE2E_AlreadyCompletedMarkersCannotBeRepeated, logMessages)) allPassed = false;
+            if (!RunTest("RuntimeE2E_OutboxFinalizationWorkflowAndHookContract", Test_RuntimeE2E_OutboxFinalizationWorkflowAndHookContract, logMessages)) allPassed = false;
+            if (!RunTest("RuntimeE2E_AssessmentSummaryUI_DisplaysAndFinalizes", Test_RuntimeE2E_AssessmentSummaryUI_DisplaysAndFinalizes, logMessages)) allPassed = false;
+            if (!RunTest("RuntimeE2E_Retake_ClearsAllFinalizationState_FreshAttemptId", Test_RuntimeE2E_Retake_ClearsAllFinalizationState_FreshAttemptId, logMessages)) allPassed = false;
+            if (!RunTest("ArFloatingLabel_CreationAndScale", Test_ArFloatingLabel_CreationAndScale, logMessages)) allPassed = false;
+            if (!RunTest("ArFloatingLabel_OrientationAlignsWithCamera", Test_ArFloatingLabel_OrientationAlignsWithCamera, logMessages)) allPassed = false;
+            if (!RunTest("FireHazardMarker_VisualStructureAndLabels", Test_FireHazardMarker_VisualStructureAndLabels, logMessages)) allPassed = false;
+            if (!RunTest("AllFireMarkers_HaveArFloatingLabels", Test_AllFireMarkers_HaveArFloatingLabels, logMessages)) allPassed = false;
+            if (!RunTest("TouchGestureFilter_StationaryTapAccepted", Test_TouchGestureFilter_StationaryTapAccepted, logMessages)) allPassed = false;
+            if (!RunTest("TouchGestureFilter_SwipeRejected", Test_TouchGestureFilter_SwipeRejected, logMessages)) allPassed = false;
+            if (!RunTest("TouchGestureFilter_HoldDragRejected", Test_TouchGestureFilter_HoldDragRejected, logMessages)) allPassed = false;
+            if (!RunTest("TouchGestureFilter_UiStartOrEndRejected", Test_TouchGestureFilter_UiStartOrEndRejected, logMessages)) allPassed = false;
+            if (!RunTest("TapGatedButton_SwipeDoesNotTrigger", Test_TapGatedButton_SwipeDoesNotTrigger, logMessages)) allPassed = false;
+            if (!RunTest("FireArInteractionController_Process3DMarkerHit_ActionGating", Test_FireArInteractionController_Process3DMarkerHit_ActionGating, logMessages)) allPassed = false;
+            if (!RunTest("Nav_Step3Alarm_ShowsNextButton", Test_Nav_Step3Alarm_ShowsNextButton, logMessages)) allPassed = false;
+            if (!RunTest("Nav_NextButton_AdvancesExactlyOneStep", Test_Nav_NextButton_AdvancesExactlyOneStep, logMessages)) allPassed = false;
+            if (!RunTest("Nav_BackButton_ReturnsExactlyOneCompletedStep", Test_Nav_BackButton_ReturnsExactlyOneCompletedStep, logMessages)) allPassed = false;
+            if (!RunTest("Nav_SwipeDoesNotAdvanceWorkflow", Test_Nav_SwipeDoesNotAdvanceWorkflow, logMessages)) allPassed = false;
+            if (!RunTest("Nav_StepLocking_NextUnavailableBeforeRequiredAction", Test_Nav_StepLocking_NextUnavailableBeforeRequiredAction, logMessages)) allPassed = false;
+            if (!RunTest("Nav_IncorrectActionDoesNotAdvance", Test_Nav_IncorrectActionDoesNotAdvance, logMessages)) allPassed = false;
+            if (!RunTest("Nav_CorrectActionCompletesStep", Test_Nav_CorrectActionCompletesStep, logMessages)) allPassed = false;
+            if (!RunTest("Nav_FullNineStepSequentialFlow", Test_Nav_FullNineStepSequentialFlow, logMessages)) allPassed = false;
+            if (!RunTest("Nav_RetakeStartsFreshAttempt", Test_Nav_RetakeStartsFreshAttempt, logMessages)) allPassed = false;
+            if (!RunTest("Nav_Idempotency_GoingBackDoesNotDuplicateScoringEvents", Test_Nav_Idempotency_GoingBackDoesNotDuplicateScoringEvents, logMessages)) allPassed = false;
+
+            // STEP 8B — Test Suite Additions
+            if (!RunTest("FireAudioService_GeneratesSynthesizedClipsWithoutAssetFiles", Test_FireAudioService_GeneratesSynthesizedClipsWithoutAssetFiles, logMessages)) allPassed = false;
+            if (!RunTest("FireAudioService_RespectsMuteAndVolumeSettings", Test_FireAudioService_RespectsMuteAndVolumeSettings, logMessages)) allPassed = false;
+            if (!RunTest("FireAudioService_EmergencyAlarmAudioTriggered", Test_FireAudioService_EmergencyAlarmAudioTriggered, logMessages)) allPassed = false;
+            if (!RunTest("EvacuationWorkflow_StrictSequentialProgression", Test_EvacuationWorkflow_StrictSequentialProgression, logMessages)) allPassed = false;
+            if (!RunTest("EvacuationWorkflow_DirectToExitFailsGracefully", Test_EvacuationWorkflow_DirectToExitFailsGracefully, logMessages)) allPassed = false;
+            if (!RunTest("PassInteraction_TapButtonsTriggerCorrectSubActions", Test_PassInteraction_TapButtonsTriggerCorrectSubActions, logMessages)) allPassed = false;
+            if (!RunTest("PassInteraction_InvalidGestureDoesNotProgress", Test_PassInteraction_InvalidGestureDoesNotProgress, logMessages)) allPassed = false;
+            if (!RunTest("GuidedStepNavigator_StepActionTextsMatchInteraction", Test_GuidedStepNavigator_StepActionTextsMatchInteraction, logMessages)) allPassed = false;
+            if (!RunTest("FeedbackUI_SinglePrimaryActionButtonEnforced", Test_FeedbackUI_SinglePrimaryActionButtonEnforced, logMessages)) allPassed = false;
+            if (!RunTest("FeedbackUI_SoundSettingsTogglePersists", Test_FeedbackUI_SoundSettingsTogglePersists, logMessages)) allPassed = false;
+            if (!RunTest("AssessmentDeductionExplanation_HumanReadableFormat", Test_AssessmentDeductionExplanation_HumanReadableFormat, logMessages)) allPassed = false;
+            if (!RunTest("ArVisual_BillboardLabelsOrientationTowardsCamera", Test_ArVisual_BillboardLabelsOrientationTowardsCamera, logMessages)) allPassed = false;
+            if (!RunTest("ArVisual_LabelScalesAreReadableAndNonOverlapping", Test_ArVisual_LabelScalesAreReadableAndNonOverlapping, logMessages)) allPassed = false;
+            if (!RunTest("ProceduralFire_ClassEIndicatorActive", Test_ProceduralFire_ClassEIndicatorActive, logMessages)) allPassed = false;
+            if (!RunTest("AssessmentModal_OnlyOpensViaExplicitTap", Test_AssessmentModal_OnlyOpensViaExplicitTap, logMessages)) allPassed = false;
+            if (!RunTest("FullScenario_CompletesStep1Through9_PassScore", Test_FullScenario_CompletesStep1Through9_PassScore, logMessages)) allPassed = false;
+            if (!RunTest("FullScenario_UnsafeActionsResultInClearDeductions", Test_FullScenario_UnsafeActionsResultInClearDeductions, logMessages)) allPassed = false;
+
+            // COMMON WORKER APP FOUNDATION — Test Suite Additions
+            if (!RunTest("WorkerHome_LoadsWithAppTitleAndProfile", Test_WorkerHome_LoadsWithAppTitleAndProfile, logMessages)) allPassed = false;
+            if (!RunTest("WorkerHome_FireModuleAvailable_GasModuleComingSoon", Test_WorkerHome_FireModuleAvailable_GasModuleComingSoon, logMessages)) allPassed = false;
+            if (!RunTest("WorkerHome_SettingsPanelOpensAndCloses", Test_WorkerHome_SettingsPanelOpensAndCloses, logMessages)) allPassed = false;
+            if (!RunTest("WorkerHome_SoundSettingsPersistViaAudioService", Test_WorkerHome_SoundSettingsPersistViaAudioService, logMessages)) allPassed = false;
+            if (!RunTest("WorkerHome_LanguageSelectionPersistsLocales", Test_WorkerHome_LanguageSelectionPersistsLocales, logMessages)) allPassed = false;
+            if (!RunTest("WorkerHome_OfflineIndicatorReflectsNetworkStatus", Test_WorkerHome_OfflineIndicatorReflectsNetworkStatus, logMessages)) allPassed = false;
+            if (!RunTest("WorkerHome_StartTrainingActivatesFireModule", Test_WorkerHome_StartTrainingActivatesFireModule, logMessages)) allPassed = false;
+            if (!RunTest("WorkerHome_BackNavigationReturnsToHome", Test_WorkerHome_BackNavigationReturnsToHome, logMessages)) allPassed = false;
+
+            // FOUNDATION FIX — 17 REGRESSION TESTS
+            if (!RunTest("WorkerHome_VisibleInHomeState", Test_WorkerHome_VisibleInHomeState, logMessages)) allPassed = false;
+            if (!RunTest("WorkerHome_StartTrainingHidesHomeUI", Test_WorkerHome_StartTrainingHidesHomeUI, logMessages)) allPassed = false;
+            if (!RunTest("FireTraining_IsOnlyActiveTrainingUI", Test_FireTraining_IsOnlyActiveTrainingUI, logMessages)) allPassed = false;
+            if (!RunTest("WorkerHome_InputDisabledDuringTraining", Test_WorkerHome_InputDisabledDuringTraining, logMessages)) allPassed = false;
+            if (!RunTest("FireTraining_ExitRestoresHomeUI", Test_FireTraining_ExitRestoresHomeUI, logMessages)) allPassed = false;
+            if (!RunTest("WorkerHome_SettingsButtonOpensSettings", Test_WorkerHome_SettingsButtonOpensSettings, logMessages)) allPassed = false;
+            if (!RunTest("WorkerHome_SettingsClosesCorrectly", Test_WorkerHome_SettingsClosesCorrectly, logMessages)) allPassed = false;
+            if (!RunTest("FireAudio_SoundEffectsSettingPersists", Test_FireAudio_SoundEffectsSettingPersists, logMessages)) allPassed = false;
+            if (!RunTest("FireAudio_EmergencyAlarmSettingPersists", Test_FireAudio_EmergencyAlarmSettingPersists, logMessages)) allPassed = false;
+            if (!RunTest("FireAudio_EmergencyAlarmOnStartsOrPermitsAlarm", Test_FireAudio_EmergencyAlarmOnStartsOrPermitsAlarm, logMessages)) allPassed = false;
+            if (!RunTest("FireAudio_EmergencyAlarmOffStopsActiveAlarm", Test_FireAudio_EmergencyAlarmOffStopsActiveAlarm, logMessages)) allPassed = false;
+            if (!RunTest("FireAudio_RepeatedAlarmToggleIdempotent", Test_FireAudio_RepeatedAlarmToggleIdempotent, logMessages)) allPassed = false;
+            if (!RunTest("FireAudio_LeavingFireStopsActiveAlarm", Test_FireAudio_LeavingFireStopsActiveAlarm, logMessages)) allPassed = false;
+            if (!RunTest("FireAudio_RetakeDoesNotInheritPreviousAlarm", Test_FireAudio_RetakeDoesNotInheritPreviousAlarm, logMessages)) allPassed = false;
+            if (!RunTest("FireTraining_HUDAlarmButtonTogglesAlarm", Test_FireTraining_HUDAlarmButtonTogglesAlarm, logMessages)) allPassed = false;
+            if (!RunTest("SettingsModal_BlocksRaycastsUnderneath", Test_SettingsModal_BlocksRaycastsUnderneath, logMessages)) allPassed = false;
+            if (!RunTest("FireAssessmentSummary_ReturnToHomeExitsCleanly", Test_FireAssessmentSummary_ReturnToHomeExitsCleanly, logMessages)) allPassed = false;
+            if (!RunTest("Localization_EnglishLocaleLoads", Test_Localization_EnglishLocaleLoads, logMessages)) allPassed = false;
+            if (!RunTest("Localization_HindiLocaleLoads", Test_Localization_HindiLocaleLoads, logMessages)) allPassed = false;
+            if (!RunTest("Localization_SantaliLocaleLoads", Test_Localization_SantaliLocaleLoads, logMessages)) allPassed = false;
+            if (!RunTest("Localization_RequiredKeysExistInAllLocales", Test_Localization_RequiredKeysExistInAllLocales, logMessages)) allPassed = false;
+            if (!RunTest("Localization_RuntimeLocaleSwitching", Test_Localization_RuntimeLocaleSwitching, logMessages)) allPassed = false;
+            if (!RunTest("Localization_SelectedLocalePersists", Test_Localization_SelectedLocalePersists, logMessages)) allPassed = false;
+            if (!RunTest("Localization_MissingKeyDoesNotCrash", Test_Localization_MissingKeyDoesNotCrash, logMessages)) allPassed = false;
+            if (!RunTest("Localization_EnglishFallbackWhenTranslationMissing", Test_Localization_EnglishFallbackWhenTranslationMissing, logMessages)) allPassed = false;
+            if (!RunTest("Localization_FontFallbackAssetsPresent", Test_Localization_FontFallbackAssetsPresent, logMessages)) allPassed = false;
 
             return allPassed;
         }
@@ -1151,21 +1232,15 @@ namespace IndustrialSafetyAR.Tests
             if (e3.EventType != "evacuation_sequence_submitted")
                 throw new Exception($"EventType mismatch: expected evacuation_sequence_submitted, got {e3.EventType}");
 
-            // Verify canonical 2-step route (waypoint_main_corridor -> waypoint_by_exit -> step_reach_assembly)
+            // Verify skipping to fire door exit is rejected without bypass crosscut
             var workflow2 = new FireTrainingWorkflow();
             workflow2.SetStage(FireWorkflowStage.ExitIdentified);
             bool c1 = workflow2.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
             if (!c1) throw new Exception("Canonical waypoint 1 should succeed");
-            bool c2 = workflow2.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointByExit, bus, out var ec2);
-            if (!c2) throw new Exception("Canonical waypoint_by_exit should succeed");
-            if (workflow2.CurrentStage != FireWorkflowStage.RouteEvacuated)
-                throw new Exception($"Expected RouteEvacuated stage, got {workflow2.CurrentStage}");
-            if (workflow2.CurrentStepId != "step_reach_assembly")
-                throw new Exception($"Expected CurrentStepId step_reach_assembly, got {workflow2.CurrentStepId}");
-            if (ec2 == null || ec2.Outcome != "success")
-                throw new Exception("Expected successful completion event for canonical route");
-            if (ec2.TargetId != FireTrainingWorkflow.WaypointByExit)
-                throw new Exception("Expected target_id waypoint_by_exit");
+            bool cSkip = workflow2.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out var eSkip);
+            if (cSkip) throw new Exception("Skipping directly to fire door exit before bypass crosscut must fail");
+            if (workflow2.CurrentStage != FireWorkflowStage.WaypointMainCorridorReached)
+                throw new Exception($"Expected stage to remain WaypointMainCorridorReached, got {workflow2.CurrentStage}");
         }
 
         public static void Test_OutOfOrderWaypointRejected()
@@ -4198,6 +4273,2074 @@ namespace IndustrialSafetyAR.Tests
                 throw new Exception("Attempt 2 finalization mismatched second attempt ID");
             if (!wf.IsAttemptFinalizedForOutbox)
                 throw new Exception("IsAttemptFinalizedForOutbox should be true for attempt 2");
+        }
+
+        public static void Test_ArFloatingLabel_CreationAndScale()
+        {
+            var parent = new GameObject("TestParent");
+            try
+            {
+                var label = ArFloatingLabel.Create(
+                    parent,
+                    Vector3.zero,
+                    "TEST LABEL",
+                    Color.yellow,
+                    width: 0.38f,
+                    height: 0.11f,
+                    fontSize: 0.80f);
+
+                if (label == null) throw new Exception("ArFloatingLabel was not created");
+                if (label.Text != "TEST LABEL") throw new Exception($"Text mismatch: {label.Text}");
+                if (label.LabelMesh == null) throw new Exception("LabelMesh is null");
+                if (label.TextColor != Color.yellow) throw new Exception("TextColor mismatch");
+
+                label.SetText("UPDATED");
+                if (label.Text != "UPDATED") throw new Exception("Updated text mismatch");
+
+                label.SetColor(Color.green);
+                if (label.TextColor != Color.green) throw new Exception("Updated color mismatch");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(parent);
+            }
+        }
+
+        public static void Test_ArFloatingLabel_OrientationAlignsWithCamera()
+        {
+            var camObj = new GameObject("TestCamera");
+            var cam = camObj.AddComponent<Camera>();
+            camObj.transform.position = new Vector3(0f, 1f, -2f);
+            camObj.transform.rotation = Quaternion.Euler(15f, 0f, 0f);
+
+            var parent = new GameObject("TestParent");
+            try
+            {
+                var label = ArFloatingLabel.Create(
+                    parent,
+                    Vector3.zero,
+                    "BILLBOARD TEST",
+                    Color.white,
+                    width: 0.38f,
+                    height: 0.11f,
+                    fontSize: 0.80f,
+                    ArBillboardMode.ScreenAligned);
+
+                label.SetTargetCamera(cam);
+                label.UpdateOrientation();
+
+                float angle = Quaternion.Angle(label.transform.rotation, cam.transform.rotation);
+                if (angle > 0.01f)
+                    throw new Exception($"ScreenAligned orientation failed. Angle difference: {angle}");
+
+                label.BillboardMode = ArBillboardMode.LookAtCamera;
+                label.UpdateOrientation();
+                Vector3 toViewer = label.transform.position - cam.transform.position;
+                Quaternion expected = Quaternion.LookRotation(toViewer, cam.transform.up);
+                float lookAngle = Quaternion.Angle(label.transform.rotation, expected);
+                if (lookAngle > 0.01f)
+                    throw new Exception($"LookAtCamera orientation failed. Angle difference: {lookAngle}");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(parent);
+                GameObject.DestroyImmediate(camObj);
+            }
+        }
+
+        public static void Test_FireHazardMarker_VisualStructureAndLabels()
+        {
+            var markerObj = new GameObject("TestHazardMarker");
+            try
+            {
+                var marker = markerObj.AddComponent<FireHazardMarker>();
+                marker.EnsureVisuals();
+
+                var label = markerObj.GetComponentInChildren<ArFloatingLabel>(true);
+                if (label == null) throw new Exception("FireHazardMarker must have an ArFloatingLabel component");
+
+                marker.AcknowledgeDetection();
+                if (!marker.IsDetected) throw new Exception("Hazard not detected");
+
+                marker.MarkIdentified("class_e_electrical");
+                if (!marker.IsIdentified) throw new Exception("Hazard not identified");
+
+                marker.TriggerAlarmVisual();
+                if (!marker.IsAlarmActive) throw new Exception("Alarm not active");
+
+                marker.MarkSafeDistanceConfirmed();
+                if (!marker.IsSafeDistanceConfirmed) throw new Exception("Safe distance not confirmed");
+
+                marker.TriggerExtinguisherDischargeVisual();
+                if (!marker.IsExtinguished) throw new Exception("Extinguished visual not set");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(markerObj);
+            }
+        }
+
+        public static void Test_AllFireMarkers_HaveArFloatingLabels()
+        {
+            var extObj = new GameObject("TestExtinguisher");
+            var exitObj = new GameObject("TestExit");
+            var routeObj = new GameObject("TestRoute");
+            var assemblyObj = new GameObject("TestAssembly");
+            try
+            {
+                var ext = extObj.AddComponent<ExtinguisherMarker>();
+                ext.EnsureVisuals();
+                if (extObj.GetComponentInChildren<ArFloatingLabel>(true) == null)
+                    throw new Exception("ExtinguisherMarker must have an ArFloatingLabel");
+
+                var exit = exitObj.AddComponent<EmergencyExitMarker>();
+                exit.EnsureVisuals();
+                if (exitObj.GetComponentInChildren<ArFloatingLabel>(true) == null)
+                    throw new Exception("EmergencyExitMarker must have an ArFloatingLabel");
+
+                var route = routeObj.AddComponent<EvacuationRouteMarker>();
+                route.EnsureVisuals();
+                if (routeObj.GetComponentInChildren<ArFloatingLabel>(true) == null)
+                    throw new Exception("EvacuationRouteMarker must have an ArFloatingLabel");
+
+                var assembly = assemblyObj.AddComponent<AssemblyPointMarker>();
+                assembly.EnsureVisuals();
+                if (assemblyObj.GetComponentInChildren<ArFloatingLabel>(true) == null)
+                    throw new Exception("AssemblyPointMarker must have an ArFloatingLabel");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(extObj);
+                GameObject.DestroyImmediate(exitObj);
+                GameObject.DestroyImmediate(routeObj);
+                GameObject.DestroyImmediate(assemblyObj);
+            }
+        }
+
+        public static void Test_TouchGestureFilter_StationaryTapAccepted()
+        {
+            Vector2 start = new Vector2(500f, 500f);
+            Vector2 end = new Vector2(505f, 503f); // small displacement (5.8px)
+            float maxMovement = 6f;
+            float duration = 0.15f;
+            bool ok = TouchGestureFilter.EvaluateTapParameters(start, end, maxMovement, duration, startedOverUI: false, endedOverUI: false, maxMovementThreshold: 25f);
+            if (!ok) throw new Exception("Stationary tap within threshold should be accepted");
+        }
+
+        public static void Test_TouchGestureFilter_SwipeRejected()
+        {
+            Vector2 start = new Vector2(200f, 500f);
+            Vector2 end = new Vector2(600f, 500f); // large displacement (400px swipe)
+            float maxMovement = 400f;
+            float duration = 0.20f;
+            bool ok = TouchGestureFilter.EvaluateTapParameters(start, end, maxMovement, duration, startedOverUI: false, endedOverUI: false, maxMovementThreshold: 25f);
+            if (ok) throw new Exception("Horizontal swipe (400px) must be rejected as tap");
+
+            // Also test swipe that loops back to start position
+            bool okLoop = TouchGestureFilter.EvaluateTapParameters(start, start, maxDisplacementDuringGesture: 120f, durationSeconds: 0.25f, startedOverUI: false, endedOverUI: false, maxMovementThreshold: 25f);
+            if (okLoop) throw new Exception("Gesture with large intermediate displacement must be rejected as tap");
+        }
+
+        public static void Test_TouchGestureFilter_HoldDragRejected()
+        {
+            Vector2 start = new Vector2(500f, 500f);
+            Vector2 end = new Vector2(502f, 502f);
+            float duration = 0.85f; // > 0.45s tap duration
+            bool ok = TouchGestureFilter.EvaluateTapParameters(start, end, maxDisplacementDuringGesture: 3f, durationSeconds: duration, startedOverUI: false, endedOverUI: false, maxMovementThreshold: 25f);
+            if (ok) throw new Exception("Touch exceeding maximum tap duration must be rejected");
+        }
+
+        public static void Test_TouchGestureFilter_UiStartOrEndRejected()
+        {
+            Vector2 pos = new Vector2(500f, 500f);
+            bool okStartUI = TouchGestureFilter.EvaluateTapParameters(pos, pos, maxDisplacementDuringGesture: 0f, durationSeconds: 0.1f, startedOverUI: true, endedOverUI: false, maxMovementThreshold: 25f);
+            if (okStartUI) throw new Exception("Touch started over UI must not be accepted as AR tap");
+
+            bool okEndUI = TouchGestureFilter.EvaluateTapParameters(pos, pos, maxDisplacementDuringGesture: 0f, durationSeconds: 0.1f, startedOverUI: false, endedOverUI: true, maxMovementThreshold: 25f);
+            if (okEndUI) throw new Exception("Touch ended over UI must not be accepted as AR tap");
+        }
+
+        public static void Test_TapGatedButton_SwipeDoesNotTrigger()
+        {
+            var btnObj = new GameObject("TestButton");
+            try
+            {
+                var rect = btnObj.AddComponent<RectTransform>();
+                rect.sizeDelta = new Vector2(200, 80);
+                var btn = btnObj.AddComponent<UnityEngine.UI.Button>();
+                var tapGated = btnObj.AddComponent<TapGatedButton>();
+
+                bool triggered = false;
+                tapGated.Initialize(() => triggered = true);
+
+                // Simulate programmatic trigger
+                tapGated.TriggerTap();
+                if (!triggered) throw new Exception("TapGatedButton TriggerTap should invoke callback");
+
+                // Reset and simulate a swipe via pointer events
+                triggered = false;
+                var eventData = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current)
+                {
+                    position = new Vector2(100f, 100f)
+                };
+
+                tapGated.OnPointerDown(eventData);
+
+                // Drag far away (swipe)
+                eventData.position = new Vector2(500f, 100f);
+                tapGated.OnDrag(eventData);
+
+                // Release
+                tapGated.OnPointerUp(eventData);
+
+                if (triggered) throw new Exception("TapGatedButton must not trigger action after a swipe gesture");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(btnObj);
+            }
+        }
+
+        public static void Test_FireArInteractionController_Process3DMarkerHit_ActionGating()
+        {
+            var ctrlObj = new GameObject("TestCtrl");
+            var hazardObj = new GameObject("TestHazard");
+            try
+            {
+                var ctrl = ctrlObj.AddComponent<FireArInteractionController>();
+                var hazard = hazardObj.AddComponent<FireHazardMarker>();
+                hazard.EnsureVisuals();
+                ctrl.SetActiveHazard(hazard);
+
+                // Step 1: Placed -> hitting hazard confirms detection
+                ctrl.Workflow.SetStage(FireWorkflowStage.HazardPlaced);
+                bool hitStep1 = ctrl.Process3DMarkerHit(hazardObj);
+                if (!hitStep1) throw new Exception("Step 1 intentional tap on hazard should confirm detection");
+
+                // Step 2: Identification -> hitting hazard should NOT auto-solve classification
+                ctrl.Workflow.SetStage(FireWorkflowStage.HazardDetected);
+                bool hitStep2 = ctrl.Process3DMarkerHit(hazardObj);
+                if (hitStep2) throw new Exception("Step 2 touching hazard must not auto-classify hazard");
+                if (ctrl.WorkflowStage != FireWorkflowStage.HazardDetected)
+                    throw new Exception("Step 2 stage must not advance from touching hazard");
+
+                // Step 3: Alarm -> hitting hazard should NOT raise alarm
+                ctrl.Workflow.SetStage(FireWorkflowStage.HazardIdentified);
+                bool hitStep3 = ctrl.Process3DMarkerHit(hazardObj);
+                if (hitStep3) throw new Exception("Step 3 touching burning hazard must not raise alarm");
+                if (ctrl.WorkflowStage != FireWorkflowStage.HazardIdentified)
+                    throw new Exception("Step 3 stage must not advance from touching hazard");
+
+                // Step 4: Extinguisher -> hitting hazard should NOT select CO2
+                ctrl.Workflow.SetStage(FireWorkflowStage.AlarmRaised);
+                bool hitStep4 = ctrl.Process3DMarkerHit(hazardObj);
+                if (hitStep4) throw new Exception("Step 4 touching burning hazard must not select extinguisher");
+                if (ctrl.WorkflowStage != FireWorkflowStage.AlarmRaised)
+                    throw new Exception("Step 4 stage must not advance from touching hazard");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(hazardObj);
+                GameObject.DestroyImmediate(ctrlObj);
+            }
+        }
+
+        public static void Test_Nav_Step3Alarm_ShowsNextButton()
+        {
+            var nav = new GuidedStepNavigator();
+            nav.SetViewStep(3);
+
+            if (nav.CurrentStepIndex != 3)
+                throw new Exception($"Expected CurrentStepIndex 3, got {nav.CurrentStepIndex}");
+            if (nav.IsStepCompleted(3))
+                throw new Exception("Step 3 must not be completed initially");
+            if (nav.CanGoNext)
+                throw new Exception("CanGoNext must be false before required alarm action");
+
+            bool completed = nav.CompleteStep(3, "✓ Emergency Alarm Activated! Siren sounding.");
+            if (!completed) throw new Exception("CompleteStep(3) failed");
+            if (!nav.IsStepCompleted(3)) throw new Exception("IsStepCompleted(3) should be true");
+            if (!nav.CanGoNext) throw new Exception("CanGoNext must be true after alarm action");
+            if (nav.CurrentNextLabel != "NEXT: SELECT EXTINGUISHER →")
+                throw new Exception($"Expected 'NEXT: SELECT EXTINGUISHER →', got '{nav.CurrentNextLabel}'");
+            if (nav.GetSuccessFeedback(3) != "✓ Emergency Alarm Activated! Siren sounding.")
+                throw new Exception("Success feedback mismatch");
+        }
+
+        public static void Test_Nav_NextButton_AdvancesExactlyOneStep()
+        {
+            var nav = new GuidedStepNavigator();
+            nav.SetViewStep(3);
+            nav.CompleteStep(3, "✓ Emergency Alarm Activated! Siren sounding.");
+
+            bool advanced = nav.GoNext();
+            if (!advanced) throw new Exception("GoNext() returned false when CanGoNext was true");
+            if (nav.CurrentStepIndex != 4)
+                throw new Exception($"Expected CurrentStepIndex 4, got {nav.CurrentStepIndex}");
+            if (nav.CurrentStepTitle != "SELECT EXTINGUISHER")
+                throw new Exception($"Expected 'SELECT EXTINGUISHER', got '{nav.CurrentStepTitle}'");
+            if (nav.IsStepCompleted(4))
+                throw new Exception("Step 4 must be incomplete upon advancing");
+            if (nav.CanGoNext)
+                throw new Exception("CanGoNext on Step 4 must be false before extinguisher action");
+        }
+
+        public static void Test_Nav_BackButton_ReturnsExactlyOneCompletedStep()
+        {
+            var nav = new GuidedStepNavigator();
+            nav.CompleteStep(1);
+            nav.GoNext();
+            nav.CompleteStep(2);
+            nav.GoNext();
+            nav.CompleteStep(3);
+            nav.GoNext();
+
+            if (nav.CurrentStepIndex != 4) throw new Exception($"Expected Step 4, got {nav.CurrentStepIndex}");
+            if (!nav.CanGoBack) throw new Exception("CanGoBack must be true on Step 4");
+
+            bool wentBack = nav.GoBack();
+            if (!wentBack) throw new Exception("GoBack() returned false");
+            if (nav.CurrentStepIndex != 3) throw new Exception($"Expected Step 3 after back, got {nav.CurrentStepIndex}");
+            if (!nav.IsStepCompleted(3)) throw new Exception("Step 3 must remain completed");
+            if (!nav.CanGoNext) throw new Exception("CanGoNext must remain true on completed Step 3");
+
+            nav.GoNext();
+            if (nav.CurrentStepIndex != 4) throw new Exception($"Expected Step 4 after next, got {nav.CurrentStepIndex}");
+        }
+
+        public static void Test_Nav_SwipeDoesNotAdvanceWorkflow()
+        {
+            var nav = new GuidedStepNavigator();
+            nav.SetViewStep(3);
+
+            // 1. Verify TouchGestureFilter rejects swipe gesture
+            bool isTap = TouchGestureFilter.EvaluateTapParameters(
+                new Vector2(100f, 100f),
+                new Vector2(350f, 100f), // 250px swipe
+                maxDisplacementDuringGesture: 250f,
+                durationSeconds: 0.18f,
+                startedOverUI: false,
+                endedOverUI: false);
+
+            if (isTap) throw new Exception("Swipe gesture must NOT be registered as an intentional tap");
+
+            var go = new GameObject("TestBtn");
+            try
+            {
+                var tapGated = go.AddComponent<TapGatedButton>();
+                bool clicked = false;
+                tapGated.Initialize(() => clicked = true);
+
+                var eventData = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current)
+                {
+                    position = new Vector2(100f, 100f),
+                    pressPosition = new Vector2(100f, 100f)
+                };
+
+                tapGated.OnPointerDown(eventData);
+                eventData.position = new Vector2(300f, 100f);
+                tapGated.OnDrag(eventData);
+                tapGated.OnPointerUp(eventData);
+
+                if (clicked) throw new Exception("TapGatedButton must NOT trigger click on swipe/drag");
+                if (nav.CurrentStepIndex != 3) throw new Exception("Step must remain unchanged during swipe");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_Nav_StepLocking_NextUnavailableBeforeRequiredAction()
+        {
+            var nav = new GuidedStepNavigator();
+
+            for (int step = 1; step <= 9; step++)
+            {
+                if (nav.CurrentStepIndex != step)
+                    throw new Exception($"Expected step {step}, got {nav.CurrentStepIndex}");
+
+                if (nav.CanGoNext)
+                    throw new Exception($"CanGoNext must be false on step {step} before required action");
+
+                bool advanced = nav.GoNext();
+                if (advanced)
+                    throw new Exception($"GoNext() must fail on step {step} when incomplete");
+
+                if (nav.CurrentStepIndex != step)
+                    throw new Exception($"Step advanced illegally from {step} to {nav.CurrentStepIndex}");
+
+                nav.CompleteStep(step);
+                if (!nav.CanGoNext)
+                    throw new Exception($"CanGoNext must be true on step {step} after required action");
+
+                if (step < 9)
+                {
+                    nav.GoNext();
+                }
+            }
+        }
+
+        public static void Test_Nav_IncorrectActionDoesNotAdvance()
+        {
+            var ctrlObj = new GameObject("TestCtrl");
+            try
+            {
+                var ctrl = ctrlObj.AddComponent<FireArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+
+                ctrl.Workflow.SetStage(FireWorkflowStage.AwaitingIdentification);
+                ctrl.StepNavigator.SetViewStep(2);
+
+                bool wrongId = ctrl.SubmitHazardIdentification("hazard_combustible_debris");
+                if (wrongId) throw new Exception("Class A should be rejected");
+                if (ctrl.StepNavigator.IsStepCompleted(2))
+                    throw new Exception("Step 2 must NOT be marked completed on incorrect action");
+                if (ctrl.StepNavigator.CanGoNext)
+                    throw new Exception("Next button must be locked on incorrect action");
+                if (ctrl.StepNavigator.CurrentStepIndex != 2)
+                    throw new Exception("Worker must remain on Step 2");
+
+                ctrl.Workflow.SetStage(FireWorkflowStage.AwaitingExtinguisherSelection);
+                ctrl.StepNavigator.SetViewStep(4);
+
+                bool wrongExt = ctrl.SubmitExtinguisherSelection(FireTrainingWorkflow.TargetExtinguisherWater);
+                if (wrongExt) throw new Exception("Water extinguisher should be rejected");
+                if (ctrl.StepNavigator.IsStepCompleted(4))
+                    throw new Exception("Step 4 must NOT be marked completed on incorrect extinguisher");
+                if (ctrl.StepNavigator.CanGoNext)
+                    throw new Exception("Next button must be locked on incorrect extinguisher");
+                if (ctrl.StepNavigator.CurrentStepIndex != 4)
+                    throw new Exception("Worker must remain on Step 4");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(ctrlObj);
+            }
+        }
+
+        public static void Test_Nav_CorrectActionCompletesStep()
+        {
+            var ctrlObj = new GameObject("TestCtrl");
+            try
+            {
+                var ctrl = ctrlObj.AddComponent<FireArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+
+                ctrl.Workflow.SetStage(FireWorkflowStage.AwaitingAlarm);
+                ctrl.StepNavigator.SetViewStep(3);
+
+                bool alarmOk = ctrl.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm);
+                if (!alarmOk) throw new Exception("Alarm action failed");
+                if (!ctrl.StepNavigator.IsStepCompleted(3))
+                    throw new Exception("Step 3 must be marked complete on successful alarm");
+                if (!ctrl.StepNavigator.CanGoNext)
+                    throw new Exception("Next button must become available on successful alarm");
+                if (ctrl.StepNavigator.CurrentNextLabel != "NEXT: SELECT EXTINGUISHER →")
+                    throw new Exception($"Expected destination NEXT: SELECT EXTINGUISHER →, got {ctrl.StepNavigator.CurrentNextLabel}");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(ctrlObj);
+            }
+        }
+
+        public static void Test_Nav_FullNineStepSequentialFlow()
+        {
+            var ctrlObj = new GameObject("TestCtrl");
+            var hazardObj = new GameObject("HazardMarker");
+            try
+            {
+                var ctrl = ctrlObj.AddComponent<FireArInteractionController>();
+                var hazard = hazardObj.AddComponent<FireHazardMarker>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                ctrl.SetActiveHazard(hazard);
+
+                ctrl.Workflow.SetStage(FireWorkflowStage.HazardPlaced);
+                if (!ctrl.ConfirmHazardDetected()) throw new Exception("Step 1 failed");
+                if (!ctrl.StepNavigator.IsStepCompleted(1)) throw new Exception("Step 1 incomplete");
+                ctrl.StepNavigator.GoNext();
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 2) throw new Exception("Expected Step 2");
+                if (!ctrl.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire)) throw new Exception("Step 2 failed");
+                if (!ctrl.StepNavigator.IsStepCompleted(2)) throw new Exception("Step 2 incomplete");
+                ctrl.StepNavigator.GoNext();
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 3) throw new Exception("Expected Step 3");
+                if (!ctrl.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm)) throw new Exception("Step 3 failed");
+                if (!ctrl.StepNavigator.IsStepCompleted(3)) throw new Exception("Step 3 incomplete");
+                ctrl.StepNavigator.GoNext();
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 4) throw new Exception("Expected Step 4");
+                if (!ctrl.SubmitExtinguisherSelection(FireTrainingWorkflow.TargetExtinguisherCO2)) throw new Exception("Step 4 failed");
+                if (!ctrl.StepNavigator.IsStepCompleted(4)) throw new Exception("Step 4 incomplete");
+                ctrl.StepNavigator.GoNext();
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 5) throw new Exception("Expected Step 5");
+                if (!ctrl.SubmitDistanceDecision(2.5f)) throw new Exception("Step 5 failed");
+                if (!ctrl.StepNavigator.IsStepCompleted(5)) throw new Exception("Step 5 incomplete");
+                ctrl.StepNavigator.GoNext();
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 6) throw new Exception("Expected Step 6");
+                ctrl.SubmitPullPin();
+                ctrl.SubmitAim();
+                ctrl.SubmitSqueeze();
+                ctrl.SubmitSweep();
+                if (!ctrl.StepNavigator.IsStepCompleted(6)) throw new Exception("Step 6 incomplete");
+                ctrl.StepNavigator.GoNext();
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 7) throw new Exception("Expected Step 7");
+                if (!ctrl.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB)) throw new Exception("Step 7 failed");
+                if (!ctrl.StepNavigator.IsStepCompleted(7)) throw new Exception("Step 7 incomplete");
+                ctrl.StepNavigator.GoNext();
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 8) throw new Exception("Expected Step 8");
+                ctrl.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor);
+                ctrl.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut);
+                ctrl.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit);
+                if (!ctrl.StepNavigator.IsStepCompleted(8)) throw new Exception("Step 8 incomplete");
+                ctrl.StepNavigator.GoNext();
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 9) throw new Exception("Expected Step 9");
+                if (!ctrl.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint)) throw new Exception("Step 9 failed");
+                if (!ctrl.StepNavigator.IsStepCompleted(9)) throw new Exception("Step 9 incomplete");
+                if (ctrl.StepNavigator.CurrentNextLabel != "VIEW ASSESSMENT →")
+                    throw new Exception($"Expected 'VIEW ASSESSMENT →', got {ctrl.StepNavigator.CurrentNextLabel}");
+
+                bool completedTrainingTriggered = false;
+                ctrl.StepNavigator.OnCompleteTrainingRequested += () => completedTrainingTriggered = true;
+                ctrl.StepNavigator.GoNext();
+
+                if (!completedTrainingTriggered)
+                    throw new Exception("Final step GoNext() must trigger OnCompleteTrainingRequested");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(hazardObj);
+                GameObject.DestroyImmediate(ctrlObj);
+            }
+        }
+
+        public static void Test_Nav_RetakeStartsFreshAttempt()
+        {
+            var ctrlObj = new GameObject("TestCtrl");
+            var hazardObj = new GameObject("HazardMarker");
+            try
+            {
+                var ctrl = ctrlObj.AddComponent<FireArInteractionController>();
+                var hazard = hazardObj.AddComponent<FireHazardMarker>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                ctrl.SetActiveHazard(hazard);
+
+                ctrl.Workflow.SetStage(FireWorkflowStage.HazardPlaced);
+                if (!ctrl.ConfirmHazardDetected()) throw new Exception("ConfirmHazardDetected failed");
+                ctrl.StepNavigator.GoNext();
+                if (!ctrl.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire)) throw new Exception("Hazard identification failed");
+                ctrl.StepNavigator.GoNext();
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 3)
+                    throw new Exception("Setup failed");
+
+                ctrl.RetakeTraining();
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 1)
+                    throw new Exception($"Expected reset to step 1, got {ctrl.StepNavigator.CurrentStepIndex}");
+                if (ctrl.StepNavigator.HighestCompletedStep != 0)
+                    throw new Exception("HighestCompletedStep must be reset to 0");
+                for (int i = 1; i <= 9; i++)
+                {
+                    if (ctrl.StepNavigator.IsStepCompleted(i))
+                        throw new Exception($"Step {i} must be reset to incomplete");
+                }
+                if (ctrl.StepNavigator.CanGoBack)
+                    throw new Exception("CanGoBack must be false after retake");
+                if (ctrl.StepNavigator.CanGoNext)
+                    throw new Exception("CanGoNext must be false after retake");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(hazardObj);
+                GameObject.DestroyImmediate(ctrlObj);
+            }
+        }
+
+        public static void Test_Nav_Idempotency_GoingBackDoesNotDuplicateScoringEvents()
+        {
+            var ctrlObj = new GameObject("TestCtrl");
+            var hazardObj = new GameObject("HazardMarker");
+            try
+            {
+                var ctrl = ctrlObj.AddComponent<FireArInteractionController>();
+                var hazard = hazardObj.AddComponent<FireHazardMarker>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                ctrl.SetActiveHazard(hazard);
+
+                ctrl.Workflow.SetStage(FireWorkflowStage.HazardPlaced);
+                ctrl.ConfirmHazardDetected();
+                ctrl.StepNavigator.GoNext();
+
+                ctrl.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire);
+                ctrl.StepNavigator.GoNext();
+
+                ctrl.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm);
+                ctrl.StepNavigator.GoNext();
+
+                int eventCountBefore = bus.DispatchedEvents.Count;
+
+                ctrl.StepNavigator.GoBack();
+                ctrl.StepNavigator.GoBack();
+                ctrl.StepNavigator.GoBack();
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 1)
+                    throw new Exception($"Expected step 1 after going back, got {ctrl.StepNavigator.CurrentStepIndex}");
+
+                ctrl.StepNavigator.GoNext();
+                ctrl.StepNavigator.GoNext();
+                ctrl.StepNavigator.GoNext();
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 4)
+                    throw new Exception($"Expected step 4 after returning, got {ctrl.StepNavigator.CurrentStepIndex}");
+
+                int eventCountAfter = bus.DispatchedEvents.Count;
+
+                if (eventCountBefore != eventCountAfter)
+                {
+                    throw new Exception($"Event count changed from {eventCountBefore} to {eventCountAfter}. Back/Next navigation must NOT duplicate events!");
+                }
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(hazardObj);
+                GameObject.DestroyImmediate(ctrlObj);
+            }
+        }
+
+        // ====================================================================
+        // STEP 8B Tests: Audio, Navigation, Interactions, Visuals, Assessment
+        // ====================================================================
+
+        public static void Test_FireAudioService_GeneratesSynthesizedClipsWithoutAssetFiles()
+        {
+            var audio = FireAudioService.Instance;
+            if (audio == null) throw new Exception("FireAudioService.Instance is null");
+
+            audio.PlayHazardDetected();
+            audio.PlayCorrectAction();
+            audio.PlayStepCompleted();
+
+            if (audio.GetPlayCount(FireSoundType.HazardDetected) < 1)
+                throw new Exception("PlayCount for HazardDetected should be >= 1");
+            if (audio.GetPlayCount(FireSoundType.CorrectAction) < 1)
+                throw new Exception("PlayCount for CorrectAction should be >= 1");
+            if (audio.GetPlayCount(FireSoundType.StepCompleted) < 1)
+                throw new Exception("PlayCount for StepCompleted should be >= 1");
+        }
+
+        public static void Test_FireAudioService_RespectsMuteAndVolumeSettings()
+        {
+            var audio = FireAudioService.Instance;
+            if (audio == null) throw new Exception("FireAudioService.Instance is null");
+
+            bool prevSound = audio.IsSoundEnabled;
+            float prevVol = audio.EffectsVolume;
+
+            try
+            {
+                audio.IsSoundEnabled = false;
+                if (audio.IsSoundEnabled) throw new Exception("IsSoundEnabled should be false");
+
+                audio.EffectsVolume = 0.42f;
+                if (Mathf.Abs(audio.EffectsVolume - 0.42f) > 0.05f)
+                    throw new Exception($"EffectsVolume should be ~0.42f, got {audio.EffectsVolume}");
+
+                int prefVal = PlayerPrefs.GetInt("FireAudio_SoundEnabled", -1);
+                if (prefVal != 0) throw new Exception($"PlayerPrefs FireAudio_SoundEnabled should be 0, got {prefVal}");
+            }
+            finally
+            {
+                audio.IsSoundEnabled = prevSound;
+                audio.EffectsVolume = prevVol;
+            }
+        }
+
+        public static void Test_FireAudioService_EmergencyAlarmAudioTriggered()
+        {
+            var audio = FireAudioService.Instance;
+            if (audio == null) throw new Exception("FireAudioService.Instance is null");
+
+            int beforeCount = audio.GetPlayCount(FireSoundType.EmergencyAlarm);
+            audio.PlayEmergencyAlarm();
+            int afterCount = audio.GetPlayCount(FireSoundType.EmergencyAlarm);
+
+            if (afterCount != beforeCount + 1)
+                throw new Exception($"EmergencyAlarm play count should increment by 1, was {beforeCount} -> {afterCount}");
+        }
+
+        public static void Test_EvacuationWorkflow_StrictSequentialProgression()
+        {
+            var bus = new TrainingEventBus();
+            var wf = new FireTrainingWorkflow();
+            wf.SetStage(FireWorkflowStage.ExitIdentified);
+
+            bool s1 = wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor, bus, out _);
+            if (!s1 || wf.CurrentStage != FireWorkflowStage.WaypointMainCorridorReached)
+                throw new Exception("Waypoint 1 should advance stage to WaypointMainCorridorReached");
+
+            bool s3Fail = wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            if (s3Fail) throw new Exception("Waypoint 3 must fail before Waypoint 2 is reached");
+
+            bool s2 = wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut, bus, out _);
+            if (!s2 || wf.CurrentStage != FireWorkflowStage.WaypointBypassCrosscutReached)
+                throw new Exception("Waypoint 2 should advance stage to WaypointBypassCrosscutReached");
+
+            bool s3 = wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out _);
+            if (!s3 || wf.CurrentStage != FireWorkflowStage.RouteEvacuated)
+                throw new Exception("Waypoint 3 should advance stage to RouteEvacuated");
+        }
+
+        public static void Test_EvacuationWorkflow_DirectToExitFailsGracefully()
+        {
+            var bus = new TrainingEventBus();
+            var wf = new FireTrainingWorkflow();
+            wf.SetStage(FireWorkflowStage.ExitIdentified);
+
+            bool s = wf.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit, bus, out var evt);
+            if (s) throw new Exception("Direct jump to fire door exit must be rejected");
+            if (wf.CurrentStage != FireWorkflowStage.ExitIdentified)
+                throw new Exception("Workflow stage should remain ExitIdentified");
+            if (evt == null || evt.Outcome != "failure")
+                throw new Exception("Failure event should be recorded");
+
+            bool sAssembly = wf.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint, FireTrainingWorkflow.ActionCompleteStep, bus, out _);
+            if (sAssembly) throw new Exception("Jumping to assembly point before evacuation route completes must be rejected");
+        }
+
+        public static void Test_PassInteraction_TapButtonsTriggerCorrectSubActions()
+        {
+            var bus = new TrainingEventBus();
+            var wf = new FireTrainingWorkflow();
+            wf.SetStage(FireWorkflowStage.SafeDistanceMaintained);
+
+            bool sPull = wf.SubmitExtinguisherAction(FireTrainingWorkflow.ActionPullPin, bus, out var ePull);
+            if (!sPull || wf.CurrentStage != FireWorkflowStage.PinPulled) throw new Exception("Pull pin failed");
+            if (ePull.ActionId != FireTrainingWorkflow.ActionPullPin) throw new Exception("Pull pin ActionId mismatch");
+
+            bool sAim = wf.SubmitExtinguisherAction(FireTrainingWorkflow.ActionAim, bus, out var eAim);
+            if (!sAim || wf.CurrentStage != FireWorkflowStage.AimConfirmed) throw new Exception("Aim failed");
+            if (eAim.ActionId != FireTrainingWorkflow.ActionAim) throw new Exception("Aim ActionId mismatch");
+
+            bool sSqueeze = wf.SubmitExtinguisherAction(FireTrainingWorkflow.ActionSqueeze, bus, out var eSqueeze);
+            if (!sSqueeze || wf.CurrentStage != FireWorkflowStage.HandleSqueezed) throw new Exception("Squeeze failed");
+            if (eSqueeze.ActionId != FireTrainingWorkflow.ActionSqueeze) throw new Exception("Squeeze ActionId mismatch");
+
+            bool sSweep = wf.SubmitExtinguisherAction(FireTrainingWorkflow.ActionSweep, bus, out var eSweep);
+            if (!sSweep || wf.CurrentStage != FireWorkflowStage.ExtinguisherDischarged) throw new Exception("Sweep failed");
+            if (eSweep.ActionId != FireTrainingWorkflow.ActionSweep) throw new Exception("Sweep ActionId mismatch");
+        }
+
+        public static void Test_PassInteraction_InvalidGestureDoesNotProgress()
+        {
+            bool isSwipeTap = TouchGestureFilter.EvaluateTapParameters(
+                new Vector2(100f, 100f),
+                new Vector2(450f, 100f),
+                350f,
+                0.08f,
+                false,
+                false);
+
+            if (isSwipeTap) throw new Exception("Swipe gesture must be strictly rejected as intentional tap");
+
+            bool isRealTap = TouchGestureFilter.EvaluateTapParameters(
+                new Vector2(100f, 100f),
+                new Vector2(102f, 101f),
+                2.2f,
+                0.12f,
+                false,
+                false);
+
+            if (!isRealTap) throw new Exception("Stationary tap within threshold must be accepted");
+
+            var ctrlObj = new GameObject("TestCtrlSwipe");
+            try
+            {
+                var ctrl = ctrlObj.AddComponent<FireArInteractionController>();
+                ctrl.Workflow.SetStage(FireWorkflowStage.SafeDistanceMaintained);
+                if (ctrl.Workflow.CurrentStage != FireWorkflowStage.SafeDistanceMaintained)
+                    throw new Exception("Workflow should remain in SafeDistanceMaintained");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(ctrlObj);
+            }
+        }
+
+        public static void Test_GuidedStepNavigator_StepActionTextsMatchInteraction()
+        {
+            LocaleService.Instance.SetLanguage(LocaleService.LangEnglish);
+            var nav = new GuidedStepNavigator();
+            for (int i = 1; i <= 9; i++)
+            {
+                string instruction = nav.GetStepInstruction(i);
+                if (string.IsNullOrEmpty(instruction)) throw new Exception($"Step {i} instruction is empty");
+
+                switch (i)
+                {
+                    case 1:
+                        if (!instruction.Contains("ACKNOWLEDGE FIRE HAZARD"))
+                            throw new Exception("Step 1 instruction must contain ACKNOWLEDGE FIRE HAZARD");
+                        break;
+                    case 2:
+                        if (!instruction.Contains("CLASS E: ELECTRICAL FIRE"))
+                            throw new Exception("Step 2 instruction must contain CLASS E: ELECTRICAL FIRE");
+                        break;
+                    case 3:
+                        if (!instruction.Contains("ACTIVATE MANUAL CALL POINT"))
+                            throw new Exception("Step 3 instruction must contain ACTIVATE MANUAL CALL POINT");
+                        break;
+                    case 4:
+                        if (!instruction.Contains("CO2 EXTINGUISHER"))
+                            throw new Exception("Step 4 instruction must contain CO2 EXTINGUISHER");
+                        break;
+                    case 5:
+                        if (!instruction.Contains("STAND AT SAFE DISTANCE"))
+                            throw new Exception("Step 5 instruction must contain STAND AT SAFE DISTANCE");
+                        break;
+                    case 6:
+                        if (!instruction.Contains("PULL SAFETY PIN"))
+                            throw new Exception("Step 6 instruction must contain PULL SAFETY PIN");
+                        break;
+                    case 7:
+                        if (!instruction.Contains("SECTOR B EMERGENCY EXIT"))
+                            throw new Exception("Step 7 instruction must contain SECTOR B EMERGENCY EXIT");
+                        break;
+                    case 8:
+                        if (!instruction.Contains("WAYPOINT 1: MAIN CORRIDOR"))
+                            throw new Exception("Step 8 instruction must contain WAYPOINT 1: MAIN CORRIDOR");
+                        break;
+                    case 9:
+                        if (!instruction.Contains("REACH ASSEMBLY POINT"))
+                            throw new Exception("Step 9 instruction must contain REACH ASSEMBLY POINT");
+                        break;
+                }
+            }
+        }
+
+        public static void Test_FeedbackUI_SinglePrimaryActionButtonEnforced()
+        {
+            var root = new GameObject("TestSingleActionEnforced");
+            try
+            {
+                var ctrl = root.AddComponent<FireArInteractionController>();
+                var ui = root.AddComponent<FireInteractionFeedbackUI>();
+                ui.Controller = ctrl;
+
+                var hazardObj = new GameObject("HazardObj");
+                var hazard = hazardObj.AddComponent<FireHazardMarker>();
+                ctrl.SetActiveHazard(hazard);
+                ctrl.Workflow.SetStage(FireWorkflowStage.HazardPlaced);
+
+                ui.RefreshUI();
+
+                if (ui.IsNextButtonVisible)
+                    throw new Exception("Primary Next button must NOT be visible before action completion");
+
+                ctrl.ConfirmHazardDetection(hazard);
+                ui.RefreshUI();
+
+                if (!ui.IsNextButtonVisible)
+                    throw new Exception("Primary Next button MUST be visible after action completion");
+
+                GameObject.DestroyImmediate(hazardObj);
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(root);
+            }
+        }
+
+        public static void Test_FeedbackUI_SoundSettingsTogglePersists()
+        {
+            var root = new GameObject("TestSoundToggle");
+            try
+            {
+                var ui = root.AddComponent<FireInteractionFeedbackUI>();
+                var audio = FireAudioService.Instance;
+
+                bool initial = audio.IsSoundEnabled;
+                ui.ToggleSoundEnabled();
+                bool toggled = audio.IsSoundEnabled;
+                if (toggled == initial) throw new Exception("Sound toggle should invert IsSoundEnabled");
+
+                int pref = PlayerPrefs.GetInt("FireAudio_SoundEnabled", -1);
+                if (pref != (toggled ? 1 : 0)) throw new Exception("PlayerPrefs should persist toggled sound state");
+
+                ui.ToggleSoundEnabled();
+                if (audio.IsSoundEnabled != initial) throw new Exception("Second toggle should restore sound state");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(root);
+            }
+        }
+
+        public static void Test_AssessmentDeductionExplanation_HumanReadableFormat()
+        {
+            var bus = new TrainingEventBus();
+            var wf = new FireTrainingWorkflow();
+            wf.SetStage(FireWorkflowStage.HazardPlaced);
+            wf.ConfirmHazardDetected(bus, out _);
+            wf.SubmitHazardIdentification("hazard_chemical_spill", bus, out _);
+            wf.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire, bus, out _);
+
+            var rubric = RubricDefinition.CreateFireExplosionRubric();
+            var attempt = new TrainingAttempt
+            {
+                ClientAttemptId = Guid.NewGuid().ToString(),
+                ModuleId = FireTrainingWorkflow.ModuleId,
+                StartedAt = DateTime.UtcNow.ToString("o"),
+                CompletedAt = DateTime.UtcNow.ToString("o")
+            };
+
+            var assessment = LocalAssessmentEngine.Evaluate(bus.DispatchedEvents, rubric);
+            if (assessment == null) throw new Exception("Assessment result was null");
+            if (assessment.TotalPenalties <= 0f) throw new Exception("Expected penalty deduction");
+
+            var vm = AssessmentSummaryViewModel.Build(attempt, assessment);
+            if (vm.Penalties.Count == 0) throw new Exception("Expected at least one penalty entry in ViewModel");
+
+            string penaltyStr = vm.Penalties[0];
+            if (string.IsNullOrEmpty(penaltyStr)) throw new Exception("Penalty Explanation cannot be empty");
+            if (!penaltyStr.Contains("(-") || !penaltyStr.Contains("pts)"))
+                throw new Exception($"Penalty Explanation must include deduction points: {penaltyStr}");
+        }
+
+        public static void Test_ArVisual_BillboardLabelsOrientationTowardsCamera()
+        {
+            var camObj = new GameObject("TestCam");
+            var labelObj = new GameObject("TestFloatingLabel");
+            try
+            {
+                var cam = camObj.AddComponent<Camera>();
+                camObj.transform.position = new Vector3(0, 1.5f, -3f);
+                camObj.transform.rotation = Quaternion.LookRotation(new Vector3(0, 0, 1f));
+
+                var label = labelObj.AddComponent<ArFloatingLabel>();
+                labelObj.transform.position = new Vector3(0, 1f, 0);
+                label.SetTargetCamera(cam);
+                label.SetText("TEST BILLBOARD");
+
+                label.SendMessage("UpdateOrientation", SendMessageOptions.DontRequireReceiver);
+
+                Vector3 toCam = (cam.transform.position - labelObj.transform.position).normalized;
+                float dot = Mathf.Abs(Vector3.Dot(labelObj.transform.forward, toCam));
+                if (dot < 0.7f) throw new Exception($"Label should face camera, alignment dot is {dot}");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(camObj);
+                GameObject.DestroyImmediate(labelObj);
+            }
+        }
+
+        public static void Test_ArVisual_LabelScalesAreReadableAndNonOverlapping()
+        {
+            var hazardObj = new GameObject("TestHazardMarkerVisuals");
+            try
+            {
+                var hazard = hazardObj.AddComponent<FireHazardMarker>();
+                var label = hazard.FloatingLabel;
+                if (label != null)
+                {
+                    Vector3 s = label.transform.localScale;
+                    if (s.x > 0.05f || s.y > 0.05f)
+                        throw new Exception($"Floating label scale too large ({s}), world-space text should be compact");
+                }
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(hazardObj);
+            }
+        }
+
+        public static void Test_ProceduralFire_ClassEIndicatorActive()
+        {
+            var hazardObj = new GameObject("TestHazardClassE");
+            try
+            {
+                var hazard = hazardObj.AddComponent<FireHazardMarker>();
+                hazard.EnsureVisuals();
+                if (hazard.HazardClass != FireTrainingWorkflow.HazardClassElectrical)
+                    throw new Exception($"Expected hazard class electrical, got {hazard.HazardClass}");
+
+                var tmps = hazardObj.GetComponentsInChildren<TextMeshPro>(true);
+                bool hasElectricalIndication = false;
+                foreach (var tmp in tmps)
+                {
+                    if (tmp.text.Contains("480V") || tmp.text.Contains("ELECTRICAL") || tmp.text.Contains("CLASS E"))
+                    {
+                        hasElectricalIndication = true;
+                        break;
+                    }
+                }
+                if (!hasElectricalIndication)
+                    throw new Exception("Procedural fire hazard cabinet must display electrical hazard indication (480V / Class E)");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(hazardObj);
+            }
+        }
+
+        public static void Test_AssessmentModal_OnlyOpensViaExplicitTap()
+        {
+            var root = new GameObject("TestModalExplicitTap");
+            try
+            {
+                var ctrl = root.AddComponent<FireArInteractionController>();
+                var ui = root.AddComponent<FireInteractionFeedbackUI>();
+                var summary = root.AddComponent<FireAssessmentSummaryUI>();
+                ui.Controller = ctrl;
+                summary.Controller = ctrl;
+
+                for (int i = 1; i <= 8; i++)
+                {
+                    ctrl.StepNavigator.CompleteStep(i);
+                    ctrl.StepNavigator.GoNext();
+                }
+
+                ctrl.Workflow.SetStage(FireWorkflowStage.AwaitingAssemblyPoint);
+                ctrl.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint);
+
+                if (summary.IsSummaryVisible)
+                    throw new Exception("Summary modal must NOT open automatically before worker explicitly taps View Assessment");
+
+                ui.OnNextButtonClicked();
+
+                if (!summary.IsSummaryVisible)
+                    throw new Exception("Summary modal MUST be visible after tapping View Assessment");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(root);
+            }
+        }
+
+        public static void Test_FullScenario_CompletesStep1Through9_PassScore()
+        {
+            var root = new GameObject("TestFullScenarioPass");
+            try
+            {
+                var ctrl = root.AddComponent<FireArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+
+                var hazardObj = new GameObject("HazardObj");
+                var hazard = hazardObj.AddComponent<FireHazardMarker>();
+                ctrl.SetActiveHazard(hazard);
+
+                // Step 1: Detect
+                ctrl.Workflow.SetStage(FireWorkflowStage.HazardPlaced);
+                bool c1 = ctrl.ConfirmHazardDetection(hazard);
+                if (!c1) throw new Exception("Step 1 failed");
+                ctrl.StepNavigator.GoNext();
+
+                // Step 2: Identify
+                bool c2 = ctrl.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire);
+                if (!c2) throw new Exception("Step 2 failed");
+                ctrl.StepNavigator.GoNext();
+
+                // Step 3: Alarm
+                bool c3 = ctrl.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm);
+                if (!c3) throw new Exception("Step 3 failed");
+                ctrl.StepNavigator.GoNext();
+
+                // Step 4: Extinguisher
+                bool c4 = ctrl.SubmitExtinguisherSelection(FireTrainingWorkflow.TargetExtinguisherCO2);
+                if (!c4) throw new Exception("Step 4 failed");
+                ctrl.StepNavigator.GoNext();
+
+                // Step 5: Distance
+                bool c5 = ctrl.SubmitDistanceDecision(2.5f);
+                if (!c5) throw new Exception("Step 5 failed");
+                ctrl.StepNavigator.GoNext();
+
+                // Step 6: PASS
+                bool c6a = ctrl.SubmitPullPin();
+                bool c6b = ctrl.SubmitAim();
+                bool c6c = ctrl.SubmitSqueeze();
+                bool c6d = ctrl.SubmitSweep();
+                if (!c6a || !c6b || !c6c || !c6d) throw new Exception("Step 6 PASS failed");
+                ctrl.StepNavigator.GoNext();
+
+                // Step 7: Exit
+                bool c7 = ctrl.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB);
+                if (!c7) throw new Exception("Step 7 failed");
+                ctrl.StepNavigator.GoNext();
+
+                // Step 8: Evacuation Waypoints
+                bool c8a = ctrl.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor);
+                bool c8b = ctrl.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut);
+                bool c8c = ctrl.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit);
+                if (!c8a || !c8b || !c8c) throw new Exception("Step 8 waypoints failed");
+                ctrl.StepNavigator.GoNext();
+
+                // Step 9: Reach Assembly Point
+                bool c9 = ctrl.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint);
+                if (!c9) throw new Exception("Step 9 failed");
+
+                if (ctrl.LatestAssessment == null)
+                    throw new Exception("Assessment should be completed");
+                if (ctrl.LatestAssessment.ClientScore < 80f)
+                    throw new Exception($"Score should be >= 80, got {ctrl.LatestAssessment.ClientScore}");
+                if (!ctrl.LatestAssessment.Passed)
+                    throw new Exception("Assessment should be passed");
+
+                GameObject.DestroyImmediate(hazardObj);
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(root);
+            }
+        }
+
+        public static void Test_FullScenario_UnsafeActionsResultInClearDeductions()
+        {
+            var root = new GameObject("TestFullScenarioDeductions");
+            try
+            {
+                var ctrl = root.AddComponent<FireArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+
+                var hazardObj = new GameObject("HazardObj");
+                var hazard = hazardObj.AddComponent<FireHazardMarker>();
+                ctrl.SetActiveHazard(hazard);
+
+                // Step 1: Detect
+                ctrl.Workflow.SetStage(FireWorkflowStage.HazardPlaced);
+                ctrl.ConfirmHazardDetection(hazard);
+                ctrl.StepNavigator.GoNext();
+
+                // Step 2: Identification with initial wrong attempt
+                ctrl.SubmitHazardIdentification("hazard_combustible_debris");
+                ctrl.SubmitHazardIdentification(FireTrainingWorkflow.TargetElectricalConveyorFire);
+                ctrl.StepNavigator.GoNext();
+
+                // Step 3: Alarm
+                ctrl.SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm);
+                ctrl.StepNavigator.GoNext();
+
+                // Step 4: Extinguisher with wrong attempt
+                ctrl.SubmitExtinguisherSelection(FireTrainingWorkflow.TargetExtinguisherWater);
+                ctrl.SubmitExtinguisherSelection(FireTrainingWorkflow.TargetExtinguisherCO2);
+                ctrl.StepNavigator.GoNext();
+
+                // Step 5: Distance
+                ctrl.SubmitDistanceDecision(2.5f);
+                ctrl.StepNavigator.GoNext();
+
+                // Step 6: PASS
+                ctrl.SubmitPullPin();
+                ctrl.SubmitAim();
+                ctrl.SubmitSqueeze();
+                ctrl.SubmitSweep();
+                ctrl.StepNavigator.GoNext();
+
+                // Step 7: Exit
+                ctrl.SubmitIdentifyExit(FireTrainingWorkflow.TargetExitEmergencySectorB);
+                ctrl.StepNavigator.GoNext();
+
+                // Step 8: Evacuation with unsafe smoke corridor attempt
+                ctrl.SubmitEvacuationWaypoint(FireTrainingWorkflow.HazardSmokeCorridor);
+                ctrl.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointMainCorridor);
+                ctrl.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointBypassCrosscut);
+                ctrl.SubmitEvacuationWaypoint(FireTrainingWorkflow.WaypointFireDoorExit);
+                ctrl.StepNavigator.GoNext();
+
+                // Step 9: Reach Assembly Point
+                ctrl.SubmitReachAssemblyPoint(FireTrainingWorkflow.TargetAssemblyMusterPoint);
+
+                if (ctrl.LatestAssessment == null)
+                    throw new Exception("Assessment must be completed");
+                if (ctrl.LatestAssessment.TotalPenalties <= 0f)
+                    throw new Exception("Expected penalties for unsafe actions");
+                if (ctrl.LatestAssessment.ClientScore >= 100f)
+                    throw new Exception($"Score should be deducted below 100, got {ctrl.LatestAssessment.ClientScore}");
+
+                var vm = AssessmentSummaryViewModel.Build(ctrl.LatestAttempt, ctrl.LatestAssessment);
+                if (vm.Penalties.Count == 0)
+                    throw new Exception("Expected penalty explanation entries in ViewModel");
+
+                foreach (var penalty in vm.Penalties)
+                {
+                    if (string.IsNullOrEmpty(penalty) || !penalty.Contains("(-") || !penalty.Contains("pts)"))
+                        throw new Exception($"Penalty record must have clear deduction format: '{penalty}'");
+                }
+
+                GameObject.DestroyImmediate(hazardObj);
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(root);
+            }
+        }
+
+        // =========================================================================
+        // COMMON WORKER APP FOUNDATION TESTS
+        // =========================================================================
+
+        public static void Test_WorkerHome_LoadsWithAppTitleAndProfile()
+        {
+            var go = new GameObject("TestHomeShell");
+            try
+            {
+                var ctrl = go.AddComponent<WorkerHomeController>();
+                if (!ctrl.IsHomeVisible) throw new Exception("Home screen must be visible on startup");
+                if (ctrl.IsSettingsVisible) throw new Exception("Settings panel must be hidden on startup");
+
+                if (string.IsNullOrEmpty(ctrl.WorkerName)) throw new Exception("Worker name must be initialized");
+                if (string.IsNullOrEmpty(ctrl.WorkerId)) throw new Exception("Worker ID must be initialized");
+                if (ctrl.WorkerId != FireTrainingWorkflow.DefaultOfflineWorkerId)
+                    throw new Exception($"Expected DefaultOfflineWorkerId, got {ctrl.WorkerId}");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_WorkerHome_FireModuleAvailable_GasModuleComingSoon()
+        {
+            var go = new GameObject("TestModuleCards");
+            try
+            {
+                var ctrl = go.AddComponent<WorkerHomeController>();
+                if (!ctrl.IsFireModuleAvailable) throw new Exception("Fire & Explosion module must be marked Available");
+                if (ctrl.IsGasModuleEnabled) throw new Exception("Gas & Confined Space module must be disabled / Coming Soon");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_WorkerHome_SettingsPanelOpensAndCloses()
+        {
+            var go = new GameObject("TestSettingsFlow");
+            try
+            {
+                var ctrl = go.AddComponent<WorkerHomeController>();
+                ctrl.OpenSettings();
+                if (!ctrl.IsSettingsVisible) throw new Exception("Settings panel must be visible after OpenSettings()");
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Settings)
+                    throw new Exception("State must be Settings");
+
+                ctrl.CloseSettings();
+                if (ctrl.IsSettingsVisible) throw new Exception("Settings panel must be hidden after CloseSettings()");
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Home)
+                    throw new Exception("State must be Home");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_WorkerHome_SoundSettingsPersistViaAudioService()
+        {
+            var audio = FireAudioService.Instance;
+            bool origSound = audio.IsSoundEnabled;
+            float origVol = audio.EffectsVolume;
+            bool origAlarm = audio.IsEmergencyAlarmEnabled;
+
+            try
+            {
+                audio.IsSoundEnabled = false;
+                if (audio.IsSoundEnabled) throw new Exception("IsSoundEnabled should be false");
+                if (PlayerPrefs.GetInt("FireAudio_SoundEnabled") != 0)
+                    throw new Exception("PlayerPrefs for sound enabled not saved");
+
+                audio.EffectsVolume = 0.45f;
+                if (Mathf.Abs(audio.EffectsVolume - 0.45f) > 0.01f)
+                    throw new Exception("EffectsVolume should be 0.45");
+
+                audio.IsEmergencyAlarmEnabled = false;
+                if (audio.IsEmergencyAlarmEnabled) throw new Exception("IsEmergencyAlarmEnabled should be false");
+
+                audio.IsSoundEnabled = true;
+                audio.IsEmergencyAlarmEnabled = true;
+            }
+            finally
+            {
+                audio.IsSoundEnabled = origSound;
+                audio.EffectsVolume = origVol;
+                audio.IsEmergencyAlarmEnabled = origAlarm;
+            }
+        }
+
+        public static void Test_WorkerHome_LanguageSelectionPersistsLocales()
+        {
+            var loc = LocaleService.Instance;
+            string origLang = loc.CurrentLanguage;
+
+            try
+            {
+                loc.SetLanguage(LocaleService.LangHindi);
+                if (loc.CurrentLanguage != LocaleService.LangHindi)
+                    throw new Exception("Expected current language to be Hindi (hi)");
+                if (PlayerPrefs.GetString(LocaleService.PrefLanguageKey) != LocaleService.LangHindi)
+                    throw new Exception("PlayerPrefs for language should be 'hi'");
+
+                string hiTitle = loc.Get("app_title");
+                if (!hiTitle.Contains("सुरक्षा"))
+                    throw new Exception($"Expected Hindi title, got '{hiTitle}'");
+
+                loc.SetLanguage(LocaleService.LangSantali);
+                if (loc.CurrentLanguage != LocaleService.LangSantali)
+                    throw new Exception("Expected current language to be Santali (sat)");
+                string satTitle = loc.Get("app_title");
+                if (!satTitle.Contains("ᱥᱮᱯᱷᱴᱤ"))
+                    throw new Exception($"Expected Santali title with Ol Chiki characters, got '{satTitle}'");
+
+                loc.SetLanguage(LocaleService.LangEnglish);
+                if (loc.CurrentLanguage != LocaleService.LangEnglish)
+                    throw new Exception("Expected current language to be English (en)");
+            }
+            finally
+            {
+                loc.SetLanguage(origLang);
+            }
+        }
+
+        public static void Test_WorkerHome_OfflineIndicatorReflectsNetworkStatus()
+        {
+            var go = new GameObject("TestOfflineBadge");
+            try
+            {
+                var ctrl = go.AddComponent<WorkerHomeController>();
+                ctrl.UpdateOfflineStatus();
+                if (!ctrl.IsHomeVisible) throw new Exception("Home screen should remain visible");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_WorkerHome_StartTrainingActivatesFireModule()
+        {
+            var homeObj = new GameObject("TestHome");
+            var fireMgrObj = new GameObject("TestFireMgr");
+            try
+            {
+                var homeCtrl = homeObj.AddComponent<WorkerHomeController>();
+                var fireCtrl = fireMgrObj.AddComponent<FireArInteractionController>();
+                var fireUI = fireMgrObj.AddComponent<FireInteractionFeedbackUI>();
+                fireUI.Controller = fireCtrl;
+
+                homeCtrl.StartFireTraining();
+
+                if (homeCtrl.CurrentState != WorkerHomeController.WorkerAppScreenState.TrainingFire)
+                    throw new Exception("State should transition to TrainingFire");
+                if (homeCtrl.IsHomeVisible)
+                    throw new Exception("Home screen should be hidden when training starts");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(homeObj);
+                GameObject.DestroyImmediate(fireMgrObj);
+            }
+        }
+
+        public static void Test_WorkerHome_BackNavigationReturnsToHome()
+        {
+            var homeObj = new GameObject("TestHomeNav");
+            var fireMgrObj = new GameObject("TestFireNav");
+            try
+            {
+                var homeCtrl = homeObj.AddComponent<WorkerHomeController>();
+                var fireCtrl = fireMgrObj.AddComponent<FireArInteractionController>();
+                var fireUI = fireMgrObj.AddComponent<FireInteractionFeedbackUI>();
+                fireUI.Controller = fireCtrl;
+
+                homeCtrl.StartFireTraining();
+                if (homeCtrl.IsHomeVisible) throw new Exception("Home should be hidden");
+
+                // Returning to home
+                homeCtrl.ReturnToHome();
+                if (homeCtrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Home)
+                    throw new Exception("State should be Home after ReturnToHome");
+                if (!homeCtrl.IsHomeVisible)
+                    throw new Exception("Home screen must be visible after return");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(homeObj);
+                GameObject.DestroyImmediate(fireMgrObj);
+            }
+        }
+
+        public static void Test_WorkerHome_VisibleInHomeState()
+        {
+            var go = new GameObject("TestHomeVis");
+            try
+            {
+                var ctrl = go.AddComponent<WorkerHomeController>();
+                ctrl.ShowHome();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Home)
+                    throw new Exception($"Expected state Home, got {ctrl.CurrentState}");
+                if (!ctrl.IsHomeVisible)
+                    throw new Exception("HomeScreen must be visible in Home state");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_WorkerHome_StartTrainingHidesHomeUI()
+        {
+            var go = new GameObject("TestHomeStart");
+            try
+            {
+                var ctrl = go.AddComponent<WorkerHomeController>();
+                ctrl.ShowHome();
+                ctrl.StartFireTraining();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.TrainingFire)
+                    throw new Exception($"Expected state TrainingFire, got {ctrl.CurrentState}");
+                if (ctrl.IsHomeVisible)
+                    throw new Exception("HomeScreen must be inactive/hidden when training starts");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_FireTraining_IsOnlyActiveTrainingUI()
+        {
+            var homeObj = new GameObject("TestHomeShell");
+            var fireObj = new GameObject("FireTrainingFeedbackObj");
+            try
+            {
+                var homeCtrl = homeObj.AddComponent<WorkerHomeController>();
+                var fireUI = fireObj.AddComponent<FireInteractionFeedbackUI>();
+                homeCtrl.ShowHome();
+                if (fireUI.Canvas != null && fireUI.Canvas.gameObject.activeSelf)
+                    throw new Exception("FireTrainingCanvas must NOT be active while on Home screen");
+
+                homeCtrl.StartFireTraining();
+                if (homeCtrl.IsHomeVisible)
+                    throw new Exception("Worker Home UI must be inactive during Fire Training");
+                if (fireUI.Canvas == null || !fireUI.Canvas.gameObject.activeSelf)
+                    throw new Exception("FireTrainingCanvas must be active during Fire Training");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(homeObj);
+                GameObject.DestroyImmediate(fireObj);
+            }
+        }
+
+        public static void Test_WorkerHome_InputDisabledDuringTraining()
+        {
+            var homeObj = new GameObject("TestHomeInput");
+            try
+            {
+                var homeCtrl = homeObj.AddComponent<WorkerHomeController>();
+                homeCtrl.ShowHome();
+                homeCtrl.StartFireTraining();
+                if (homeCtrl.FireStartButton == null)
+                    throw new Exception("FireStartButton not found");
+                if (homeCtrl.FireStartButton.gameObject.activeInHierarchy)
+                    throw new Exception("Home buttons must be inactive in hierarchy during training");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(homeObj);
+            }
+        }
+
+        public static void Test_FireTraining_ExitRestoresHomeUI()
+        {
+            var homeObj = new GameObject("TestHomeExit");
+            var fireObj = new GameObject("TestFireExit");
+            try
+            {
+                var homeCtrl = homeObj.AddComponent<WorkerHomeController>();
+                var fireUI = fireObj.AddComponent<FireInteractionFeedbackUI>();
+                homeCtrl.ShowHome();
+                homeCtrl.StartFireTraining();
+
+                fireUI.ExitTrainingToHome();
+                if (homeCtrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Home)
+                    throw new Exception($"Expected state Home, got {homeCtrl.CurrentState}");
+                if (!homeCtrl.IsHomeVisible)
+                    throw new Exception("HomeScreen must be restored after exit");
+                if (fireUI.Canvas != null && fireUI.Canvas.gameObject.activeSelf)
+                    throw new Exception("FireTrainingCanvas must be hidden after exit");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(homeObj);
+                GameObject.DestroyImmediate(fireObj);
+            }
+        }
+
+        public static void Test_WorkerHome_SettingsButtonOpensSettings()
+        {
+            var homeObj = new GameObject("TestHomeSettings");
+            try
+            {
+                var homeCtrl = homeObj.AddComponent<WorkerHomeController>();
+                homeCtrl.ShowHome();
+                if (homeCtrl.HomeSettingsButton == null)
+                    throw new Exception("HomeSettingsButton must exist on Home screen");
+
+                homeCtrl.OpenSettings();
+                if (homeCtrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Settings)
+                    throw new Exception($"Expected state Settings, got {homeCtrl.CurrentState}");
+                if (!homeCtrl.IsSettingsVisible)
+                    throw new Exception("Settings panel must be visible");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(homeObj);
+            }
+        }
+
+        public static void Test_WorkerHome_SettingsClosesCorrectly()
+        {
+            var homeObj = new GameObject("TestHomeCloseSettings");
+            try
+            {
+                var homeCtrl = homeObj.AddComponent<WorkerHomeController>();
+                homeCtrl.ShowHome();
+                homeCtrl.OpenSettings();
+                homeCtrl.CloseSettings();
+                if (homeCtrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Home)
+                    throw new Exception($"Expected state Home, got {homeCtrl.CurrentState}");
+                if (homeCtrl.IsSettingsVisible)
+                    throw new Exception("Settings panel must be hidden after closing");
+                if (!homeCtrl.IsHomeVisible)
+                    throw new Exception("Home screen must be restored after closing settings");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(homeObj);
+            }
+        }
+
+        public static void Test_FireAudio_SoundEffectsSettingPersists()
+        {
+            var audio = FireAudioService.Instance;
+            bool orig = audio.IsSoundEnabled;
+            try
+            {
+                audio.IsSoundEnabled = false;
+                if (PlayerPrefs.GetInt("FireAudio_SoundEnabled") != 0)
+                    throw new Exception("PlayerPrefs for sound should be 0");
+                audio.LoadSettings();
+                if (audio.IsSoundEnabled != false)
+                    throw new Exception("Expected sound setting to load as false");
+
+                audio.IsSoundEnabled = true;
+                if (PlayerPrefs.GetInt("FireAudio_SoundEnabled") != 1)
+                    throw new Exception("PlayerPrefs for sound should be 1");
+                audio.LoadSettings();
+                if (audio.IsSoundEnabled != true)
+                    throw new Exception("Expected sound setting to load as true");
+            }
+            finally
+            {
+                audio.IsSoundEnabled = orig;
+            }
+        }
+
+        public static void Test_FireAudio_EmergencyAlarmSettingPersists()
+        {
+            var audio = FireAudioService.Instance;
+            bool orig = audio.IsEmergencyAlarmEnabled;
+            try
+            {
+                audio.IsEmergencyAlarmEnabled = false;
+                if (PlayerPrefs.GetInt("FireAudio_AlarmEnabled") != 0)
+                    throw new Exception("PlayerPrefs for alarm should be 0");
+                audio.LoadSettings();
+                if (audio.IsEmergencyAlarmEnabled != false)
+                    throw new Exception("Expected alarm setting to load as false");
+
+                audio.IsEmergencyAlarmEnabled = true;
+                if (PlayerPrefs.GetInt("FireAudio_AlarmEnabled") != 1)
+                    throw new Exception("PlayerPrefs for alarm should be 1");
+                audio.LoadSettings();
+                if (audio.IsEmergencyAlarmEnabled != true)
+                    throw new Exception("Expected alarm setting to load as true");
+            }
+            finally
+            {
+                audio.IsEmergencyAlarmEnabled = orig;
+            }
+        }
+
+        public static void Test_FireAudio_EmergencyAlarmOnStartsOrPermitsAlarm()
+        {
+            var audio = FireAudioService.Instance;
+            bool origSound = audio.IsSoundEnabled;
+            bool origAlarm = audio.IsEmergencyAlarmEnabled;
+            try
+            {
+                audio.IsSoundEnabled = true;
+                audio.IsEmergencyAlarmEnabled = true;
+                audio.PlayEmergencyAlarm();
+                if (!audio.IsAlarmActiveScenario)
+                    throw new Exception("Scenario alarm must be marked active when emergency alarm is played");
+            }
+            finally
+            {
+                audio.StopEmergencyAlarm();
+                audio.IsSoundEnabled = origSound;
+                audio.IsEmergencyAlarmEnabled = origAlarm;
+            }
+        }
+
+        public static void Test_FireAudio_EmergencyAlarmOffStopsActiveAlarm()
+        {
+            var audio = FireAudioService.Instance;
+            bool origSound = audio.IsSoundEnabled;
+            bool origAlarm = audio.IsEmergencyAlarmEnabled;
+            try
+            {
+                audio.IsSoundEnabled = true;
+                audio.IsEmergencyAlarmEnabled = true;
+                audio.PlayEmergencyAlarm();
+
+                // Disabling emergency alarm must immediately stop siren
+                audio.IsEmergencyAlarmEnabled = false;
+                if (audio.IsAlarmSirenPlaying)
+                    throw new Exception("Alarm siren must stop immediately when IsEmergencyAlarmEnabled is set to false");
+            }
+            finally
+            {
+                audio.StopEmergencyAlarm();
+                audio.IsSoundEnabled = origSound;
+                audio.IsEmergencyAlarmEnabled = origAlarm;
+            }
+        }
+
+        public static void Test_FireAudio_RepeatedAlarmToggleIdempotent()
+        {
+            var audio = FireAudioService.Instance;
+            bool origSound = audio.IsSoundEnabled;
+            bool origAlarm = audio.IsEmergencyAlarmEnabled;
+            try
+            {
+                audio.IsSoundEnabled = true;
+                for (int i = 0; i < 6; i++)
+                {
+                    audio.IsEmergencyAlarmEnabled = (i % 2 == 0);
+                    if (audio.IsEmergencyAlarmEnabled != (i % 2 == 0))
+                        throw new Exception($"Toggle failed on iteration {i}");
+                }
+            }
+            finally
+            {
+                audio.StopEmergencyAlarm();
+                audio.IsSoundEnabled = origSound;
+                audio.IsEmergencyAlarmEnabled = origAlarm;
+            }
+        }
+
+        public static void Test_FireAudio_LeavingFireStopsActiveAlarm()
+        {
+            var audio = FireAudioService.Instance;
+            bool origSound = audio.IsSoundEnabled;
+            bool origAlarm = audio.IsEmergencyAlarmEnabled;
+            try
+            {
+                audio.IsSoundEnabled = true;
+                audio.IsEmergencyAlarmEnabled = true;
+                audio.PlayEmergencyAlarm();
+                if (!audio.IsAlarmActiveScenario)
+                    throw new Exception("Alarm should be active");
+
+                audio.StopEmergencyAlarm();
+                audio.StopAllAudio();
+                if (audio.IsAlarmActiveScenario)
+                    throw new Exception("Scenario alarm active flag must be false after StopEmergencyAlarm/StopAllAudio");
+                if (audio.IsAlarmSirenPlaying)
+                    throw new Exception("Alarm siren audio source must not be playing");
+            }
+            finally
+            {
+                audio.IsSoundEnabled = origSound;
+                audio.IsEmergencyAlarmEnabled = origAlarm;
+            }
+        }
+
+        public static void Test_FireAudio_RetakeDoesNotInheritPreviousAlarm()
+        {
+            var audio = FireAudioService.Instance;
+            bool origSound = audio.IsSoundEnabled;
+            bool origAlarm = audio.IsEmergencyAlarmEnabled;
+            var summaryObj = new GameObject("TestSummaryRetake");
+            try
+            {
+                audio.IsSoundEnabled = true;
+                audio.IsEmergencyAlarmEnabled = true;
+                audio.PlayEmergencyAlarm();
+
+                var summary = summaryObj.AddComponent<FireAssessmentSummaryUI>();
+                summary.OnRetakeTrainingClicked();
+
+                if (audio.IsAlarmActiveScenario)
+                    throw new Exception("Retake must reset scenario alarm active state");
+                if (audio.IsAlarmSirenPlaying)
+                    throw new Exception("Retake must stop any playing alarm siren");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(summaryObj);
+                audio.StopEmergencyAlarm();
+                audio.IsSoundEnabled = origSound;
+                audio.IsEmergencyAlarmEnabled = origAlarm;
+            }
+        }
+
+        public static void Test_FireTraining_HUDAlarmButtonTogglesAlarm()
+        {
+            var audio = FireAudioService.Instance;
+            bool origAlarm = audio.IsEmergencyAlarmEnabled;
+            var fireObj = new GameObject("TestHudAlarm");
+            try
+            {
+                var feedbackUI = fireObj.AddComponent<FireInteractionFeedbackUI>();
+                feedbackUI.ShowTrainingUI();
+                if (feedbackUI.AlarmButton == null)
+                    throw new Exception("Alarm button must exist on FireTraining HUD");
+
+                bool before = audio.IsEmergencyAlarmEnabled;
+                feedbackUI.ToggleEmergencyAlarmEnabled();
+                if (audio.IsEmergencyAlarmEnabled == before)
+                    throw new Exception("HUD alarm toggle must invert IsEmergencyAlarmEnabled");
+
+                feedbackUI.ToggleEmergencyAlarmEnabled();
+                if (audio.IsEmergencyAlarmEnabled != before)
+                    throw new Exception("HUD alarm toggle must return to original state on second click");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(fireObj);
+                audio.IsEmergencyAlarmEnabled = origAlarm;
+            }
+        }
+
+        public static void Test_SettingsModal_BlocksRaycastsUnderneath()
+        {
+            var homeObj = new GameObject("TestRaycastModal");
+            try
+            {
+                var homeCtrl = homeObj.AddComponent<WorkerHomeController>();
+                homeCtrl.ShowHome();
+                homeCtrl.OpenSettings();
+
+                var modalObj = GameObject.Find("SettingsPanelModal");
+                if (modalObj == null)
+                    throw new Exception("SettingsPanelModal must exist");
+
+                var img = modalObj.GetComponent<UnityEngine.UI.Image>();
+                if (img == null)
+                    throw new Exception("SettingsPanelModal root must have an Image component");
+                if (!img.raycastTarget)
+                    throw new Exception("SettingsPanelModal root image must have raycastTarget enabled to block touch bleed");
+
+                var rect = modalObj.GetComponent<RectTransform>();
+                if (rect.anchorMin != Vector2.zero || rect.anchorMax != Vector2.one)
+                    throw new Exception("SettingsPanelModal backdrop must be full screen (anchorMin=0, anchorMax=1)");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(homeObj);
+            }
+        }
+
+        public static void Test_FireAssessmentSummary_ReturnToHomeExitsCleanly()
+        {
+            var homeObj = new GameObject("TestSummaryExitHome");
+            var summaryObj = new GameObject("TestSummaryExit");
+            try
+            {
+                var homeCtrl = homeObj.AddComponent<WorkerHomeController>();
+                var summary = summaryObj.AddComponent<FireAssessmentSummaryUI>();
+                homeCtrl.StartFireTraining();
+
+                summary.ShowSummary(new AssessmentSummaryViewModel());
+                if (!summary.IsSummaryVisible)
+                    throw new Exception("Summary modal must be visible");
+
+                summary.OnReturnToHomeClicked();
+                if (summary.IsSummaryVisible)
+                    throw new Exception("Summary modal must be hidden after return to home");
+                if (homeCtrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Home)
+                    throw new Exception($"Expected state Home, got {homeCtrl.CurrentState}");
+                if (!homeCtrl.IsHomeVisible)
+                    throw new Exception("HomeScreen must be visible after return to home");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(homeObj);
+                GameObject.DestroyImmediate(summaryObj);
+            }
+        }
+
+        public static void Test_Localization_EnglishLocaleLoads()
+        {
+            var loc = LocaleService.Instance;
+            loc.SetLanguage(LocaleService.LangEnglish);
+            var catalog = loc.GetCatalogForLanguage(LocaleService.LangEnglish);
+            if (catalog == null || catalog.Count == 0)
+                throw new Exception("English catalog failed to load or is empty");
+
+            if (!catalog.ContainsKey("app_title") || catalog["app_title"] != "Industrial Safety AR")
+                throw new Exception("English catalog missing app_title");
+        }
+
+        public static void Test_Localization_HindiLocaleLoads()
+        {
+            var loc = LocaleService.Instance;
+            var catalog = loc.GetCatalogForLanguage(LocaleService.LangHindi);
+            if (catalog == null || catalog.Count == 0)
+                throw new Exception("Hindi catalog failed to load or is empty");
+
+            if (!catalog.ContainsKey("app_title") || string.IsNullOrEmpty(catalog["app_title"]))
+                throw new Exception("Hindi catalog missing app_title");
+
+            bool hasDevanagari = false;
+            foreach (char c in catalog["app_title"])
+            {
+                if (c >= '\u0900' && c <= '\u097F') { hasDevanagari = true; break; }
+            }
+            if (!hasDevanagari)
+                throw new Exception("Hindi catalog app_title does not contain Devanagari script characters");
+        }
+
+        public static void Test_Localization_SantaliLocaleLoads()
+        {
+            var loc = LocaleService.Instance;
+            var catalog = loc.GetCatalogForLanguage(LocaleService.LangSantali);
+            if (catalog == null || catalog.Count == 0)
+                throw new Exception("Santali catalog failed to load or is empty");
+
+            if (!catalog.ContainsKey("app_title") || string.IsNullOrEmpty(catalog["app_title"]))
+                throw new Exception("Santali catalog missing app_title");
+
+            bool hasOlChiki = false;
+            foreach (char c in catalog["app_title"])
+            {
+                if (c >= '\u1C50' && c <= '\u1C7F') { hasOlChiki = true; break; }
+            }
+            if (!hasOlChiki)
+                throw new Exception("Santali catalog app_title does not contain Ol Chiki script characters (U+1C50-U+1C7F)");
+        }
+
+        public static void Test_Localization_RequiredKeysExistInAllLocales()
+        {
+            var loc = LocaleService.Instance;
+            string[] requiredKeys = new[]
+            {
+                "app_title", "app_subtitle", "btn_back", "btn_close", "btn_next",
+                "btn_complete", "btn_retake", "btn_return_home", "state_on", "state_off",
+                "offline_mode", "online_sync", "worker_profile", "worker_id_label",
+                "worker_name_label", "modules_header", "module_fire_title", "module_fire_desc",
+                "module_gas_title", "module_gas_desc", "status_available", "status_coming_soon",
+                "btn_start_training", "settings_title", "sound_effects", "effects_volume",
+                "emergency_alarm", "language_header", "fire_header_title", "step_badge_format",
+                "ar_calibration_badge", "ar_calibration_prompt", "ar_calibration_feedback",
+                "surface_detected_badge", "surface_detected_prompt", "surface_detected_feedback",
+                "btn_place_hazard", "btn_alarm_on", "btn_alarm_off", "feedback_alarm_enabled",
+                "feedback_alarm_muted", "feedback_sound_enabled", "feedback_sound_muted",
+                "action_required_format", "step_completed_format", "step_review_format",
+                "training_completed_notice", "default_success_feedback",
+                "fire_step1_title", "fire_step1_prompt", "fire_step1_btn_ack",
+                "fire_step2_title", "fire_step2_prompt", "fire_step2_opt1", "fire_step2_opt2", "fire_step2_opt3",
+                "fire_step3_title", "fire_step3_prompt", "fire_step3_btn_alarm",
+                "fire_step4_title", "fire_step4_prompt", "fire_step4_opt1", "fire_step4_opt2", "fire_step4_opt3",
+                "fire_step5_title", "fire_step5_prompt", "fire_step5_opt1", "fire_step5_opt2",
+                "fire_step6_title", "fire_step6_prompt_pull", "fire_step6_btn_pull",
+                "fire_step7_title", "fire_step7_prompt", "fire_step7_opt1", "fire_step7_opt2", "fire_step7_opt3",
+                "fire_step8_title", "fire_step8_prompt", "fire_step8_wp1", "fire_step8_wp2", "fire_step8_wp3", "fire_step8_unsafe_smoke",
+                "fire_step9_title", "fire_step9_prompt", "fire_step9_opt1", "fire_step9_opt2",
+                "assessment_title", "assessment_status_passed", "assessment_status_failed",
+                "assessment_score_label", "assessment_duration_label", "assessment_sync_ready",
+                "assessment_btn_finish", "assessment_btn_retake", "assessment_btn_breakdown"
+            };
+
+            string[] languages = new[] { LocaleService.LangEnglish, LocaleService.LangHindi, LocaleService.LangSantali };
+
+            foreach (var lang in languages)
+            {
+                foreach (var key in requiredKeys)
+                {
+                    if (!loc.HasKey(lang, key))
+                    {
+                        throw new Exception($"Language '{lang}' is missing required key '{key}'");
+                    }
+                    string val = loc.GetCatalogForLanguage(lang)[key];
+                    if (string.IsNullOrWhiteSpace(val))
+                    {
+                        throw new Exception($"Language '{lang}' has empty value for required key '{key}'");
+                    }
+                }
+            }
+        }
+
+        public static void Test_Localization_RuntimeLocaleSwitching()
+        {
+            var loc = LocaleService.Instance;
+            string recordedLang = null;
+            Action<string> handler = lang => recordedLang = lang;
+
+            try
+            {
+                loc.OnLanguageChanged += handler;
+
+                loc.SetLanguage(LocaleService.LangHindi);
+                if (loc.CurrentLanguage != LocaleService.LangHindi)
+                    throw new Exception($"Expected CurrentLanguage to be 'hi', got {loc.CurrentLanguage}");
+                if (recordedLang != LocaleService.LangHindi)
+                    throw new Exception($"Expected OnLanguageChanged to emit 'hi', got {recordedLang}");
+
+                string hindiTitle = loc.Get("app_title");
+                if (hindiTitle != "औद्योगिक सुरक्षा एआर")
+                    throw new Exception($"Expected Hindi app_title, got {hindiTitle}");
+
+                loc.SetLanguage(LocaleService.LangSantali);
+                if (loc.CurrentLanguage != LocaleService.LangSantali)
+                    throw new Exception($"Expected CurrentLanguage to be 'sat', got {loc.CurrentLanguage}");
+                if (recordedLang != LocaleService.LangSantali)
+                    throw new Exception($"Expected OnLanguageChanged to emit 'sat', got {recordedLang}");
+
+                string satTitle = loc.Get("app_title");
+                if (!satTitle.Contains("ᱤᱱᱰᱟᱥᱴᱨᱤᱭᱟᱞ"))
+                    throw new Exception($"Expected Santali app_title, got {satTitle}");
+            }
+            finally
+            {
+                loc.OnLanguageChanged -= handler;
+                loc.SetLanguage(LocaleService.LangEnglish);
+            }
+        }
+
+        public static void Test_Localization_SelectedLocalePersists()
+        {
+            var loc = LocaleService.Instance;
+            try
+            {
+                loc.SetLanguage(LocaleService.LangSantali);
+                string persisted = PlayerPrefs.GetString(LocaleService.PrefLanguageKey, "");
+                if (persisted != LocaleService.LangSantali)
+                    throw new Exception($"Expected PlayerPrefs '{LocaleService.PrefLanguageKey}' to be 'sat', got '{persisted}'");
+
+                loc.SetLanguage(LocaleService.LangHindi);
+                persisted = PlayerPrefs.GetString(LocaleService.PrefLanguageKey, "");
+                if (persisted != LocaleService.LangHindi)
+                    throw new Exception($"Expected PlayerPrefs '{LocaleService.PrefLanguageKey}' to be 'hi', got '{persisted}'");
+            }
+            finally
+            {
+                loc.SetLanguage(LocaleService.LangEnglish);
+            }
+        }
+
+        public static void Test_Localization_MissingKeyDoesNotCrash()
+        {
+            var loc = LocaleService.Instance;
+            loc.SetLanguage(LocaleService.LangHindi);
+
+            string resultWithFallback = loc.Get("nonexistent_key_xyz123", "Default Fallback String");
+            if (resultWithFallback != "Default Fallback String")
+                throw new Exception($"Expected fallback string for missing key, got '{resultWithFallback}'");
+
+            string resultWithoutFallback = loc.Get("nonexistent_key_xyz123");
+            if (resultWithoutFallback != "nonexistent_key_xyz123")
+                throw new Exception($"Expected key name when fallback is null, got '{resultWithoutFallback}'");
+
+            loc.SetLanguage(LocaleService.LangEnglish);
+        }
+
+        public static void Test_Localization_EnglishFallbackWhenTranslationMissing()
+        {
+            var loc = LocaleService.Instance;
+            try
+            {
+                loc.SetLanguage(LocaleService.LangSantali);
+                string enVal = loc.GetCatalogForLanguage(LocaleService.LangEnglish)["app_title"];
+                if (string.IsNullOrEmpty(enVal))
+                    throw new Exception("English app_title should not be empty");
+
+                string retrieved = loc.Get("app_title");
+                if (string.IsNullOrEmpty(retrieved))
+                    throw new Exception("Santali app_title should return valid text");
+            }
+            finally
+            {
+                loc.SetLanguage(LocaleService.LangEnglish);
+            }
+        }
+
+        public static void Test_Localization_FontFallbackAssetsPresent()
+        {
+            LocaleService.EnsureFallbackFonts();
+            var defaultFont = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            if (defaultFont == null)
+            {
+                defaultFont = TMP_Settings.defaultFontAsset;
+            }
+            if (defaultFont == null)
+                throw new Exception("Default TextMeshPro font asset not found");
+
+            var devFont = Resources.Load<TMP_FontAsset>("Fonts & Materials/NotoSansDevanagari SDF");
+            if (devFont == null)
+                throw new Exception("NotoSansDevanagari SDF font asset not found in Resources/Fonts & Materials");
+
+            var olFont = Resources.Load<TMP_FontAsset>("Fonts & Materials/NotoSansOlChiki SDF");
+            if (olFont == null)
+                throw new Exception("NotoSansOlChiki SDF font asset not found in Resources/Fonts & Materials");
+
+            bool hasDev = false;
+            bool hasOl = false;
+            if (defaultFont.fallbackFontAssetTable != null)
+            {
+                foreach (var fb in defaultFont.fallbackFontAssetTable)
+                {
+                    if (fb == null) continue;
+                    if (fb.name.Contains("Devanagari")) hasDev = true;
+                    if (fb.name.Contains("OlChiki")) hasOl = true;
+                }
+            }
+
+            if (!hasDev || !hasOl)
+            {
+                if (TMP_Settings.fallbackFontAssets != null)
+                {
+                    foreach (var fb in TMP_Settings.fallbackFontAssets)
+                    {
+                        if (fb == null) continue;
+                        if (fb.name.Contains("Devanagari")) hasDev = true;
+                        if (fb.name.Contains("OlChiki")) hasOl = true;
+                    }
+                }
+            }
+
+            if (!hasDev)
+                throw new Exception("Devanagari font asset is not linked in fallback font tables");
+            if (!hasOl)
+                throw new Exception("Ol Chiki font asset is not linked in fallback font tables");
         }
     }
 }

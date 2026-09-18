@@ -13,7 +13,9 @@
 using System;
 using IndustrialSafetyAR.AR;
 using IndustrialSafetyAR.Core.Events;
+using IndustrialSafetyAR.Core.Audio;
 using IndustrialSafetyAR.Assessment;
+using IndustrialSafetyAR.UI;
 using UnityEngine;
 using UnityEngine.EventSystems;
 #if ENABLE_INPUT_SYSTEM
@@ -86,6 +88,13 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         // Domain workflow state machine
         private readonly FireTrainingWorkflow _workflow = new FireTrainingWorkflow();
 
+        // Step Navigator (Step 8A: Guided Step Navigation & State Gating)
+        private readonly GuidedStepNavigator _stepNavigator = new GuidedStepNavigator();
+        public GuidedStepNavigator StepNavigator => _stepNavigator;
+
+        // Touch and gesture discrimination
+        private readonly TouchGestureFilter _gestureFilter = new TouchGestureFilter();
+
         // Runtime state
         private FireInteractionState _state = FireInteractionState.WaitingForTracking;
         private FireHazardMarker _activeHazard;
@@ -95,6 +104,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         private readonly System.Collections.Generic.List<ExtinguisherMarker> _activeExtinguisherMarkers = new System.Collections.Generic.List<ExtinguisherMarker>();
         private ITrainingEventDispatcher _eventDispatcher;
 
+        public TouchGestureFilter GestureFilter => _gestureFilter;
         public FireInteractionState State => _state;
         public FireWorkflowStage WorkflowStage => _workflow.CurrentStage;
         public FireTrainingWorkflow Workflow => _workflow;
@@ -168,6 +178,15 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
         private void HandleWorkflowAssessmentCompleted(TrainingAttempt attempt, AssessmentResult assessment)
         {
+            if (assessment != null && assessment.Passed)
+            {
+                FireAudioService.Instance.PlayFinalPass();
+            }
+            else
+            {
+                FireAudioService.Instance.PlayFinalFail();
+            }
+
             OnAssessmentCompleted?.Invoke(attempt, assessment);
         }
 
@@ -299,6 +318,8 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
             if (_workflow.ConfirmHazardDetected(_eventDispatcher, out var trainingEvent))
             {
+                _stepNavigator.CompleteStep(1, "✓ Hazard acknowledged. Next: Classify hazard.");
+                FireAudioService.Instance.PlayHazardDetected();
                 OnHazardDetected?.Invoke(targetHazard, trainingEvent);
                 return true;
             }
@@ -328,35 +349,33 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 }
 
                 // Step 2: Identify Hazard (Classification)
+                // Worker must use explicit UI classification buttons; tapping 3D hazard gives guidance
                 case FireWorkflowStage.HazardDetected:
                 case FireWorkflowStage.AwaitingIdentification:
                 {
                     var hazard = hitObject.GetComponentInParent<FireHazardMarker>();
                     if (hazard != null)
                     {
-                        return SubmitHazardIdentification(hazard.HazardId);
-                    }
-                    var identifiable = hitObject.GetComponentInParent<IIdentifiableHazard>();
-                    if (identifiable != null)
-                    {
-                        return SubmitHazardIdentification(identifiable.HazardId);
+                        OnFeedbackChanged?.Invoke("Hazard inspected: Electrical Conveyor. Select hazard classification from options below.");
                     }
                     return false;
                 }
 
                 // Step 3: Raise Emergency Alarm
+                // Worker must use explicit alarm activation button; touching fire hazard does not trigger alarm
                 case FireWorkflowStage.HazardIdentified:
                 case FireWorkflowStage.AwaitingAlarm:
                 {
                     var hazard = hitObject.GetComponentInParent<FireHazardMarker>();
                     if (hazard != null)
                     {
-                        return SubmitRaiseAlarm(FireTrainingWorkflow.ActionRaiseAlarm);
+                        OnFeedbackChanged?.Invoke("Action required: Pull / activate emergency alarm using the red button below.");
                     }
                     return false;
                 }
 
                 // Step 4: Select Extinguisher
+                // Worker must select from UI options or tap an ExtinguisherMarker; touching fire hazard does not select CO2
                 case FireWorkflowStage.AlarmRaised:
                 case FireWorkflowStage.AwaitingExtinguisherSelection:
                 {
@@ -366,11 +385,6 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                         bool selected = SubmitExtinguisherSelection(extMarker.ExtinguisherId);
                         if (selected) extMarker.MarkSelected();
                         return selected;
-                    }
-                    var hazard = hitObject.GetComponentInParent<FireHazardMarker>();
-                    if (hazard != null)
-                    {
-                        return SubmitExtinguisherSelection(FireTrainingWorkflow.TargetExtinguisherCO2);
                     }
                     return false;
                 }
@@ -392,10 +406,9 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 // Step 6: PASS Extinguisher Procedure
                 case FireWorkflowStage.SafeDistanceMaintained:
                 {
-                    // PASS: P - Pull Pin
-                    var hazard = hitObject.GetComponentInParent<FireHazardMarker>();
+                    // PASS: P - Pull Pin (UI button or extinguisher marker tap)
                     var extMarker = hitObject.GetComponentInParent<ExtinguisherMarker>();
-                    if (hazard != null || extMarker != null)
+                    if (extMarker != null)
                     {
                         return SubmitPullPin();
                     }
@@ -415,10 +428,9 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
                 case FireWorkflowStage.AimConfirmed:
                 {
-                    // PASS: S - Squeeze handle
-                    var hazard = hitObject.GetComponentInParent<FireHazardMarker>();
+                    // PASS: S - Squeeze handle (UI button or extinguisher marker tap)
                     var extMarker = hitObject.GetComponentInParent<ExtinguisherMarker>();
-                    if (hazard != null || extMarker != null)
+                    if (extMarker != null)
                     {
                         return SubmitSqueeze();
                     }
@@ -427,12 +439,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
                 case FireWorkflowStage.HandleSqueezed:
                 {
-                    // PASS: S - Sweep side to side
-                    var hazard = hitObject.GetComponentInParent<FireHazardMarker>();
-                    if (hazard != null)
-                    {
-                        return SubmitSweep();
-                    }
+                    // PASS: S - Sweep side to side (UI action)
                     return false;
                 }
 
@@ -557,6 +564,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
             _workflow.SetStage(FireWorkflowStage.HazardPlaced);
             OnHazardPlaced?.Invoke(_activeHazard);
+            FireAudioService.Instance.PlayHazardDetected();
             Debug.Log($"[FireArInteractionController] Placed fire hazard marker at {hitPose.position}");
             return _activeHazard;
         }
@@ -581,11 +589,17 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             bool success = _workflow.SubmitHazardIdentification(targetId, _eventDispatcher, out var trainingEvent);
             if (success)
             {
+                _stepNavigator.CompleteStep(2, "✓ Class E Electrical Hazard confirmed! Next: Raise alarm.");
                 if (_activeHazard != null)
                 {
                     _activeHazard.MarkIdentified(FireTrainingWorkflow.HazardClassElectrical);
                 }
+                FireAudioService.Instance.PlayCorrectAction();
                 OnHazardIdentified?.Invoke(trainingEvent);
+            }
+            else
+            {
+                FireAudioService.Instance.PlayIncorrectAction();
             }
             return success;
         }
@@ -600,11 +614,17 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             bool success = _workflow.SubmitRaiseAlarm(actionId, _eventDispatcher, out var trainingEvent);
             if (success)
             {
+                _stepNavigator.CompleteStep(3, "✓ Emergency Alarm Activated! Siren sounding.");
                 if (_activeHazard != null)
                 {
                     _activeHazard.TriggerAlarmVisual();
                 }
+                FireAudioService.Instance.PlayEmergencyAlarm();
                 OnAlarmRaised?.Invoke(trainingEvent);
+            }
+            else
+            {
+                FireAudioService.Instance.PlayIncorrectAction();
             }
             return success;
         }
@@ -619,12 +639,18 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             bool success = _workflow.SubmitSelectExtinguisher(targetId, _eventDispatcher, out var trainingEvent);
             if (success)
             {
+                _stepNavigator.CompleteStep(4, "✓ CO2 Extinguisher selected! Safe for electrical fires.");
                 if (_activeHazard != null)
                 {
                     _activeHazard.MarkExtinguisherSelected(FireTrainingWorkflow.TargetExtinguisherCO2);
                     _activeHazard.ShowDistanceZoneRing(true);
                 }
+                FireAudioService.Instance.PlayCorrectAction();
                 OnExtinguisherSelected?.Invoke(trainingEvent);
+            }
+            else
+            {
+                FireAudioService.Instance.PlayIncorrectAction();
             }
             return success;
         }
@@ -686,11 +712,17 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             bool success = _workflow.SubmitDistanceDecision(distanceMeters, _eventDispatcher, out var trainingEvent);
             if (success)
             {
+                _stepNavigator.CompleteStep(5, "✓ Safe 2.5m distance confirmed. Next: Begin PASS procedure.");
                 if (_activeHazard != null)
                 {
                     _activeHazard.MarkSafeDistanceConfirmed();
                 }
+                FireAudioService.Instance.PlayCorrectAction();
                 OnSafeDistanceDecided?.Invoke(trainingEvent);
+            }
+            else
+            {
+                FireAudioService.Instance.PlayIncorrectAction();
             }
             return success;
         }
@@ -705,11 +737,17 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             bool success = _workflow.SubmitDistanceDecision(decisionId, _eventDispatcher, out var trainingEvent);
             if (success)
             {
+                _stepNavigator.CompleteStep(5, "✓ Safe 2.5m distance confirmed. Next: Begin PASS procedure.");
                 if (_activeHazard != null)
                 {
                     _activeHazard.MarkSafeDistanceConfirmed();
                 }
+                FireAudioService.Instance.PlayCorrectAction();
                 OnSafeDistanceDecided?.Invoke(trainingEvent);
+            }
+            else
+            {
+                FireAudioService.Instance.PlayIncorrectAction();
             }
             return success;
         }
@@ -749,11 +787,25 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 }
                 else if (_workflow.CurrentStage == FireWorkflowStage.ExtinguisherDischarged)
                 {
+                    _stepNavigator.CompleteStep(6, "✓ Fire extinguished! Conveyor fire suppressed.");
                     _activeHazard?.TriggerExtinguisherDischargeVisual();
                     OnExtinguisherProcedureCompleted?.Invoke(trainingEvent);
                 }
 
+                if (_workflow.CurrentStage == FireWorkflowStage.ExtinguisherDischarged)
+                {
+                    FireAudioService.Instance.PlayStepCompleted();
+                }
+                else
+                {
+                    FireAudioService.Instance.PlayPassProcedureAction();
+                }
+
                 OnExtinguisherActionCompleted?.Invoke(actionId, trainingEvent);
+            }
+            else
+            {
+                FireAudioService.Instance.PlayIncorrectAction();
             }
             return success;
         }
@@ -793,6 +845,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             bool success = _workflow.SubmitIdentifyExit(targetId, actionId, _eventDispatcher, out var trainingEvent);
             if (success)
             {
+                _stepNavigator.CompleteStep(7, "✓ Emergency Exit Sector B verified! Next: Evacuate route.");
                 if (_activeExitMarkers != null)
                 {
                     foreach (var marker in _activeExitMarkers)
@@ -803,7 +856,12 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                         }
                     }
                 }
+                FireAudioService.Instance.PlayCorrectAction();
                 OnExitIdentified?.Invoke(trainingEvent);
+            }
+            else
+            {
+                FireAudioService.Instance.PlayIncorrectAction();
             }
             OnExitMarked?.Invoke(targetId, trainingEvent);
             return success;
@@ -909,9 +967,19 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
                 if (_workflow.CurrentStage == FireWorkflowStage.RouteEvacuated)
                 {
+                    _stepNavigator.CompleteStep(8, "✓ Evacuation route completed safely! Next: Assemble at Muster Point Alpha.");
                     SpawnAssemblyPointMarkersIfNeeded();
+                    FireAudioService.Instance.PlayStepCompleted();
                     OnEvacuationCompleted?.Invoke(trainingEvent);
                 }
+                else
+                {
+                    FireAudioService.Instance.PlayWaypointReached();
+                }
+            }
+            else
+            {
+                FireAudioService.Instance.PlayIncorrectAction();
             }
 
             return success;
@@ -925,6 +993,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             bool success = _workflow.SubmitEvacuationSequence(waypointIds, _eventDispatcher, out var trainingEvent);
             if (success)
             {
+                _stepNavigator.CompleteStep(8, "✓ Evacuation route completed safely! Next: Assemble at Muster Point Alpha.");
                 if (_activeRouteMarkers != null)
                 {
                     foreach (var marker in _activeRouteMarkers)
@@ -937,7 +1006,12 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                 }
 
                 SpawnAssemblyPointMarkersIfNeeded();
+                FireAudioService.Instance.PlayStepCompleted();
                 OnEvacuationCompleted?.Invoke(trainingEvent);
+            }
+            else
+            {
+                FireAudioService.Instance.PlayIncorrectAction();
             }
 
             return success;
@@ -1025,6 +1099,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             bool success = _workflow.SubmitReachAssemblyPoint(targetId, actionId, _eventDispatcher, out var trainingEvent);
             if (success)
             {
+                _stepNavigator.CompleteStep(9, "✓ Assembly Point reached! Worker accounted for.");
                 if (_activeAssemblyMarkers != null)
                 {
                     foreach (var marker in _activeAssemblyMarkers)
@@ -1036,8 +1111,13 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
                     }
                 }
 
+                FireAudioService.Instance.PlayStepCompleted();
                 OnAssemblyPointReached?.Invoke(trainingEvent);
                 OnTrainingCompleted?.Invoke(trainingEvent);
+            }
+            else
+            {
+                FireAudioService.Instance.PlayIncorrectAction();
             }
 
             return success;
@@ -1098,65 +1178,12 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
 
         private bool TryGetScreenTap(out Vector2 position)
         {
-            position = Vector2.zero;
-
-#if ENABLE_INPUT_SYSTEM
-            if (Touchscreen.current != null)
-            {
-                var touch = Touchscreen.current.primaryTouch;
-                if (touch.press.wasPressedThisFrame)
-                {
-                    position = touch.position.ReadValue();
-                    return true;
-                }
-            }
-
-            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
-            {
-                position = Mouse.current.position.ReadValue();
-                return true;
-            }
-#endif
-
-            if (Input.touchCount > 0)
-            {
-                UnityEngine.Touch t = Input.GetTouch(0);
-                if (t.phase == UnityEngine.TouchPhase.Began)
-                {
-                    position = t.position;
-                    return true;
-                }
-            }
-            else if (Input.GetMouseButtonDown(0))
-            {
-                position = Input.mousePosition;
-                return true;
-            }
-
-            return false;
+            return _gestureFilter.PollIntentionalTap(out position);
         }
 
         private bool IsPointerOverUI(Vector2 screenPosition)
         {
-            if (EventSystem.current == null) return false;
-
-            if (EventSystem.current.IsPointerOverGameObject())
-            {
-                return true;
-            }
-
-#if ENABLE_INPUT_SYSTEM
-            if (Touchscreen.current != null && Touchscreen.current.primaryTouch.press.isPressed)
-            {
-                int touchId = Touchscreen.current.primaryTouch.touchId.ReadValue();
-                if (EventSystem.current.IsPointerOverGameObject(touchId))
-                {
-                    return true;
-                }
-            }
-#endif
-
-            return false;
+            return TouchGestureFilter.IsPointerOverUI(screenPosition);
         }
 
         /// <summary>
@@ -1165,6 +1192,8 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
         /// </summary>
         public void RetakeTraining()
         {
+            _gestureFilter.Reset();
+
             if (_activeHazard != null)
             {
                 Destroy(_activeHazard.gameObject);
@@ -1217,6 +1246,7 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             }
 
             _workflow.Reset();
+            _stepNavigator.Reset();
             _state = FireInteractionState.ReadyToPlace;
             _workflow.SetStage(FireWorkflowStage.ReadyToPlace);
             OnStateChanged?.Invoke(_state);
