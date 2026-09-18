@@ -43,6 +43,12 @@ namespace IndustrialSafetyAR.Editor
             DoBuild("worker-app-ui-camera-v2.apk", autoRun: true);
         }
 
+        [MenuItem("Industrial Safety AR/Build Gas AR Phase 1 APK")]
+        public static void PerformBuildGasAr()
+        {
+            DoBuild("worker-app-gas-ar-phase1.apk", autoRun: false);
+        }
+
         [MenuItem("Industrial Safety AR/Run Fire Training Tests")]
         public static void PerformRunTests()
         {

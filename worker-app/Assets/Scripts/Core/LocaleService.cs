@@ -423,7 +423,15 @@ namespace IndustrialSafetyAR.Core
                 { "gas_step8_next", "NEXT: FINAL SAFETY CHECK →" },
                 { "gas_step9_title", "FINAL SAFETY CHECK" },
                 { "gas_step9_prompt", "Review compliance checklist. Tap [CONFIRM SAFETY CHECK & COMPLETE →] below:" },
-                { "gas_step9_next", "VIEW ASSESSMENT →" }
+                { "gas_step9_next", "VIEW ASSESSMENT →" },
+                { "detector_title", "MULTI-GAS DETECTOR" },
+                { "detector_status_ready", "MULTI-GAS DETECTOR • READY (SEQUENCE: O2 -> LEL -> H2S)" },
+                { "detector_status_unsafe", "ATMOSPHERE: UNSAFE • DO NOT ENTER" },
+                { "detector_o2_label", "O2 (Oxygen)" },
+                { "detector_lel_label", "LEL (Combustible)" },
+                { "detector_h2s_label", "H2S (Toxic Gas)" },
+                { "detector_btn_test", "TEST" },
+                { "detector_locked", "LOCKED" }
             };
             _catalog[LangEnglish] = en;
 
@@ -671,7 +679,15 @@ namespace IndustrialSafetyAR.Core
                 { "gas_step8_next", "अगला: अंतिम सुरक्षा जांच →" },
                 { "gas_step9_title", "अंतिम सुरक्षा जांच" },
                 { "gas_step9_prompt", "अनुपालन चेकलिस्ट की समीक्षा करें। नीचे [सुरक्षा जांच की पुष्टि करें एवं पूर्ण करें →] दबाएं:" },
-                { "gas_step9_next", "मूल्यांकन देखें →" }
+                { "gas_step9_next", "मूल्यांकन देखें →" },
+                { "detector_title", "मल्टी-गैस डिटेक्टर" },
+                { "detector_status_ready", "मल्टी-गैस डिटेक्टर • तैयार (क्रम: O2 -> LEL -> H2S)" },
+                { "detector_status_unsafe", "वायुमंडल: असुरक्षित • प्रवेश न करें" },
+                { "detector_o2_label", "ऑक्सीजन (O2)" },
+                { "detector_lel_label", "दहनशील गैस (LEL)" },
+                { "detector_h2s_label", "विषाक्त गैस (H2S)" },
+                { "detector_btn_test", "जांचें" },
+                { "detector_locked", "बंद" }
             };
             _catalog[LangHindi] = hi;
 
@@ -919,7 +935,15 @@ namespace IndustrialSafetyAR.Core
                 { "gas_step8_next", "ᱞᱟᱦᱟ: ᱢᱩᱪᱟᱹᱫ ᱨᱩᱠᱷᱤᱭᱟᱹ ᱯᱚᱨᱚᱠ →" },
                 { "gas_step9_title", "ᱢᱩᱪᱟᱹᱫ ᱨᱩᱠᱷᱤᱭᱟᱹ ᱯᱚᱨᱚᱠ" },
                 { "gas_step9_prompt", "ᱨᱩᱠᱷᱤᱭᱟᱹ ᱞᱤᱥᱴᱤ ᱧᱮᱞ ᱢᱮ᱾ ᱞᱟᱛᱟᱨ ᱨᱮ [ᱨᱩᱠᱷᱤᱭᱟᱹ ᱯᱚᱨᱚᱠ ᱴᱷᱟᱹᱣᱠᱟᱹᱭ ᱢᱮ ᱟᱨ ᱯᱩᱨᱟᱹᱣ ᱢᱮ →] ᱞᱤᱱ ᱢᱮ:" },
-                { "gas_step9_next", "ᱚᱨᱡᱚ ᱧᱮᱞ ᱢᱮ →" }
+                { "gas_step9_next", "ᱚᱨᱡᱚ ᱧᱮᱞ ᱢᱮ →" },
+                { "detector_title", "ᱢᱟᱞᱴᱤ-ᱜᱮᱥ ᱰᱤᱴᱮᱠᱴᱚᱨ" },
+                { "detector_status_ready", "ᱢᱟᱞᱴᱤ-ᱜᱮᱥ ᱰᱤᱴᱮᱠᱴᱚᱨ • ᱥᱟᱯᱲᱟᱣ (ᱛᱷᱟᱨ: O2 -> LEL -> H2S)" },
+                { "detector_status_unsafe", "ᱦᱚᱭ-ᱦᱤᱥᱤᱫ: ᱵᱚᱛᱚᱨᱟᱱ • ᱟᱞᱚᱢ ᱵᱚᱞᱚᱱᱟ" },
+                { "detector_o2_label", "ᱚᱠᱥᱤᱡᱮᱱ (O2)" },
+                { "detector_lel_label", "ᱡᱩᱞᱩᱜ ᱜᱮᱥ (LEL)" },
+                { "detector_h2s_label", "ᱵᱤᱥ ᱜᱮᱥ (H2S)" },
+                { "detector_btn_test", "ᱯᱚᱨᱚᱠ" },
+                { "detector_locked", "ᱠᱩᱞᱯᱷᱤ" }
             };
             _catalog[LangSantali] = sat;
         }

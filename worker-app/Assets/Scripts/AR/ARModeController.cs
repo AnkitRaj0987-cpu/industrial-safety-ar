@@ -349,6 +349,7 @@ namespace IndustrialSafetyAR.AR
             if (homeCtrl == null) return false;
 
             return homeCtrl.CurrentState == IndustrialSafetyAR.UI.WorkerHomeController.WorkerAppScreenState.TrainingFire ||
+                   homeCtrl.CurrentState == IndustrialSafetyAR.UI.WorkerHomeController.WorkerAppScreenState.TrainingGas ||
                    (homeCtrl.CurrentState == IndustrialSafetyAR.UI.WorkerHomeController.WorkerAppScreenState.AR && _isARActive);
         }
 

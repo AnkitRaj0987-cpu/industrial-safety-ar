@@ -16,11 +16,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using IndustrialSafetyAR.AR;
 using IndustrialSafetyAR.Assessment;
 using IndustrialSafetyAR.Core;
 using IndustrialSafetyAR.Core.Events;
 using IndustrialSafetyAR.Modules.GasConfinedSpace;
 using IndustrialSafetyAR.UI;
+using UnityEngine;
 
 namespace IndustrialSafetyAR.Tests
 {
@@ -61,6 +63,22 @@ namespace IndustrialSafetyAR.Tests
             if (!RunTest("28_OutboxFinalization_StrictlyIdempotent", Test_28_OutboxFinalization_StrictlyIdempotent, logMessages)) allPassed = false;
             if (!RunTest("29_LocalizationKeys_ExistAcrossAllRequiredLocales", Test_29_LocalizationKeys_ExistAcrossAllRequiredLocales, logMessages)) allPassed = false;
             if (!RunTest("30_GuidedStepNavigator_GasCurriculum", Test_30_GuidedStepNavigator_GasCurriculum, logMessages)) allPassed = false;
+            if (!RunTest("31_GasArInteractionController_Initialization", Test_31_GasArInteractionController_Initialization, logMessages)) allPassed = false;
+            if (!RunTest("32_Step1_HazardRecognition_EmitsGasHazardRecognized", Test_32_Step1_HazardRecognition_EmitsGasHazardRecognized, logMessages)) allPassed = false;
+            if (!RunTest("33_Step1_IncorrectInteraction_DoesNotAdvance", Test_33_Step1_IncorrectInteraction_DoesNotAdvance, logMessages)) allPassed = false;
+            if (!RunTest("34_Step2_DangerZoneRecognized_EmitsEvent", Test_34_Step2_DangerZoneRecognized_EmitsEvent, logMessages)) allPassed = false;
+            if (!RunTest("35_Step2_UnsafeZoneEntry_EmitsPenaltyEvent", Test_35_Step2_UnsafeZoneEntry_EmitsPenaltyEvent, logMessages)) allPassed = false;
+            if (!RunTest("36_Step3_Sequence_StartsAtOxygen", Test_36_Step3_Sequence_StartsAtOxygen, logMessages)) allPassed = false;
+            if (!RunTest("37_Step3_Sequence_OxygenMustCompleteBeforeFlammableUnlocks", Test_37_Step3_Sequence_OxygenMustCompleteBeforeFlammableUnlocks, logMessages)) allPassed = false;
+            if (!RunTest("38_Step3_Sequence_FlammableMustCompleteBeforeToxicUnlocks", Test_38_Step3_Sequence_FlammableMustCompleteBeforeToxicUnlocks, logMessages)) allPassed = false;
+            if (!RunTest("39_Step3_Sequence_H2sCannotBeTestedBeforeLel", Test_39_Step3_Sequence_H2sCannotBeTestedBeforeLel, logMessages)) allPassed = false;
+            if (!RunTest("40_Step3_Readings_ValuesMatchRequired", Test_40_Step3_Readings_ValuesMatchRequired, logMessages)) allPassed = false;
+            if (!RunTest("41_Step3_CompletingAllThree_EmitsAtmosphereAssessmentCompleted", Test_41_Step3_CompletingAllThree_EmitsAtmosphereAssessmentCompleted, logMessages)) allPassed = false;
+            if (!RunTest("42_Step3_FinalAtmosphericStatus_IsUnsafe", Test_42_Step3_FinalAtmosphericStatus_IsUnsafe, logMessages)) allPassed = false;
+            if (!RunTest("43_ArLifecycle_EnabledOnlyWhileGasTrainingActive", Test_43_ArLifecycle_EnabledOnlyWhileGasTrainingActive, logMessages)) allPassed = false;
+            if (!RunTest("44_GasInteractionFeedbackUI_HierarchyAndDetectorComponents", Test_44_GasInteractionFeedbackUI_HierarchyAndDetectorComponents, logMessages)) allPassed = false;
+            if (!RunTest("45_GasHazardMarker_VisualComponentsAndGeometry", Test_45_GasHazardMarker_VisualComponentsAndGeometry, logMessages)) allPassed = false;
+            if (!RunTest("46_Detector_Localization_AllLocalesPresent", Test_46_Detector_Localization_AllLocalesPresent, logMessages)) allPassed = false;
 
             return allPassed;
         }
@@ -706,6 +724,500 @@ namespace IndustrialSafetyAR.Tests
         {
             ExecuteSteps1To8(workflow, bus);
             workflow.CompleteGasTraining(bus, out _);
+        }
+
+        public static void Test_31_GasArInteractionController_Initialization()
+        {
+            var go = new GameObject("Test_GasArInteractionController_31");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                if (ctrl.Workflow == null) throw new Exception("GasArInteractionController.Workflow is null.");
+                if (ctrl.StepNavigator == null) throw new Exception("GasArInteractionController.StepNavigator is null.");
+                if (ctrl.State != GasInteractionState.WaitingForTracking && ctrl.State != GasInteractionState.ReadyToPlace)
+                    throw new Exception($"Unexpected initial state: {ctrl.State}");
+
+                var marker = ctrl.SpawnHazardMarker(Vector3.zero, Quaternion.identity);
+                if (marker == null) throw new Exception("SpawnHazardMarker returned null.");
+                if (ctrl.ActiveHazard != marker) throw new Exception("ctrl.ActiveHazard does not match spawned marker.");
+                if (ctrl.State != GasInteractionState.AwaitingHazardRecognition && ctrl.State != GasInteractionState.HazardPlaced)
+                    throw new Exception($"Expected state AwaitingHazardRecognition, got {ctrl.State}");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_32_Step1_HazardRecognition_EmitsGasHazardRecognized()
+        {
+            var go = new GameObject("Test_GasAr_32");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                ctrl.SpawnHazardMarker(Vector3.zero, Quaternion.identity);
+
+                TrainingEvent received = null;
+                ctrl.OnHazardRecognized += evt => received = evt;
+
+                bool success = ctrl.ProcessHazardTap();
+                if (!success) throw new Exception("ProcessHazardTap returned false.");
+                if (received == null) throw new Exception("OnHazardRecognized event was not received.");
+                if (received.EventType != "gas_hazard_recognized") throw new Exception($"EventType mismatch: expected 'gas_hazard_recognized', got '{received.EventType}'");
+                if (received.Outcome != "success") throw new Exception($"Outcome mismatch: expected 'success', got '{received.Outcome}'");
+                if (!ctrl.ActiveHazard.IsHazardRecognized) throw new Exception("ActiveHazard.IsHazardRecognized should be true.");
+                if (!ctrl.StepNavigator.IsStepCompleted(1)) throw new Exception("StepNavigator step 1 should be marked completed.");
+                if (!ctrl.StepNavigator.CanGoNext) throw new Exception("StepNavigator.CanGoNext should be true after step 1 completion.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_33_Step1_IncorrectInteraction_DoesNotAdvance()
+        {
+            var go = new GameObject("Test_GasAr_33");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                ctrl.SpawnHazardMarker(Vector3.zero, Quaternion.identity);
+
+                bool dangerTap = ctrl.ProcessDangerZonePerimeterTap();
+                if (dangerTap) throw new Exception("ProcessDangerZonePerimeterTap on step 1 should return false.");
+                if (ctrl.StepNavigator.IsStepCompleted(1)) throw new Exception("Step 1 should not be completed.");
+                if (ctrl.StepNavigator.CanGoNext) throw new Exception("StepNavigator.CanGoNext should be false.");
+                if (bus.DispatchedEvents.Count > 0) throw new Exception("No events should be emitted on invalid interaction.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_34_Step2_DangerZoneRecognized_EmitsEvent()
+        {
+            var go = new GameObject("Test_GasAr_34");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                ctrl.SpawnHazardMarker(Vector3.zero, Quaternion.identity);
+
+                // Complete step 1
+                ctrl.ProcessHazardTap();
+                ctrl.AdvanceToNextStep();
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 2) throw new Exception($"Expected StepNavigator at step 2, got {ctrl.StepNavigator.CurrentStepIndex}");
+
+                TrainingEvent received = null;
+                ctrl.OnDangerZoneRecognized += evt => received = evt;
+
+                bool success = ctrl.ProcessDangerZonePerimeterTap();
+                if (!success) throw new Exception("ProcessDangerZonePerimeterTap returned false.");
+                if (received == null) throw new Exception("OnDangerZoneRecognized event was not received.");
+                if (received.EventType != "danger_zone_recognized") throw new Exception($"Expected 'danger_zone_recognized', got '{received.EventType}'");
+                if (received.Outcome != "success") throw new Exception($"Expected outcome 'success', got '{received.Outcome}'");
+                if (!ctrl.ActiveHazard.IsDangerZoneMarked) throw new Exception("ActiveHazard.IsDangerZoneMarked should be true.");
+                if (!ctrl.StepNavigator.IsStepCompleted(2)) throw new Exception("Step 2 should be marked completed.");
+                if (!ctrl.StepNavigator.CanGoNext) throw new Exception("StepNavigator.CanGoNext should be true after step 2.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_35_Step2_UnsafeZoneEntry_EmitsPenaltyEvent()
+        {
+            var go = new GameObject("Test_GasAr_35");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                ctrl.SpawnHazardMarker(Vector3.zero, Quaternion.identity);
+
+                // Step 1
+                ctrl.ProcessHazardTap();
+                ctrl.AdvanceToNextStep();
+
+                TrainingEvent unsafeEvent = null;
+                ctrl.OnUnsafeZoneEntry += evt => unsafeEvent = evt;
+
+                bool recorded = ctrl.ProcessUnsafeZoneTap();
+                if (!recorded) throw new Exception("ProcessUnsafeZoneTap returned false.");
+                if (unsafeEvent == null) throw new Exception("OnUnsafeZoneEntry event was not emitted.");
+                if (unsafeEvent.EventType != "unsafe_zone_entry") throw new Exception($"Expected 'unsafe_zone_entry', got '{unsafeEvent.EventType}'");
+                if (unsafeEvent.Outcome != "failure") throw new Exception($"Expected outcome 'failure', got '{unsafeEvent.Outcome}'");
+
+                // Evaluate rubric scoring to verify penalty
+                var rubric = RubricLoader.LoadGasConfinedSpaceRubric();
+                var result = LocalAssessmentEngine.Evaluate(new List<TrainingEvent>(bus.DispatchedEvents), rubric);
+
+                if (result.TotalPenalties != 5.00f)
+                {
+                    throw new Exception($"Expected 5.00 total penalties for unsafe_zone_entry, got {result.TotalPenalties}");
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_36_Step3_Sequence_StartsAtOxygen()
+        {
+            var go = new GameObject("Test_GasAr_36");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                ctrl.SpawnHazardMarker(Vector3.zero, Quaternion.identity);
+
+                ctrl.ProcessHazardTap();
+                ctrl.AdvanceToNextStep();
+                ctrl.ProcessDangerZonePerimeterTap();
+                ctrl.AdvanceToNextStep();
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 3) throw new Exception($"Expected StepNavigator at step 3, got {ctrl.StepNavigator.CurrentStepIndex}");
+
+                var sim = ctrl.Workflow.AtmosphericSimulator;
+                if (!sim.IsTestStarted) throw new Exception("Atmospheric simulator test should be started on step 3.");
+                if (sim.IsOxygenTested) throw new Exception("Oxygen should not be tested yet.");
+                if (sim.IsFlammableTested) throw new Exception("Flammable should not be tested yet.");
+                if (sim.IsToxicTested) throw new Exception("Toxic should not be tested yet.");
+                if (sim.IsAssessmentCompleted) throw new Exception("Assessment should not be completed yet.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_37_Step3_Sequence_OxygenMustCompleteBeforeFlammableUnlocks()
+        {
+            var go = new GameObject("Test_GasAr_37");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                ctrl.SpawnHazardMarker(Vector3.zero, Quaternion.identity);
+
+                ctrl.ProcessHazardTap();
+                ctrl.AdvanceToNextStep();
+                ctrl.ProcessDangerZonePerimeterTap();
+                ctrl.AdvanceToNextStep();
+
+                // Attempting flammable before oxygen must be rejected
+                bool flammBeforeO2 = ctrl.TestSensor(GasSensorType.Flammable, out string err);
+                if (flammBeforeO2) throw new Exception("Testing Flammable before Oxygen should fail.");
+                if (string.IsNullOrEmpty(err) || !err.Contains("Oxygen")) throw new Exception($"Expected sequence violation error mentioning Oxygen, got '{err}'");
+
+                // Testing Oxygen succeeds
+                bool o2Success = ctrl.TestSensor(GasSensorType.Oxygen, out err);
+                if (!o2Success) throw new Exception($"Testing Oxygen failed: {err}");
+                if (!ctrl.Workflow.AtmosphericSimulator.IsOxygenTested) throw new Exception("IsOxygenTested should be true.");
+
+                // Now testing Flammable succeeds
+                bool flammSuccess = ctrl.TestSensor(GasSensorType.Flammable, out err);
+                if (!flammSuccess) throw new Exception($"Testing Flammable after Oxygen failed: {err}");
+                if (!ctrl.Workflow.AtmosphericSimulator.IsFlammableTested) throw new Exception("IsFlammableTested should be true.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_38_Step3_Sequence_FlammableMustCompleteBeforeToxicUnlocks()
+        {
+            var go = new GameObject("Test_GasAr_38");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                ctrl.SpawnHazardMarker(Vector3.zero, Quaternion.identity);
+
+                ctrl.ProcessHazardTap();
+                ctrl.AdvanceToNextStep();
+                ctrl.ProcessDangerZonePerimeterTap();
+                ctrl.AdvanceToNextStep();
+
+                ctrl.TestSensor(GasSensorType.Oxygen, out _);
+
+                // Attempting Toxic before Flammable must be rejected
+                bool toxicBeforeFlamm = ctrl.TestSensor(GasSensorType.Toxic, out string err);
+                if (toxicBeforeFlamm) throw new Exception("Testing Toxic before Flammable should fail.");
+                if (string.IsNullOrEmpty(err) || (!err.Contains("Flammable") && !err.Contains("LEL")))
+                    throw new Exception($"Expected sequence violation mentioning Flammable/LEL, got '{err}'");
+
+                ctrl.TestSensor(GasSensorType.Flammable, out _);
+
+                // Now testing Toxic succeeds
+                bool toxicSuccess = ctrl.TestSensor(GasSensorType.Toxic, out err);
+                if (!toxicSuccess) throw new Exception($"Testing Toxic after Flammable failed: {err}");
+                if (!ctrl.Workflow.AtmosphericSimulator.IsToxicTested) throw new Exception("IsToxicTested should be true.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_39_Step3_Sequence_H2sCannotBeTestedBeforeLel()
+        {
+            var go = new GameObject("Test_GasAr_39");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                ctrl.SpawnHazardMarker(Vector3.zero, Quaternion.identity);
+
+                ctrl.ProcessHazardTap();
+                ctrl.AdvanceToNextStep();
+                ctrl.ProcessDangerZonePerimeterTap();
+                ctrl.AdvanceToNextStep();
+
+                bool toxicFirst = ctrl.TestSensor(GasSensorType.Toxic, out string err);
+                if (toxicFirst) throw new Exception("Testing Toxic first should be rejected.");
+                if (ctrl.Workflow.AtmosphericSimulator.IsToxicTested) throw new Exception("IsToxicTested must remain false.");
+
+                ctrl.TestSensor(GasSensorType.Oxygen, out _);
+
+                bool toxicSecond = ctrl.TestSensor(GasSensorType.Toxic, out err);
+                if (toxicSecond) throw new Exception("Testing Toxic before LEL should be rejected.");
+                if (ctrl.Workflow.AtmosphericSimulator.IsToxicTested) throw new Exception("IsToxicTested must remain false.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_40_Step3_Readings_ValuesMatchRequired()
+        {
+            var o2 = GasAtmosphericSimulator.DefaultOxygenReading;
+            var lel = GasAtmosphericSimulator.DefaultFlammableReading;
+            var h2s = GasAtmosphericSimulator.DefaultToxicReading;
+
+            if (Math.Abs(o2.Value - 19.1f) > 0.01f) throw new Exception($"O2 reading expected 19.1, got {o2.Value}");
+            if (o2.Unit != "% Vol") throw new Exception($"O2 unit expected '% Vol', got '{o2.Unit}'");
+            if (o2.IsSafe) throw new Exception("O2 at 19.1% should be unsafe (< 19.5% baseline).");
+
+            if (Math.Abs(lel.Value - 18.0f) > 0.01f) throw new Exception($"LEL reading expected 18.0, got {lel.Value}");
+            if (lel.Unit != "% LEL") throw new Exception($"LEL unit expected '% LEL', got '{lel.Unit}'");
+            if (lel.IsSafe) throw new Exception("LEL at 18% should be unsafe (> 10% entry limit).");
+
+            if (Math.Abs(h2s.Value - 35.0f) > 0.01f) throw new Exception($"H2S reading expected 35.0, got {h2s.Value}");
+            if (h2s.Unit != "ppm") throw new Exception($"H2S unit expected 'ppm', got '{h2s.Unit}'");
+            if (h2s.IsSafe) throw new Exception("H2S at 35 ppm should be unsafe (> 10 ppm ceiling).");
+        }
+
+        public static void Test_41_Step3_CompletingAllThree_EmitsAtmosphereAssessmentCompleted()
+        {
+            var go = new GameObject("Test_GasAr_41");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                ctrl.SpawnHazardMarker(Vector3.zero, Quaternion.identity);
+
+                ctrl.ProcessHazardTap();
+                ctrl.AdvanceToNextStep();
+                ctrl.ProcessDangerZonePerimeterTap();
+                ctrl.AdvanceToNextStep();
+
+                TrainingEvent assessmentEvent = null;
+                ctrl.OnAtmosphericAssessmentCompleted += evt => assessmentEvent = evt;
+
+                ctrl.TestSensor(GasSensorType.Oxygen, out _);
+                ctrl.TestSensor(GasSensorType.Flammable, out _);
+                ctrl.TestSensor(GasSensorType.Toxic, out _);
+
+                if (assessmentEvent == null) throw new Exception("OnAtmosphericAssessmentCompleted was not emitted.");
+                if (assessmentEvent.EventType != "atmosphere_assessment_completed")
+                    throw new Exception($"Expected 'atmosphere_assessment_completed', got '{assessmentEvent.EventType}'");
+                if (assessmentEvent.Outcome != "success")
+                    throw new Exception($"Expected outcome 'success', got '{assessmentEvent.Outcome}'");
+                if (assessmentEvent.TargetId != "confined_space_atmosphere")
+                    throw new Exception($"Expected TargetId 'confined_space_atmosphere', got '{assessmentEvent.TargetId}'");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_42_Step3_FinalAtmosphericStatus_IsUnsafe()
+        {
+            var go = new GameObject("Test_GasAr_42");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                ctrl.SpawnHazardMarker(Vector3.zero, Quaternion.identity);
+
+                ctrl.ProcessHazardTap();
+                ctrl.AdvanceToNextStep();
+                ctrl.ProcessDangerZonePerimeterTap();
+                ctrl.AdvanceToNextStep();
+
+                TrainingEvent assessmentEvent = null;
+                ctrl.OnAtmosphericAssessmentCompleted += evt => assessmentEvent = evt;
+
+                ctrl.TestSensor(GasSensorType.Oxygen, out _);
+                ctrl.TestSensor(GasSensorType.Flammable, out _);
+                ctrl.TestSensor(GasSensorType.Toxic, out _);
+
+                if (ctrl.Workflow.AtmosphericSimulator.OverallAtmosphereSafe)
+                    throw new Exception("Overall atmosphere should be UNSAFE.");
+
+                if (!assessmentEvent.Payload.TryGetValue("overall_status", out string status) || status != "unsafe")
+                    throw new Exception($"Expected payload 'overall_status' = 'unsafe', got '{status}'");
+
+                if (!assessmentEvent.Payload.TryGetValue("hazard_detected", out string hazard) || hazard != "true")
+                    throw new Exception($"Expected payload 'hazard_detected' = 'true', got '{hazard}'");
+
+                if (!ctrl.StepNavigator.IsStepCompleted(3))
+                    throw new Exception("StepNavigator step 3 should be marked completed.");
+                if (!ctrl.StepNavigator.CanGoNext)
+                    throw new Exception("StepNavigator.CanGoNext should be true after step 3 completes.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_43_ArLifecycle_EnabledOnlyWhileGasTrainingActive()
+        {
+            var homeObj = new GameObject("Test_WorkerHome_43");
+            var arObj = new GameObject("Test_ArMode_43");
+            try
+            {
+                var home = homeObj.AddComponent<WorkerHomeController>();
+                var arMode = arObj.AddComponent<ARModeController>();
+
+                arMode.DisableAR();
+                if (arMode.IsARActive) throw new Exception("AR should be OFF on initial home state.");
+
+                home.StartGasTraining();
+                if (home.CurrentState != WorkerHomeController.WorkerAppScreenState.TrainingGas)
+                    throw new Exception($"Expected state TrainingGas, got {home.CurrentState}");
+                if (!arMode.IsARActive)
+                    throw new Exception("AR should be ON during active Gas training.");
+
+                home.ReturnToHome();
+                arMode.DisableAR();
+                if (home.CurrentState != WorkerHomeController.WorkerAppScreenState.Home)
+                    throw new Exception($"Expected state Home, got {home.CurrentState}");
+                if (arMode.IsARActive)
+                    throw new Exception("AR should be OFF after returning to Home.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(homeObj);
+                UnityEngine.Object.DestroyImmediate(arObj);
+            }
+        }
+
+        public static void Test_44_GasInteractionFeedbackUI_HierarchyAndDetectorComponents()
+        {
+            var go = new GameObject("Test_FeedbackUI_44");
+            try
+            {
+                var ui = go.AddComponent<GasInteractionFeedbackUI>();
+                ui.ShowTrainingUI();
+
+                if (ui.Canvas == null) throw new Exception("GasInteractionFeedbackUI canvas is null.");
+                if (ui.NextButton == null) throw new Exception("NextButton is null.");
+                if (ui.BackButton == null) throw new Exception("BackButton is null.");
+                if (ui.Step1ActionButton == null) throw new Exception("Step1ActionButton is null.");
+                if (ui.Step2ActionButton == null) throw new Exception("Step2ActionButton is null.");
+                if (ui.BtnTestO2 == null) throw new Exception("BtnTestO2 is null.");
+                if (ui.BtnTestLel == null) throw new Exception("BtnTestLel is null.");
+                if (ui.BtnTestH2s == null) throw new Exception("BtnTestH2s is null.");
+                if (ui.DetectorHeaderStatus == null) throw new Exception("DetectorHeaderStatus is null.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_45_GasHazardMarker_VisualComponentsAndGeometry()
+        {
+            var go = new GameObject("Test_HazardMarker_45");
+            try
+            {
+                var marker = go.AddComponent<GasHazardMarker>();
+                marker.EnsureVisuals();
+
+                if (marker.FloatingLabel == null) throw new Exception("FloatingLabel is null.");
+                if (marker.HazardId != "hazard_gas_confined_space")
+                    throw new Exception($"Expected hazardId 'hazard_gas_confined_space', got '{marker.HazardId}'");
+
+                marker.AcknowledgeHazard();
+                if (!marker.IsHazardRecognized) throw new Exception("IsHazardRecognized should be true.");
+
+                marker.ShowDangerZoneRing(true);
+                marker.MarkDangerZoneEstablished();
+                if (!marker.IsDangerZoneMarked) throw new Exception("IsDangerZoneMarked should be true.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_46_Detector_Localization_AllLocalesPresent()
+        {
+            var loc = LocaleService.Instance;
+            string[] requiredKeys = new[]
+            {
+                "gas_header_title",
+                "gas_step1_title",
+                "gas_step1_prompt",
+                "gas_step2_title",
+                "gas_step2_prompt",
+                "gas_step3_title",
+                "gas_step3_prompt",
+                "detector_title",
+                "detector_status_ready",
+                "detector_status_unsafe",
+                "detector_o2_label",
+                "detector_lel_label",
+                "detector_h2s_label",
+                "detector_btn_test",
+                "detector_locked"
+            };
+
+            foreach (var lang in new[] { "en", "hi", "sat" })
+            {
+                loc.SetLanguage(lang);
+                foreach (var key in requiredKeys)
+                {
+                    string val = loc.Get(key);
+                    if (string.IsNullOrEmpty(val))
+                    {
+                        throw new Exception($"Missing localization key '{key}' in locale '{lang}'");
+                    }
+                }
+            }
+
+            loc.SetLanguage("en");
         }
     }
 }

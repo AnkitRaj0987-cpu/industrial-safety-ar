@@ -17,6 +17,7 @@ using IndustrialSafetyAR.AR;
 using IndustrialSafetyAR.Core;
 using IndustrialSafetyAR.Core.Audio;
 using IndustrialSafetyAR.Modules.FireExplosion;
+using IndustrialSafetyAR.Modules.GasConfinedSpace;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -34,6 +35,7 @@ namespace IndustrialSafetyAR.UI
             AR,
             Settings,
             TrainingFire,
+            TrainingGas,
             Results,
             Certificates,
             Profile
@@ -237,6 +239,7 @@ namespace IndustrialSafetyAR.UI
         public Button HeaderSettingsButton => _headerSettingsButton;
         public Button SettingsCloseButton => _settingsCloseButton;
         public Button FireStartButton => _fireStartButton;
+        public Button GasStartButton => _gasStartButton;
         public Button SoundToggleButton => _soundToggleButton;
         public Button AlarmToggleButton => _alarmToggleButton;
         public Button NavHomeButton => _navHomeBtn;
@@ -359,6 +362,18 @@ namespace IndustrialSafetyAR.UI
             if (fireCtrl != null)
             {
                 fireCtrl.enabled = false;
+            }
+
+            var gasCtrl = FindAnyObjectByType<GasArInteractionController>(FindObjectsInactive.Include);
+            if (gasCtrl != null)
+            {
+                gasCtrl.enabled = false;
+            }
+
+            var gasUI = FindAnyObjectByType<GasInteractionFeedbackUI>(FindObjectsInactive.Include);
+            if (gasUI != null)
+            {
+                gasUI.HideTrainingUI();
             }
 
             UpdateOfflineStatus();
@@ -584,6 +599,57 @@ namespace IndustrialSafetyAR.UI
         }
 
         /// <summary>
+        /// Initiates the Gas Leak & Confined Space training scenario and authoritatively enables AR camera.
+        /// </summary>
+        public void StartGasTraining()
+        {
+            EnsureUIHierarchy();
+            _currentState = WorkerAppScreenState.TrainingGas;
+            if (_homeRoot != null) _homeRoot.SetActive(false);
+            if (_settingsRoot != null) _settingsRoot.SetActive(false);
+
+            // Authoritatively enable AR subsystem and camera
+            if (ARModeController.Instance != null)
+            {
+                ARModeController.Instance.EnableAR();
+            }
+
+            // Activate Gas AR Interaction UI and ensure canvas is visible
+            var gasUI = FindAnyObjectByType<GasInteractionFeedbackUI>(FindObjectsInactive.Include);
+            if (gasUI == null)
+            {
+                var uiObj = new GameObject("GasInteractionFeedbackUI");
+                gasUI = uiObj.AddComponent<GasInteractionFeedbackUI>();
+            }
+            if (gasUI != null)
+            {
+                gasUI.gameObject.SetActive(true);
+                gasUI.ShowTrainingUI();
+            }
+
+            var gasCtrl = FindAnyObjectByType<GasArInteractionController>(FindObjectsInactive.Include);
+            if (gasCtrl == null)
+            {
+                var ctrlObj = new GameObject("GasArInteractionController");
+                gasCtrl = ctrlObj.AddComponent<GasArInteractionController>();
+            }
+            if (gasCtrl != null)
+            {
+                gasCtrl.gameObject.SetActive(true);
+                gasCtrl.enabled = true;
+                if (gasUI != null)
+                {
+                    gasUI.Controller = gasCtrl;
+                }
+            }
+
+            if (FireAudioService.Instance != null)
+            {
+                FireAudioService.Instance.PlayStepCompleted();
+            }
+        }
+
+        /// <summary>
         /// Returns from training scenario back to the Worker Home menu, disabling AR camera.
         /// </summary>
         public void ReturnToHome()
@@ -727,8 +793,8 @@ namespace IndustrialSafetyAR.UI
             if (_gasTitleText != null) _gasTitleText.text = $"<b>{loc.Get("module_gas_title", "Gas Leak & Confined Space Safety")}</b>";
             if (_gasArBadgeText != null) _gasArBadgeText.text = $"<b>{loc.Get("badge_ar", "AR")}</b>";
             if (_gasDescText != null) _gasDescText.text = loc.Get("module_gas_desc", "Atmospheric monitoring, multi-gas detector calibration, forced air ventilation, and confined space entry rescue protocols.");
-            if (_gasStatusText != null) _gasStatusText.text = $"○ {loc.Get("status_coming_soon", "COMING SOON")}";
-            if (_gasStartButtonText != null) _gasStartButtonText.text = $"<b>{loc.Get("status_coming_soon", "COMING SOON")}</b>";
+            if (_gasStatusText != null) _gasStatusText.text = $"● {loc.Get("status_available", "AVAILABLE")}";
+            if (_gasStartButtonText != null) _gasStartButtonText.text = $"<b>{loc.Get("btn_start_training", "START TRAINING →")}</b>";
 
             // Home Prominent Settings Button
             if (_homeSettingsButtonText != null) _homeSettingsButtonText.text = $"<b>{loc.Get("settings_title", "APPLICATION SETTINGS")}</b>";
@@ -1264,8 +1330,8 @@ namespace IndustrialSafetyAR.UI
             _gasDescText.alignment = TextAlignmentOptions.Left;
             _gasDescText.color = new Color(0.55f, 0.60f, 0.68f);
 
-            // Gas Button (Disabled)
-            var gasBtnObj = new GameObject("DisabledGasButton");
+            // Gas Button (Active)
+            var gasBtnObj = new GameObject("GasStartButton");
             gasBtnObj.transform.SetParent(gasCardObj.transform, false);
             var gbRect = gasBtnObj.AddComponent<RectTransform>();
             gbRect.anchorMin = new Vector2(0.04f, 0.04f);
@@ -1274,9 +1340,12 @@ namespace IndustrialSafetyAR.UI
             gbRect.offsetMax = Vector2.zero;
 
             var gbImg = gasBtnObj.AddComponent<Image>();
-            gbImg.color = new Color(0.16f, 0.20f, 0.26f, 0.8f);
+            gbImg.color = new Color(0.85f, 0.52f, 0.10f, 0.98f);
             _gasStartButton = gasBtnObj.AddComponent<Button>();
-            _gasStartButton.interactable = false;
+            _gasStartButton.targetGraphic = gbImg;
+            _gasStartButton.interactable = true;
+            var gbTap = gasBtnObj.AddComponent<TapGatedButton>();
+            gbTap.Initialize(() => StartGasTraining());
 
             var gbTextObj = new GameObject("Text");
             gbTextObj.transform.SetParent(gasBtnObj.transform, false);
@@ -1286,10 +1355,10 @@ namespace IndustrialSafetyAR.UI
 
             _gasStartButtonText = gbTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _gasStartButtonText.font = defaultFont;
-            _gasStartButtonText.text = "<b>COMING SOON</b>";
+            _gasStartButtonText.text = "<b>START TRAINING →</b>";
             _gasStartButtonText.fontSize = 15;
             _gasStartButtonText.alignment = TextAlignmentOptions.Center;
-            _gasStartButtonText.color = new Color(0.5f, 0.55f, 0.65f);
+            _gasStartButtonText.color = Color.white;
 
             // Prominent Settings Button in Home view (y: 0.02 to 0.12 of container)
             var prominentSettingsBtnObj = new GameObject("ProminentSettingsButton");
