@@ -36,6 +36,13 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
         AtmosphericTestLelCompleted,
         AtmosphericTestH2sCompleted,
         AtmosphericAssessmentCompleted,
+        AwaitingPpeSelection,
+        PpeSelected,
+        AwaitingPpeVerification,
+        PpeVerified,
+        AwaitingBuddySystem,
+        AttendantAssigned,
+        CommunicationChecked,
         StepCompleted
     }
 
@@ -72,21 +79,46 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
         // Runtime state
         private GasInteractionState _state = GasInteractionState.WaitingForTracking;
         private GasHazardMarker _activeHazard;
+        private GasAttendantMarker _activeAttendant;
         private ITrainingEventDispatcher _eventDispatcher;
+
+        // Step 4: PPE Selection state
+        private readonly System.Collections.Generic.HashSet<string> _selectedPpeItems =
+            new System.Collections.Generic.HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+
+        // Step 5: PPE Verification state
+        private bool _isSealCheckPassed;
+        private bool _isHarnessFitPassed;
+        private bool _isCylinderPressurePassed;
 
         public GasInteractionState State => _state;
         public GasWorkflowStage WorkflowStage => _workflow.CurrentStage;
         public GasTrainingWorkflow Workflow => _workflow;
         public GasHazardMarker ActiveHazard => _activeHazard;
+        public GasAttendantMarker ActiveAttendant => _activeAttendant;
         public string CurrentStepId => _workflow.CurrentStepId;
+
+        public System.Collections.Generic.IReadOnlyCollection<string> SelectedPpeItems => _selectedPpeItems;
+        public bool IsSealCheckPassed => _isSealCheckPassed;
+        public bool IsHarnessFitPassed => _isHarnessFitPassed;
+        public bool IsCylinderPressurePassed => _isCylinderPressurePassed;
+        public bool IsAttendantAssigned => _workflow.IsAttendantAssigned;
+        public bool IsCommunicationChecked => _workflow.IsCommunicationChecked;
 
         public event Action<GasInteractionState> OnStateChanged;
         public event Action<GasHazardMarker> OnHazardPlaced;
+        public event Action<GasAttendantMarker> OnAttendantPlaced;
         public event Action<TrainingEvent> OnHazardRecognized;
         public event Action<TrainingEvent> OnDangerZoneRecognized;
         public event Action<TrainingEvent> OnUnsafeZoneEntry;
         public event Action<TrainingEvent> OnAtmosphericTestStepCompleted;
         public event Action<TrainingEvent> OnAtmosphericAssessmentCompleted;
+        public event Action<TrainingEvent> OnPpeSelected;
+        public event Action<TrainingEvent> OnPpeSelectionIncorrect;
+        public event Action<TrainingEvent> OnPpeVerified;
+        public event Action<TrainingEvent> OnPpeVerificationFailed;
+        public event Action<TrainingEvent> OnAttendantAssigned;
+        public event Action<TrainingEvent> OnCommunicationChecked;
         public event Action<string> OnFeedbackChanged;
 
         private void Awake()
@@ -260,6 +292,16 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
 
         private void ProcessHit(RaycastHit hit)
         {
+            var attendantMarker = hit.collider.GetComponentInParent<GasAttendantMarker>();
+            if (attendantMarker != null)
+            {
+                if (_stepNavigator.CurrentStepIndex == 6)
+                {
+                    AssignAttendant();
+                    return;
+                }
+            }
+
             var hazardMarker = hit.collider.GetComponentInParent<GasHazardMarker>();
             if (hazardMarker != null)
             {
@@ -480,6 +522,302 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
         }
 
         // =============================================================
+        // STEP 4: PPE SELECTION (SAFETY PROTOCOL - ENTRY PROHIBITED)
+        // =============================================================
+        public void PrepareStep4PpeSelection()
+        {
+            SetState(GasInteractionState.AwaitingPpeSelection);
+            SetFeedback("ATMOSPHERE: UNSAFE. Select required PPE kit. NOTE: PPE does NOT make an unsafe atmosphere safe!");
+        }
+
+        public bool TogglePpeItem(string itemId)
+        {
+            if (_selectedPpeItems.Contains(itemId))
+            {
+                _selectedPpeItems.Remove(itemId);
+                PlayAudioCorrect();
+                TriggerHapticLight();
+                return false;
+            }
+            else
+            {
+                _selectedPpeItems.Add(itemId);
+                return SelectPpeItem(itemId);
+            }
+        }
+
+        public bool SelectPpeItem(string itemId)
+        {
+            if (_stepNavigator.CurrentStepIndex != 4) return false;
+
+            if (!_selectedPpeItems.Contains(itemId))
+            {
+                _selectedPpeItems.Add(itemId);
+            }
+
+            // Immediately catch dangerous respiratory distractors
+            if (itemId == GasPpeSystem.ItemDustMask || itemId == GasPpeSystem.ItemClothMask)
+            {
+                _workflow.SubmitPpeSelection(_selectedPpeItems, _eventDispatcher, out TrainingEvent failureEvent, out string rejectionMsg);
+                PlayAudioIncorrect();
+                TriggerHapticWarning();
+                SetFeedback(rejectionMsg ?? "CRITICAL: Dust and surgical masks provide ZERO protection against toxic gas or oxygen deficiency!");
+                if (failureEvent != null)
+                {
+                    OnPpeSelectionIncorrect?.Invoke(failureEvent);
+                }
+                return false;
+            }
+
+            PlayAudioCorrect();
+            TriggerHapticLight();
+            return true;
+        }
+
+        public bool IsPpeItemSelected(string itemId)
+        {
+            return _selectedPpeItems.Contains(itemId);
+        }
+
+        public bool SubmitPpeSelection()
+        {
+            if (_stepNavigator.CurrentStepIndex != 4) return false;
+
+            if (_workflow.SubmitPpeSelection(_selectedPpeItems, _eventDispatcher, out TrainingEvent emittedEvent, out string feedback))
+            {
+                SetState(GasInteractionState.PpeSelected);
+                _stepNavigator.CompleteStep(4, "✓ Complete PPE kit selected. Next: Inspect and verify PPE.");
+                PlayAudioCorrect();
+                TriggerHapticLight();
+                SetFeedback(feedback);
+                OnPpeSelected?.Invoke(emittedEvent);
+                return true;
+            }
+            else
+            {
+                PlayAudioIncorrect();
+                TriggerHapticWarning();
+                SetFeedback(feedback ?? "Incomplete selection: Safety Helmet, Harness, Gloves, Boots, and SCBA required.");
+                if (emittedEvent != null && emittedEvent.EventType == "ppe_selection_incorrect")
+                {
+                    OnPpeSelectionIncorrect?.Invoke(emittedEvent);
+                }
+                return false;
+            }
+        }
+
+        // =============================================================
+        // STEP 5: PPE VERIFICATION (EQUIPMENT INTEGRITY CHECKS)
+        // =============================================================
+        public void PrepareStep5PpeVerification()
+        {
+            SetState(GasInteractionState.AwaitingPpeVerification);
+            SetFeedback("Verify PPE equipment readiness: Face seal check, harness inspection, and cylinder pressure.");
+        }
+
+        public bool VerifyScbaSeal()
+        {
+            if (_stepNavigator.CurrentStepIndex != 5) return false;
+            _isSealCheckPassed = true;
+            PlayAudioCorrect();
+            TriggerHapticLight();
+            SetFeedback("✓ SCBA Face seal verified: Positive-pressure hermetic seal intact.");
+            CheckAutoPpeVerification();
+            return true;
+        }
+
+        public bool VerifyHarnessFit()
+        {
+            if (_stepNavigator.CurrentStepIndex != 5) return false;
+            _isHarnessFitPassed = true;
+            PlayAudioCorrect();
+            TriggerHapticLight();
+            SetFeedback("✓ Harness fit verified: Straps, buckles, and dorsal D-ring fully inspected.");
+            CheckAutoPpeVerification();
+            return true;
+        }
+
+        public bool CheckCylinderPressure()
+        {
+            if (_stepNavigator.CurrentStepIndex != 5) return false;
+            _isCylinderPressurePassed = true;
+            PlayAudioCorrect();
+            TriggerHapticLight();
+            SetFeedback("✓ Cylinder pressure verified: 300 Bar (4500 PSI) full charge confirmed.");
+            CheckAutoPpeVerification();
+            return true;
+        }
+
+        private void CheckAutoPpeVerification()
+        {
+            if (_isSealCheckPassed && _isHarnessFitPassed && _isCylinderPressurePassed)
+            {
+                SubmitPpeVerification();
+            }
+        }
+
+        public bool SubmitPpeVerification(bool submitPrematurely = false)
+        {
+            if (_stepNavigator.CurrentStepIndex != 5) return false;
+
+            if (_workflow.VerifyPpe(_isSealCheckPassed, _isHarnessFitPassed, _isCylinderPressurePassed, _eventDispatcher, out TrainingEvent emittedEvent, out string feedback))
+            {
+                SetState(GasInteractionState.PpeVerified);
+                _stepNavigator.CompleteStep(5, "✓ PPE verified: SCBA seal, harness, cylinder confirmed.");
+                PlayAudioCorrect();
+                TriggerHapticLight();
+                SetFeedback(feedback);
+                OnPpeVerified?.Invoke(emittedEvent);
+                return true;
+            }
+            else
+            {
+                PlayAudioIncorrect();
+                TriggerHapticWarning();
+                SetFeedback(feedback ?? "PPE verification failed: Complete all 3 verification checks before proceeding.");
+                if (emittedEvent != null)
+                {
+                    OnPpeVerificationFailed?.Invoke(emittedEvent);
+                }
+                return false;
+            }
+        }
+
+        // =============================================================
+        // STEP 6: BUDDY / ATTENDANT SYSTEM (STAYS OUTSIDE)
+        // =============================================================
+        public bool PrepareStep6BuddySystem()
+        {
+            SetState(GasInteractionState.AwaitingBuddySystem);
+            SetFeedback("RULE: Outside attendant must remain OUTSIDE the confined space. Assign attendant & check radio.");
+
+            if (_activeAttendant == null && _activeHazard != null)
+            {
+                Vector3 forwardDir = _activeHazard.transform.forward;
+                if (forwardDir == Vector3.zero) forwardDir = Vector3.forward;
+                Vector3 spawnPos = _activeHazard.transform.position + forwardDir * 3.4f;
+                SpawnAttendantMarker(spawnPos, Quaternion.LookRotation(-forwardDir));
+            }
+            return true;
+        }
+
+        public GasAttendantMarker SpawnAttendantMarker(Vector3 position, Quaternion rotation)
+        {
+            if (_activeAttendant != null)
+            {
+                _activeAttendant.transform.position = position;
+                _activeAttendant.transform.rotation = rotation;
+                return _activeAttendant;
+            }
+
+            var go = new GameObject("OutsideSafetyAttendant");
+            go.transform.position = position;
+            go.transform.rotation = rotation;
+            _activeAttendant = go.AddComponent<GasAttendantMarker>();
+            _activeAttendant.EnsureVisuals();
+            _activeAttendant.OnAttendantTapped += _ => AssignAttendant();
+            OnAttendantPlaced?.Invoke(_activeAttendant);
+            return _activeAttendant;
+        }
+
+        public bool AssignAttendant(string attendantId = "attendant_guard_outside")
+        {
+            if (_stepNavigator.CurrentStepIndex != 6) return false;
+
+            // Validate attendant position is strictly outside danger zone (>= 3.0m)
+            if (_activeAttendant != null && _activeHazard != null)
+            {
+                if (!_activeAttendant.IsPositionOutsideDangerZone(_activeHazard.transform.position, 3.0f))
+                {
+                    SetFeedback("CRITICAL ERROR: Attendant must remain OUTSIDE the 3.0m danger perimeter!");
+                    PlayAudioIncorrect();
+                    TriggerHapticWarning();
+                    return false;
+                }
+            }
+
+            if (_workflow.AssignAttendant(attendantId, _eventDispatcher, out TrainingEvent emittedEvent))
+            {
+                if (_activeAttendant != null)
+                {
+                    _activeAttendant.AcknowledgeAssigned();
+                }
+
+                SetState(GasInteractionState.AttendantAssigned);
+                PlayAudioCorrect();
+                TriggerHapticLight();
+                SetFeedback("✓ Attendant assigned OUTSIDE the confined space. Now verify two-way radio communication.");
+                OnAttendantAssigned?.Invoke(emittedEvent);
+                return true;
+            }
+
+            PlayAudioIncorrect();
+            TriggerHapticWarning();
+            return false;
+        }
+
+        public bool CheckCommunication(string protocol = "intrinsically_safe_two_way_radio")
+        {
+            if (_stepNavigator.CurrentStepIndex != 6) return false;
+
+            if (!_workflow.IsAttendantAssigned)
+            {
+                SetFeedback("Assign outside attendant before testing radio communication.");
+                PlayAudioIncorrect();
+                TriggerHapticWarning();
+                return false;
+            }
+
+            if (_workflow.CheckCommunication(protocol, _eventDispatcher, out TrainingEvent emittedEvent))
+            {
+                if (_activeAttendant != null)
+                {
+                    _activeAttendant.AcknowledgeCommunicationVerified();
+                }
+
+                SetState(GasInteractionState.CommunicationChecked);
+                _stepNavigator.CompleteStep(6, "✓ Attendant assigned outside. Radio communication verified.");
+                PlayRadioCommunicationAudio();
+                TriggerHapticLight();
+                SetFeedback("✓ Communication verified: Two-way intrinsically safe radio link active.");
+                OnCommunicationChecked?.Invoke(emittedEvent);
+                return true;
+            }
+
+            PlayAudioIncorrect();
+            TriggerHapticWarning();
+            return false;
+        }
+
+        // =============================================================
+        // RETAKE / RESET
+        // =============================================================
+        public void ResetScenario()
+        {
+            _selectedPpeItems.Clear();
+            _isSealCheckPassed = false;
+            _isHarnessFitPassed = false;
+            _isCylinderPressurePassed = false;
+
+            if (_activeAttendant != null)
+            {
+                _activeAttendant.ResetMarker();
+            }
+
+            if (_activeHazard != null)
+            {
+                _activeHazard.ResetMarker();
+            }
+
+            _workflow.ResetWorkflow();
+            _stepNavigator.ResetToStep(1);
+
+            SetState(GasInteractionState.HazardPlaced);
+            SetState(GasInteractionState.AwaitingHazardRecognition);
+            SetFeedback("Training reset. Identify the gas accumulation hazard at the opening.");
+        }
+
+        // =============================================================
         // STEP NAVIGATION HOOKS
         // =============================================================
         public void AdvanceToNextStep()
@@ -496,6 +834,18 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
                 else if (nextStep == 3)
                 {
                     PrepareStep3AtmosphericTest();
+                }
+                else if (nextStep == 4)
+                {
+                    PrepareStep4PpeSelection();
+                }
+                else if (nextStep == 5)
+                {
+                    PrepareStep5PpeVerification();
+                }
+                else if (nextStep == 6)
+                {
+                    PrepareStep6BuddySystem();
                 }
             }
         }
@@ -533,6 +883,14 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
             if (FireAudioService.Instance != null)
             {
                 FireAudioService.Instance.PlayEmergencyAlarm();
+            }
+        }
+
+        private void PlayRadioCommunicationAudio()
+        {
+            if (FireAudioService.Instance != null)
+            {
+                FireAudioService.Instance.PlaySound(FireSoundType.PassProcedureAction);
             }
         }
 

@@ -79,6 +79,37 @@ namespace IndustrialSafetyAR.Tests
             if (!RunTest("44_GasInteractionFeedbackUI_HierarchyAndDetectorComponents", Test_44_GasInteractionFeedbackUI_HierarchyAndDetectorComponents, logMessages)) allPassed = false;
             if (!RunTest("45_GasHazardMarker_VisualComponentsAndGeometry", Test_45_GasHazardMarker_VisualComponentsAndGeometry, logMessages)) allPassed = false;
             if (!RunTest("46_Detector_Localization_AllLocalesPresent", Test_46_Detector_Localization_AllLocalesPresent, logMessages)) allPassed = false;
+            if (!RunTest("47_Step4_PpeSelection_UIHierarchyAndWarning", Test_47_Step4_PpeSelection_UIHierarchyAndWarning, logMessages)) allPassed = false;
+            if (!RunTest("48_Step4_PpeSelection_UnsafeWarningText_MatchesRequirement", Test_48_Step4_PpeSelection_UnsafeWarningText_MatchesRequirement, logMessages)) allPassed = false;
+            if (!RunTest("49_Step4_PpeSelection_Distractor_DustMask_EmitsIncorrectAndPenalty", Test_49_Step4_PpeSelection_Distractor_DustMask_EmitsIncorrectAndPenalty, logMessages)) allPassed = false;
+            if (!RunTest("50_Step4_PpeSelection_Distractor_SurgicalMask_EmitsIncorrectAndPenalty", Test_50_Step4_PpeSelection_Distractor_SurgicalMask_EmitsIncorrectAndPenalty, logMessages)) allPassed = false;
+            if (!RunTest("51_Step4_PpeSelection_Distractor_BlocksProgression", Test_51_Step4_PpeSelection_Distractor_BlocksProgression, logMessages)) allPassed = false;
+            if (!RunTest("52_Step4_PpeSelection_CorrectionAllowedAfterDistractor", Test_52_Step4_PpeSelection_CorrectionAllowedAfterDistractor, logMessages)) allPassed = false;
+            if (!RunTest("53_Step4_PpeSelection_IncompleteSelection_MissingScba_Fails", Test_53_Step4_PpeSelection_IncompleteSelection_MissingScba_Fails, logMessages)) allPassed = false;
+            if (!RunTest("54_Step4_PpeSelection_IncompleteSelection_MissingHarness_Fails", Test_54_Step4_PpeSelection_IncompleteSelection_MissingHarness_Fails, logMessages)) allPassed = false;
+            if (!RunTest("55_Step4_PpeSelection_CompleteKit_EmitsPpeSelected", Test_55_Step4_PpeSelection_CompleteKit_EmitsPpeSelected, logMessages)) allPassed = false;
+            if (!RunTest("56_Step4_PpeSelection_CanGoNext_Gating", Test_56_Step4_PpeSelection_CanGoNext_Gating, logMessages)) allPassed = false;
+            if (!RunTest("57_Step5_PpeVerification_UIHierarchy", Test_57_Step5_PpeVerification_UIHierarchy, logMessages)) allPassed = false;
+            if (!RunTest("58_Step5_PpeVerification_InitialState_Unverified", Test_58_Step5_PpeVerification_InitialState_Unverified, logMessages)) allPassed = false;
+            if (!RunTest("59_Step5_PpeVerification_IncompleteVerification_EmitsFailurePenalty", Test_59_Step5_PpeVerification_IncompleteVerification_EmitsFailurePenalty, logMessages)) allPassed = false;
+            if (!RunTest("60_Step5_PpeVerification_CheckSeal_UpdatesState", Test_60_Step5_PpeVerification_CheckSeal_UpdatesState, logMessages)) allPassed = false;
+            if (!RunTest("61_Step5_PpeVerification_CheckHarness_UpdatesState", Test_61_Step5_PpeVerification_CheckHarness_UpdatesState, logMessages)) allPassed = false;
+            if (!RunTest("62_Step5_PpeVerification_CheckCylinder_UpdatesState", Test_62_Step5_PpeVerification_CheckCylinder_UpdatesState, logMessages)) allPassed = false;
+            if (!RunTest("63_Step5_PpeVerification_CompleteAllThree_EmitsPpeVerified", Test_63_Step5_PpeVerification_CompleteAllThree_EmitsPpeVerified, logMessages)) allPassed = false;
+            if (!RunTest("64_Step5_PpeVerification_CanGoNext_Gating", Test_64_Step5_PpeVerification_CanGoNext_Gating, logMessages)) allPassed = false;
+            if (!RunTest("65_Step6_BuddySystem_UIHierarchy", Test_65_Step6_BuddySystem_UIHierarchy, logMessages)) allPassed = false;
+            if (!RunTest("66_Step6_BuddySystem_AttendantMarker_SpawnAndGeometry", Test_66_Step6_BuddySystem_AttendantMarker_SpawnAndGeometry, logMessages)) allPassed = false;
+            if (!RunTest("67_Step6_BuddySystem_AttendantMarker_DistanceValidation_InsideDangerZone_Rejected", Test_67_Step6_BuddySystem_AttendantMarker_DistanceValidation_InsideDangerZone_Rejected, logMessages)) allPassed = false;
+            if (!RunTest("68_Step6_BuddySystem_AttendantMarker_DistanceValidation_OutsideDangerZone_Accepted", Test_68_Step6_BuddySystem_AttendantMarker_DistanceValidation_OutsideDangerZone_Accepted, logMessages)) allPassed = false;
+            if (!RunTest("69_Step6_BuddySystem_AssignAttendant_EmitsAttendantAssigned", Test_69_Step6_BuddySystem_AssignAttendant_EmitsAttendantAssigned, logMessages)) allPassed = false;
+            if (!RunTest("70_Step6_BuddySystem_RadioCheck_BeforeAttendantAssigned_Blocked", Test_70_Step6_BuddySystem_RadioCheck_BeforeAttendantAssigned_Blocked, logMessages)) allPassed = false;
+            if (!RunTest("71_Step6_BuddySystem_RadioCheck_AfterAttendantAssigned_EmitsCommunicationChecked", Test_71_Step6_BuddySystem_RadioCheck_AfterAttendantAssigned_EmitsCommunicationChecked, logMessages)) allPassed = false;
+            if (!RunTest("72_Step6_BuddySystem_CanGoNext_Gating", Test_72_Step6_BuddySystem_CanGoNext_Gating, logMessages)) allPassed = false;
+            if (!RunTest("73_Retake_ResetsPhase2State_Idempotently", Test_73_Retake_ResetsPhase2State_Idempotently, logMessages)) allPassed = false;
+            if (!RunTest("74_Step4_To_Step6_EndToEnd_Flow", Test_74_Step4_To_Step6_EndToEnd_Flow, logMessages)) allPassed = false;
+            if (!RunTest("75_Phase2_LocalizationKeys_ExistAcrossAllLocales", Test_75_Phase2_LocalizationKeys_ExistAcrossAllLocales, logMessages)) allPassed = false;
+            if (!RunTest("76_Step4_Distractor_PenaltyScoringDeduction", Test_76_Step4_Distractor_PenaltyScoringDeduction, logMessages)) allPassed = false;
+            if (!RunTest("77_GasArInteractionController_RaycastTap_AttendantMarker", Test_77_GasArInteractionController_RaycastTap_AttendantMarker, logMessages)) allPassed = false;
 
             return allPassed;
         }
@@ -1218,6 +1249,892 @@ namespace IndustrialSafetyAR.Tests
             }
 
             loc.SetLanguage("en");
+        }
+
+        private static void SetupArSteps1To3(GasArInteractionController ctrl)
+        {
+            ctrl.SpawnHazardMarker(Vector3.zero, Quaternion.identity);
+            ctrl.ProcessHazardTap();
+            ctrl.AdvanceToNextStep();
+            ctrl.ProcessDangerZonePerimeterTap();
+            ctrl.AdvanceToNextStep();
+            ctrl.TestSensor(GasSensorType.Oxygen, out _);
+            ctrl.TestSensor(GasSensorType.Flammable, out _);
+            ctrl.TestSensor(GasSensorType.Toxic, out _);
+            ctrl.AdvanceToNextStep();
+        }
+
+        private static void SetupArSteps1To4(GasArInteractionController ctrl)
+        {
+            SetupArSteps1To3(ctrl);
+            ctrl.SelectPpeItem(GasPpeSystem.ItemHelmet);
+            ctrl.SelectPpeItem(GasPpeSystem.ItemHarness);
+            ctrl.SelectPpeItem(GasPpeSystem.ItemGloves);
+            ctrl.SelectPpeItem(GasPpeSystem.ItemBoots);
+            ctrl.SelectPpeItem(GasPpeSystem.ItemScba);
+            ctrl.SubmitPpeSelection();
+            ctrl.AdvanceToNextStep();
+        }
+
+        private static void SetupArSteps1To5(GasArInteractionController ctrl)
+        {
+            SetupArSteps1To4(ctrl);
+            ctrl.VerifyScbaSeal();
+            ctrl.VerifyHarnessFit();
+            ctrl.CheckCylinderPressure();
+            ctrl.AdvanceToNextStep();
+        }
+
+        public static void Test_47_Step4_PpeSelection_UIHierarchyAndWarning()
+        {
+            var go = new GameObject("Test_UI_47");
+            try
+            {
+                var ui = go.AddComponent<GasInteractionFeedbackUI>();
+                ui.ShowTrainingUI();
+                if (ui.PpePaletteRootObj == null) throw new Exception("PpePaletteRootObj is null.");
+                if (ui.BtnConfirmPpe == null) throw new Exception("BtnConfirmPpe is null.");
+
+                string[] expectedItems = new[]
+                {
+                    GasPpeSystem.ItemHelmet,
+                    GasPpeSystem.ItemHarness,
+                    GasPpeSystem.ItemGloves,
+                    GasPpeSystem.ItemBoots,
+                    GasPpeSystem.ItemScba,
+                    GasPpeSystem.ItemDustMask,
+                    GasPpeSystem.ItemClothMask
+                };
+
+                foreach (var item in expectedItems)
+                {
+                    var btn = ui.GetPpeButton(item);
+                    if (btn == null) throw new Exception($"Missing PPE button for item '{item}'");
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_48_Step4_PpeSelection_UnsafeWarningText_MatchesRequirement()
+        {
+            var loc = LocaleService.Instance;
+            string warningEn = loc.Get("ppe_unsafe_warning");
+            if (string.IsNullOrEmpty(warningEn)) throw new Exception("ppe_unsafe_warning is empty in English.");
+            if (warningEn.IndexOf("not make an unsafe atmosphere safe", StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                throw new Exception($"ppe_unsafe_warning must state PPE does NOT make unsafe atmosphere safe. Got: '{warningEn}'");
+            }
+        }
+
+        public static void Test_49_Step4_PpeSelection_Distractor_DustMask_EmitsIncorrectAndPenalty()
+        {
+            var go = new GameObject("Test_GasAr_49");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To3(ctrl);
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 4) throw new Exception($"Expected step 4, got {ctrl.StepNavigator.CurrentStepIndex}");
+
+                TrainingEvent failureEvt = null;
+                ctrl.OnPpeSelectionIncorrect += evt => failureEvt = evt;
+
+                bool selected = ctrl.SelectPpeItem(GasPpeSystem.ItemDustMask);
+                if (selected) throw new Exception("Dust mask selection should return false.");
+                if (failureEvt == null) throw new Exception("OnPpeSelectionIncorrect event was not emitted.");
+                if (failureEvt.EventType != "ppe_selection_incorrect") throw new Exception($"Expected 'ppe_selection_incorrect', got '{failureEvt.EventType}'");
+                if (failureEvt.Outcome != "failure") throw new Exception($"Expected outcome 'failure', got '{failureEvt.Outcome}'");
+
+                var rubric = RubricLoader.LoadGasConfinedSpaceRubric();
+                var result = LocalAssessmentEngine.Evaluate(new List<TrainingEvent>(bus.DispatchedEvents), rubric);
+                if (result.TotalPenalties != 5.00f)
+                {
+                    throw new Exception($"Expected 5.00 total penalties for dust mask distractor, got {result.TotalPenalties}");
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_50_Step4_PpeSelection_Distractor_SurgicalMask_EmitsIncorrectAndPenalty()
+        {
+            var go = new GameObject("Test_GasAr_50");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To3(ctrl);
+
+                TrainingEvent failureEvt = null;
+                ctrl.OnPpeSelectionIncorrect += evt => failureEvt = evt;
+
+                bool selected = ctrl.SelectPpeItem(GasPpeSystem.ItemClothMask);
+                if (selected) throw new Exception("Surgical/cloth mask selection should return false.");
+                if (failureEvt == null) throw new Exception("OnPpeSelectionIncorrect event was not emitted.");
+                if (failureEvt.EventType != "ppe_selection_incorrect") throw new Exception($"Expected 'ppe_selection_incorrect', got '{failureEvt.EventType}'");
+
+                var rubric = RubricLoader.LoadGasConfinedSpaceRubric();
+                var result = LocalAssessmentEngine.Evaluate(new List<TrainingEvent>(bus.DispatchedEvents), rubric);
+                if (result.TotalPenalties != 5.00f)
+                {
+                    throw new Exception($"Expected 5.00 total penalties for surgical mask distractor, got {result.TotalPenalties}");
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_51_Step4_PpeSelection_Distractor_BlocksProgression()
+        {
+            var go = new GameObject("Test_GasAr_51");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To3(ctrl);
+
+                // Select valid items
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHelmet);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHarness);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemGloves);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemBoots);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemScba);
+                // Also select distractor
+                ctrl.SelectPpeItem(GasPpeSystem.ItemDustMask);
+
+                bool confirmed = ctrl.SubmitPpeSelection();
+                if (confirmed) throw new Exception("PPE confirmation must fail when a distractor is selected.");
+                if (ctrl.StepNavigator.CanGoNext) throw new Exception("StepNavigator.CanGoNext must be false.");
+                if (ctrl.State == GasInteractionState.PpeSelected) throw new Exception("State should not be PpeSelected.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_52_Step4_PpeSelection_CorrectionAllowedAfterDistractor()
+        {
+            var go = new GameObject("Test_GasAr_52");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To3(ctrl);
+
+                // First select distractor
+                ctrl.SelectPpeItem(GasPpeSystem.ItemDustMask);
+                // Worker corrects their mistake by toggling off the distractor
+                ctrl.TogglePpeItem(GasPpeSystem.ItemDustMask);
+                if (ctrl.IsPpeItemSelected(GasPpeSystem.ItemDustMask)) throw new Exception("Dust mask should no longer be selected.");
+
+                // Select the 5 required items
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHelmet);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHarness);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemGloves);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemBoots);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemScba);
+
+                bool confirmed = ctrl.SubmitPpeSelection();
+                if (!confirmed) throw new Exception("Correction after distractor should allow valid PPE confirmation.");
+                if (ctrl.State != GasInteractionState.PpeSelected) throw new Exception($"Expected state PpeSelected, got {ctrl.State}");
+                if (!ctrl.StepNavigator.IsStepCompleted(4)) throw new Exception("Step 4 should be marked completed.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_53_Step4_PpeSelection_IncompleteSelection_MissingScba_Fails()
+        {
+            var go = new GameObject("Test_GasAr_53");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To3(ctrl);
+
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHelmet);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHarness);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemGloves);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemBoots);
+                // Missing SCBA
+
+                bool confirmed = ctrl.SubmitPpeSelection();
+                if (confirmed) throw new Exception("Selection missing SCBA should fail.");
+                if (ctrl.StepNavigator.IsStepCompleted(4)) throw new Exception("Step 4 should not be completed.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_54_Step4_PpeSelection_IncompleteSelection_MissingHarness_Fails()
+        {
+            var go = new GameObject("Test_GasAr_54");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To3(ctrl);
+
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHelmet);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemGloves);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemBoots);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemScba);
+                // Missing Harness
+
+                bool confirmed = ctrl.SubmitPpeSelection();
+                if (confirmed) throw new Exception("Selection missing Harness should fail.");
+                if (ctrl.StepNavigator.IsStepCompleted(4)) throw new Exception("Step 4 should not be completed.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_55_Step4_PpeSelection_CompleteKit_EmitsPpeSelected()
+        {
+            var go = new GameObject("Test_GasAr_55");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To3(ctrl);
+
+                TrainingEvent successEvt = null;
+                ctrl.OnPpeSelected += evt => successEvt = evt;
+
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHelmet);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHarness);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemGloves);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemBoots);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemScba);
+
+                bool confirmed = ctrl.SubmitPpeSelection();
+                if (!confirmed) throw new Exception("SubmitPpeSelection returned false for valid kit.");
+                if (successEvt == null) throw new Exception("OnPpeSelected event was not emitted.");
+                if (successEvt.EventType != "ppe_selected") throw new Exception($"Expected 'ppe_selected', got '{successEvt.EventType}'");
+                if (successEvt.Outcome != "success") throw new Exception($"Expected outcome 'success', got '{successEvt.Outcome}'");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_56_Step4_PpeSelection_CanGoNext_Gating()
+        {
+            var go = new GameObject("Test_GasAr_56");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To3(ctrl);
+
+                if (ctrl.StepNavigator.CanGoNext) throw new Exception("CanGoNext should be false before PPE selection.");
+
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHelmet);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHarness);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemGloves);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemBoots);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemScba);
+                ctrl.SubmitPpeSelection();
+
+                if (!ctrl.StepNavigator.CanGoNext) throw new Exception("CanGoNext should be true after PPE selection confirmed.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_57_Step5_PpeVerification_UIHierarchy()
+        {
+            var go = new GameObject("Test_UI_57");
+            try
+            {
+                var ui = go.AddComponent<GasInteractionFeedbackUI>();
+                ui.ShowTrainingUI();
+                if (ui.PpeVerificationRootObj == null) throw new Exception("PpeVerificationRootObj is null.");
+                if (ui.BtnVerifySeal == null) throw new Exception("BtnVerifySeal is null.");
+                if (ui.BtnVerifyHarness == null) throw new Exception("BtnVerifyHarness is null.");
+                if (ui.BtnCheckPressure == null) throw new Exception("BtnCheckPressure is null.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_58_Step5_PpeVerification_InitialState_Unverified()
+        {
+            var go = new GameObject("Test_GasAr_58");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To4(ctrl);
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 5) throw new Exception($"Expected step 5, got {ctrl.StepNavigator.CurrentStepIndex}");
+                if (ctrl.IsSealCheckPassed) throw new Exception("IsSealCheckPassed should be false initially.");
+                if (ctrl.IsHarnessFitPassed) throw new Exception("IsHarnessFitPassed should be false initially.");
+                if (ctrl.IsCylinderPressurePassed) throw new Exception("IsCylinderPressurePassed should be false initially.");
+                if (ctrl.StepNavigator.IsStepCompleted(5)) throw new Exception("Step 5 should not be completed initially.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_59_Step5_PpeVerification_IncompleteVerification_EmitsFailurePenalty()
+        {
+            var go = new GameObject("Test_GasAr_59");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To4(ctrl);
+
+                TrainingEvent failureEvt = null;
+                ctrl.OnPpeVerificationFailed += evt => failureEvt = evt;
+
+                // Perform only seal check, leaving harness and cylinder unverified
+                ctrl.VerifyScbaSeal();
+                bool submitted = ctrl.SubmitPpeVerification();
+                if (submitted) throw new Exception("SubmitPpeVerification should fail when checks are incomplete.");
+                if (failureEvt == null) throw new Exception("OnPpeVerificationFailed was not emitted.");
+                if (failureEvt.EventType != "ppe_verification_failed") throw new Exception($"Expected 'ppe_verification_failed', got '{failureEvt.EventType}'");
+                if (failureEvt.Outcome != "failure") throw new Exception($"Expected outcome 'failure', got '{failureEvt.Outcome}'");
+
+                var rubric = RubricLoader.LoadGasConfinedSpaceRubric();
+                var result = LocalAssessmentEngine.Evaluate(new List<TrainingEvent>(bus.DispatchedEvents), rubric);
+                if (result.TotalPenalties != 5.00f)
+                {
+                    throw new Exception($"Expected 5.00 total penalties for ppe_verification_failed, got {result.TotalPenalties}");
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_60_Step5_PpeVerification_CheckSeal_UpdatesState()
+        {
+            var go = new GameObject("Test_GasAr_60");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To4(ctrl);
+
+                bool result = ctrl.VerifyScbaSeal();
+                if (!result) throw new Exception("VerifyScbaSeal returned false.");
+                if (!ctrl.IsSealCheckPassed) throw new Exception("IsSealCheckPassed should be true.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_61_Step5_PpeVerification_CheckHarness_UpdatesState()
+        {
+            var go = new GameObject("Test_GasAr_61");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To4(ctrl);
+
+                bool result = ctrl.VerifyHarnessFit();
+                if (!result) throw new Exception("VerifyHarnessFit returned false.");
+                if (!ctrl.IsHarnessFitPassed) throw new Exception("IsHarnessFitPassed should be true.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_62_Step5_PpeVerification_CheckCylinder_UpdatesState()
+        {
+            var go = new GameObject("Test_GasAr_62");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To4(ctrl);
+
+                bool result = ctrl.CheckCylinderPressure();
+                if (!result) throw new Exception("CheckCylinderPressure returned false.");
+                if (!ctrl.IsCylinderPressurePassed) throw new Exception("IsCylinderPressurePassed should be true.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_63_Step5_PpeVerification_CompleteAllThree_EmitsPpeVerified()
+        {
+            var go = new GameObject("Test_GasAr_63");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To4(ctrl);
+
+                TrainingEvent successEvt = null;
+                ctrl.OnPpeVerified += evt => successEvt = evt;
+
+                ctrl.VerifyScbaSeal();
+                ctrl.VerifyHarnessFit();
+                ctrl.CheckCylinderPressure();
+
+                if (successEvt == null) throw new Exception("OnPpeVerified was not emitted.");
+                if (successEvt.EventType != "ppe_verified") throw new Exception($"Expected 'ppe_verified', got '{successEvt.EventType}'");
+                if (successEvt.Outcome != "success") throw new Exception($"Expected outcome 'success', got '{successEvt.Outcome}'");
+                if (ctrl.State != GasInteractionState.PpeVerified) throw new Exception($"Expected state PpeVerified, got {ctrl.State}");
+                if (!ctrl.StepNavigator.IsStepCompleted(5)) throw new Exception("Step 5 should be completed.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_64_Step5_PpeVerification_CanGoNext_Gating()
+        {
+            var go = new GameObject("Test_GasAr_64");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To4(ctrl);
+
+                if (ctrl.StepNavigator.CanGoNext) throw new Exception("CanGoNext should be false before verification.");
+
+                ctrl.VerifyScbaSeal();
+                ctrl.VerifyHarnessFit();
+                if (ctrl.StepNavigator.CanGoNext) throw new Exception("CanGoNext should still be false before cylinder check.");
+
+                ctrl.CheckCylinderPressure();
+                if (!ctrl.StepNavigator.CanGoNext) throw new Exception("CanGoNext should be true after all 3 checks verified.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_65_Step6_BuddySystem_UIHierarchy()
+        {
+            var go = new GameObject("Test_UI_65");
+            try
+            {
+                var ui = go.AddComponent<GasInteractionFeedbackUI>();
+                ui.ShowTrainingUI();
+                if (ui.BuddySystemRootObj == null) throw new Exception("BuddySystemRootObj is null.");
+                if (ui.BtnAssignAttendant == null) throw new Exception("BtnAssignAttendant is null.");
+                if (ui.BtnCheckCommunication == null) throw new Exception("BtnCheckCommunication is null.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_66_Step6_BuddySystem_AttendantMarker_SpawnAndGeometry()
+        {
+            var go = new GameObject("Test_AttendantMarker_66");
+            try
+            {
+                var marker = go.AddComponent<GasAttendantMarker>();
+                marker.EnsureVisuals();
+
+                if (marker.AttendantId != "attendant_guard_outside")
+                    throw new Exception($"Expected attendantId 'attendant_guard_outside', got '{marker.AttendantId}'");
+                if (marker.IsAssigned) throw new Exception("IsAssigned should be false initially.");
+                if (marker.IsCommunicationVerified) throw new Exception("IsCommunicationVerified should be false initially.");
+                if (marker.FloatingLabel == null && marker.LabelMesh == null)
+                    throw new Exception("Expected either FloatingLabel or LabelMesh on attendant marker.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_67_Step6_BuddySystem_AttendantMarker_DistanceValidation_InsideDangerZone_Rejected()
+        {
+            var go = new GameObject("Test_Attendant_67");
+            try
+            {
+                go.transform.position = new Vector3(0f, 0f, 2.0f);
+                var marker = go.AddComponent<GasAttendantMarker>();
+                bool outside = marker.IsPositionOutsideDangerZone(Vector3.zero, 3.0f);
+                if (outside) throw new Exception("Position at 2.0m should be rejected as inside 3.0m danger zone.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_68_Step6_BuddySystem_AttendantMarker_DistanceValidation_OutsideDangerZone_Accepted()
+        {
+            var go = new GameObject("Test_Attendant_68");
+            try
+            {
+                go.transform.position = new Vector3(0f, 0f, 3.5f);
+                var marker = go.AddComponent<GasAttendantMarker>();
+                bool outside = marker.IsPositionOutsideDangerZone(Vector3.zero, 3.0f);
+                if (!outside) throw new Exception("Position at 3.5m should be accepted as outside 3.0m danger zone.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_69_Step6_BuddySystem_AssignAttendant_EmitsAttendantAssigned()
+        {
+            var go = new GameObject("Test_GasAr_69");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To5(ctrl);
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 6) throw new Exception($"Expected step 6, got {ctrl.StepNavigator.CurrentStepIndex}");
+
+                TrainingEvent assignEvt = null;
+                ctrl.OnAttendantAssigned += evt => assignEvt = evt;
+
+                bool assigned = ctrl.AssignAttendant("attendant_guard_outside");
+                if (!assigned) throw new Exception("AssignAttendant returned false.");
+                if (assignEvt == null) throw new Exception("OnAttendantAssigned was not emitted.");
+                if (assignEvt.EventType != "attendant_assigned") throw new Exception($"Expected 'attendant_assigned', got '{assignEvt.EventType}'");
+                if (ctrl.ActiveAttendant != null && !ctrl.ActiveAttendant.IsAssigned)
+                    throw new Exception("ActiveAttendant.IsAssigned should be true.");
+                if (ctrl.State != GasInteractionState.AttendantAssigned)
+                    throw new Exception($"Expected state AttendantAssigned, got {ctrl.State}");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_70_Step6_BuddySystem_RadioCheck_BeforeAttendantAssigned_Blocked()
+        {
+            var go = new GameObject("Test_GasAr_70");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To5(ctrl);
+
+                bool checkedComm = ctrl.CheckCommunication();
+                if (checkedComm) throw new Exception("CheckCommunication before attendant assigned should return false.");
+                if (ctrl.StepNavigator.IsStepCompleted(6)) throw new Exception("Step 6 should not be completed.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_71_Step6_BuddySystem_RadioCheck_AfterAttendantAssigned_EmitsCommunicationChecked()
+        {
+            var go = new GameObject("Test_GasAr_71");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To5(ctrl);
+
+                ctrl.AssignAttendant("attendant_guard_outside");
+
+                TrainingEvent commEvt = null;
+                ctrl.OnCommunicationChecked += evt => commEvt = evt;
+
+                bool commSuccess = ctrl.CheckCommunication();
+                if (!commSuccess) throw new Exception("CheckCommunication returned false.");
+                if (commEvt == null) throw new Exception("OnCommunicationChecked was not emitted.");
+                if (commEvt.EventType != "communication_checked") throw new Exception($"Expected 'communication_checked', got '{commEvt.EventType}'");
+                if (commEvt.Outcome != "success") throw new Exception($"Expected outcome 'success', got '{commEvt.Outcome}'");
+                if (ctrl.ActiveAttendant != null && !ctrl.ActiveAttendant.IsCommunicationVerified)
+                    throw new Exception("ActiveAttendant.IsCommunicationVerified should be true.");
+                if (ctrl.State != GasInteractionState.CommunicationChecked)
+                    throw new Exception($"Expected state CommunicationChecked, got {ctrl.State}");
+                if (!ctrl.StepNavigator.IsStepCompleted(6)) throw new Exception("Step 6 should be completed.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_72_Step6_BuddySystem_CanGoNext_Gating()
+        {
+            var go = new GameObject("Test_GasAr_72");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To5(ctrl);
+
+                if (ctrl.StepNavigator.CanGoNext) throw new Exception("CanGoNext should be false before attendant assignment.");
+
+                ctrl.AssignAttendant();
+                if (ctrl.StepNavigator.CanGoNext) throw new Exception("CanGoNext should still be false before radio check.");
+
+                ctrl.CheckCommunication();
+                if (!ctrl.StepNavigator.CanGoNext) throw new Exception("CanGoNext should be true after radio check completed.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_73_Retake_ResetsPhase2State_Idempotently()
+        {
+            var go = new GameObject("Test_GasAr_73");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To5(ctrl);
+
+                ctrl.AssignAttendant();
+                ctrl.CheckCommunication();
+
+                // Reset scenario
+                ctrl.ResetScenario();
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 1) throw new Exception($"Expected Step 1 after reset, got {ctrl.StepNavigator.CurrentStepIndex}");
+                if (ctrl.IsSealCheckPassed) throw new Exception("IsSealCheckPassed should be false after reset.");
+                if (ctrl.IsHarnessFitPassed) throw new Exception("IsHarnessFitPassed should be false after reset.");
+                if (ctrl.IsCylinderPressurePassed) throw new Exception("IsCylinderPressurePassed should be false after reset.");
+                if (ctrl.Workflow.IsPpeSelected) throw new Exception("Workflow.IsPpeSelected should be false after reset.");
+                if (ctrl.Workflow.IsPpeVerified) throw new Exception("Workflow.IsPpeVerified should be false after reset.");
+                if (ctrl.Workflow.IsAttendantAssigned) throw new Exception("Workflow.IsAttendantAssigned should be false after reset.");
+                if (ctrl.Workflow.IsCommunicationChecked) throw new Exception("Workflow.IsCommunicationChecked should be false after reset.");
+                if (ctrl.ActiveAttendant != null && ctrl.ActiveAttendant.IsAssigned) throw new Exception("ActiveAttendant.IsAssigned should be false after reset.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_74_Step4_To_Step6_EndToEnd_Flow()
+        {
+            var go = new GameObject("Test_GasAr_74");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+
+                // Step 1
+                ctrl.SpawnHazardMarker(Vector3.zero, Quaternion.identity);
+                ctrl.ProcessHazardTap();
+                ctrl.AdvanceToNextStep();
+
+                // Step 2
+                ctrl.ProcessDangerZonePerimeterTap();
+                ctrl.AdvanceToNextStep();
+
+                // Step 3
+                ctrl.TestSensor(GasSensorType.Oxygen, out _);
+                ctrl.TestSensor(GasSensorType.Flammable, out _);
+                ctrl.TestSensor(GasSensorType.Toxic, out _);
+                ctrl.AdvanceToNextStep();
+
+                // Step 4
+                if (ctrl.StepNavigator.CurrentStepIndex != 4) throw new Exception($"Expected step 4, got {ctrl.StepNavigator.CurrentStepIndex}");
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHelmet);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHarness);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemGloves);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemBoots);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemScba);
+                ctrl.SubmitPpeSelection();
+                ctrl.AdvanceToNextStep();
+
+                // Step 5
+                if (ctrl.StepNavigator.CurrentStepIndex != 5) throw new Exception($"Expected step 5, got {ctrl.StepNavigator.CurrentStepIndex}");
+                ctrl.VerifyScbaSeal();
+                ctrl.VerifyHarnessFit();
+                ctrl.CheckCylinderPressure();
+                ctrl.AdvanceToNextStep();
+
+                // Step 6
+                if (ctrl.StepNavigator.CurrentStepIndex != 6) throw new Exception($"Expected step 6, got {ctrl.StepNavigator.CurrentStepIndex}");
+                ctrl.AssignAttendant();
+                ctrl.CheckCommunication();
+
+                if (!ctrl.StepNavigator.IsStepCompleted(4)) throw new Exception("Step 4 not completed.");
+                if (!ctrl.StepNavigator.IsStepCompleted(5)) throw new Exception("Step 5 not completed.");
+                if (!ctrl.StepNavigator.IsStepCompleted(6)) throw new Exception("Step 6 not completed.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_75_Phase2_LocalizationKeys_ExistAcrossAllLocales()
+        {
+            var loc = LocaleService.Instance;
+            string[] phase2Keys = new[]
+            {
+                "gas_step4_title",
+                "gas_step4_prompt",
+                "gas_step5_title",
+                "gas_step5_prompt",
+                "gas_step6_title",
+                "gas_step6_prompt",
+                "ppe_title",
+                "ppe_unsafe_warning",
+                "ppe_item_helmet",
+                "ppe_item_harness",
+                "ppe_item_gloves",
+                "ppe_item_boots",
+                "ppe_item_scba",
+                "ppe_item_dust_mask",
+                "ppe_item_cloth_mask",
+                "ppe_btn_confirm",
+                "verify_title",
+                "verify_seal",
+                "verify_harness",
+                "verify_cylinder",
+                "attendant_title",
+                "attendant_assigned",
+                "comm_title",
+                "comm_btn_test",
+                "comm_check_pass"
+            };
+
+            foreach (var lang in new[] { "en", "hi", "sat" })
+            {
+                loc.SetLanguage(lang);
+                foreach (var key in phase2Keys)
+                {
+                    string val = loc.Get(key);
+                    if (string.IsNullOrEmpty(val))
+                    {
+                        throw new Exception($"Missing Phase 2 key '{key}' in locale '{lang}'");
+                    }
+                }
+            }
+
+            loc.SetLanguage("en");
+        }
+
+        public static void Test_76_Step4_Distractor_PenaltyScoringDeduction()
+        {
+            var go = new GameObject("Test_GasAr_76");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To3(ctrl);
+
+                // Select distractor
+                ctrl.SelectPpeItem(GasPpeSystem.ItemClothMask);
+
+                // Then select valid kit and complete step 4
+                ctrl.TogglePpeItem(GasPpeSystem.ItemClothMask);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHelmet);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHarness);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemGloves);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemBoots);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemScba);
+                ctrl.SubmitPpeSelection();
+
+                var rubric = RubricLoader.LoadGasConfinedSpaceRubric();
+                var result = LocalAssessmentEngine.Evaluate(new List<TrainingEvent>(bus.DispatchedEvents), rubric);
+
+                if (result.TotalPenalties != 5.00f)
+                {
+                    throw new Exception($"Expected 5.00 total penalty for cloth mask distractor, got {result.TotalPenalties}");
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_77_GasArInteractionController_RaycastTap_AttendantMarker()
+        {
+            var go = new GameObject("Test_GasAr_77");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To5(ctrl);
+
+                if (ctrl.ActiveAttendant == null)
+                {
+                    throw new Exception("ActiveAttendant should have been spawned on Step 6.");
+                }
+
+                // Simulate direct tap on attendant marker
+                ctrl.ActiveAttendant.OnTap();
+
+                if (!ctrl.ActiveAttendant.IsAssigned)
+                {
+                    throw new Exception("ActiveAttendant.IsAssigned should be true after tap.");
+                }
+                if (ctrl.State != GasInteractionState.AttendantAssigned)
+                {
+                    throw new Exception($"Expected state AttendantAssigned, got {ctrl.State}");
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
         }
     }
 }

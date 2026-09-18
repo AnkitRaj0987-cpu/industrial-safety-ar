@@ -174,6 +174,33 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
         }
 
         /// <summary>
+        /// Resets the hazard marker state for scenario retakes.
+        /// </summary>
+        public void ResetMarker()
+        {
+            _isHazardRecognized = false;
+            _isDangerZoneMarked = false;
+            ShowDangerZoneRing(false);
+
+            if (_floatingLabel != null)
+            {
+                _floatingLabel.SetText("DANGER: CONFINED SPACE\n<size=80%><color=#FFC300>TAP TO IDENTIFY HAZARD</color></size>");
+                _floatingLabel.SetColor(ColorActiveHazard);
+            }
+            else if (_labelMesh != null)
+            {
+                _labelMesh.text = "DANGER: CONFINED SPACE";
+                _labelMesh.color = ColorActiveHazard;
+            }
+
+            if (_dangerZoneLabelComp != null)
+            {
+                _dangerZoneLabelComp.SetText("! 3.0m DANGER PERIMETER\n<size=75%><color=#FF8C00>STANDOFF REQUIRED</color></size>");
+                _dangerZoneLabelComp.SetColor(new Color(1f, 0.45f, 0.05f, 0.95f));
+            }
+        }
+
+        /// <summary>
         /// Procedurally constructs standard industrial confined-space portal, gas haze, and danger ring.
         /// </summary>
         public void EnsureVisuals()

@@ -344,5 +344,17 @@ namespace IndustrialSafetyAR.UI
             Array.Clear(_stepSuccessFeedback, 0, _stepSuccessFeedback.Length);
             OnStepChanged?.Invoke(CurrentStepIndex);
         }
+
+        /// <summary>
+        /// Resets navigation state and sets active view to specified step.
+        /// </summary>
+        public void ResetToStep(int stepNumber = 1)
+        {
+            Reset();
+            if (stepNumber > 1)
+            {
+                SetViewStep(stepNumber);
+            }
+        }
     }
 }

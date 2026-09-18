@@ -88,6 +88,47 @@ namespace IndustrialSafetyAR.UI
         private Button _nextButton;
         private TextMeshProUGUI _nextButtonText;
 
+        // Step 4: PPE Palette UI
+        private GameObject _ppePaletteRootObj;
+        private TextMeshProUGUI _ppeHeaderWarningText;
+        private Button _btnConfirmPpe;
+        private TextMeshProUGUI _btnConfirmPpeText;
+        private Image _btnConfirmPpeBg;
+        private readonly System.Collections.Generic.Dictionary<string, Button> _ppeButtons =
+            new System.Collections.Generic.Dictionary<string, Button>(System.StringComparer.OrdinalIgnoreCase);
+        private readonly System.Collections.Generic.Dictionary<string, TextMeshProUGUI> _ppeLabels =
+            new System.Collections.Generic.Dictionary<string, TextMeshProUGUI>(System.StringComparer.OrdinalIgnoreCase);
+        private readonly System.Collections.Generic.Dictionary<string, Image> _ppeItemBgs =
+            new System.Collections.Generic.Dictionary<string, Image>(System.StringComparer.OrdinalIgnoreCase);
+
+        // Step 5: PPE Verification UI
+        private GameObject _ppeVerificationRootObj;
+        private TextMeshProUGUI _verifyHeaderWarningText;
+        private Button _btnVerifySeal;
+        private TextMeshProUGUI _btnVerifySealText;
+        private Image _btnVerifySealBg;
+        private TextMeshProUGUI _sealStatusText;
+        private Button _btnVerifyHarness;
+        private TextMeshProUGUI _btnVerifyHarnessText;
+        private Image _btnVerifyHarnessBg;
+        private TextMeshProUGUI _harnessStatusText;
+        private Button _btnCheckPressure;
+        private TextMeshProUGUI _btnCheckPressureText;
+        private Image _btnCheckPressureBg;
+        private TextMeshProUGUI _pressureStatusText;
+
+        // Step 6: Buddy / Outside Attendant UI
+        private GameObject _buddySystemRootObj;
+        private TextMeshProUGUI _buddyHeaderRuleText;
+        private Button _btnAssignAttendant;
+        private TextMeshProUGUI _btnAssignAttendantText;
+        private Image _btnAssignAttendantBg;
+        private TextMeshProUGUI _attendantStatusText;
+        private Button _btnCheckCommunication;
+        private TextMeshProUGUI _btnCheckCommunicationText;
+        private Image _btnCheckCommunicationBg;
+        private TextMeshProUGUI _commStatusText;
+
         private readonly GuidedStepNavigator _fallbackNavigator = new GuidedStepNavigator();
         private static TMP_FontAsset s_CachedFont;
 
@@ -119,6 +160,19 @@ namespace IndustrialSafetyAR.UI
         public Button BtnTestLel => _btnTestLel;
         public Button BtnTestH2s => _btnTestH2s;
         public TextMeshProUGUI DetectorHeaderStatus => _detectorHeaderStatus;
+
+        // Step 4-6 Getters for Testing & Automation
+        public GameObject PpePaletteRootObj => _ppePaletteRootObj;
+        public GameObject PpeVerificationRootObj => _ppeVerificationRootObj;
+        public GameObject BuddySystemRootObj => _buddySystemRootObj;
+        public Button BtnConfirmPpe => _btnConfirmPpe;
+        public Button BtnVerifySeal => _btnVerifySeal;
+        public Button BtnVerifyHarness => _btnVerifyHarness;
+        public Button BtnCheckPressure => _btnCheckPressure;
+        public Button BtnAssignAttendant => _btnAssignAttendant;
+        public Button BtnCheckCommunication => _btnCheckCommunication;
+        public Button GetPpeButton(string itemId) => _ppeButtons.TryGetValue(itemId, out var btn) ? btn : null;
+
         public bool IsNextButtonVisible => _nextButtonObj != null && _nextButtonObj.activeSelf;
         public bool IsBackButtonVisible => _backButtonObj != null && _backButtonObj.activeSelf;
 
@@ -498,6 +552,15 @@ namespace IndustrialSafetyAR.UI
             // 3. Step 3 Handheld Multi-Gas Detector Representation
             BuildAtmosphericDetectorUI(_optionsContainer, font);
 
+            // 4. Step 4 PPE Selection Palette
+            BuildPpePaletteUI(_optionsContainer, font);
+
+            // 5. Step 5 PPE Verification Inspection
+            BuildPpeVerificationUI(_optionsContainer, font);
+
+            // 6. Step 6 Buddy / Outside Attendant System
+            BuildBuddySystemUI(_optionsContainer, font);
+
             // Primary Next Button
             _nextButtonObj = new GameObject("PrimaryNextButton");
             _nextButtonObj.transform.SetParent(_actionContainer.transform, false);
@@ -747,6 +810,535 @@ namespace IndustrialSafetyAR.UI
             }
         }
 
+        // =============================================================
+        // STEP 4: PPE PALETTE BUILDER & UPDATER
+        // =============================================================
+        private void BuildPpePaletteUI(GameObject parent, TMP_FontAsset font)
+        {
+            _ppePaletteRootObj = new GameObject("PpePaletteUI");
+            _ppePaletteRootObj.transform.SetParent(parent.transform, false);
+            var pRect = _ppePaletteRootObj.AddComponent<RectTransform>();
+            pRect.anchorMin = Vector2.zero;
+            pRect.anchorMax = Vector2.one;
+            pRect.offsetMin = Vector2.zero;
+            pRect.offsetMax = Vector2.zero;
+
+            var pBg = _ppePaletteRootObj.AddComponent<Image>();
+            pBg.color = new Color(0.08f, 0.10f, 0.14f, 0.98f);
+
+            // Warning Header Banner
+            var warnObj = new GameObject("PpeWarningBanner");
+            warnObj.transform.SetParent(_ppePaletteRootObj.transform, false);
+            var wRect = warnObj.AddComponent<RectTransform>();
+            wRect.anchorMin = new Vector2(0.02f, 0.82f);
+            wRect.anchorMax = new Vector2(0.98f, 0.98f);
+            wRect.offsetMin = Vector2.zero;
+            wRect.offsetMax = Vector2.zero;
+
+            _ppeHeaderWarningText = warnObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _ppeHeaderWarningText.font = font;
+            _ppeHeaderWarningText.text = "<b><color=#E74C3C>ATMOSPHERE: UNSAFE</color> • PPE PREPARATION REQUIRED (ENTRY PROHIBITED)</b>";
+            _ppeHeaderWarningText.fontSize = 12;
+            _ppeHeaderWarningText.alignment = TextAlignmentOptions.Center;
+            _ppeHeaderWarningText.enableAutoSizing = true;
+            _ppeHeaderWarningText.fontSizeMin = 9;
+            _ppeHeaderWarningText.fontSizeMax = 14;
+
+            // 2-Column layout for PPE items:
+            // Left Column (x: 0.02 to 0.49):
+            BuildPpeItemButton(_ppePaletteRootObj, font, 0.02f, 0.49f, 0.62f, 0.80f, GasPpeSystem.ItemHelmet, "Safety Helmet");
+            BuildPpeItemButton(_ppePaletteRootObj, font, 0.02f, 0.49f, 0.42f, 0.60f, GasPpeSystem.ItemHarness, "Full-Body Harness");
+            BuildPpeItemButton(_ppePaletteRootObj, font, 0.02f, 0.49f, 0.22f, 0.40f, GasPpeSystem.ItemGloves, "Protective Gloves");
+            BuildPpeItemButton(_ppePaletteRootObj, font, 0.02f, 0.49f, 0.02f, 0.20f, GasPpeSystem.ItemBoots, "Safety Boots");
+
+            // Right Column (x: 0.51 to 0.98):
+            BuildPpeItemButton(_ppePaletteRootObj, font, 0.51f, 0.98f, 0.62f, 0.80f, GasPpeSystem.ItemScba, "SCBA Apparatus");
+            BuildPpeItemButton(_ppePaletteRootObj, font, 0.51f, 0.98f, 0.42f, 0.60f, GasPpeSystem.ItemDustMask, "Dust Mask [X]");
+            BuildPpeItemButton(_ppePaletteRootObj, font, 0.51f, 0.98f, 0.22f, 0.40f, GasPpeSystem.ItemClothMask, "Surgical Mask [X]");
+
+            // Confirm Button (Right col, row 4)
+            var confirmBtnObj = new GameObject("ConfirmPpeButton");
+            confirmBtnObj.transform.SetParent(_ppePaletteRootObj.transform, false);
+            var cbRect = confirmBtnObj.AddComponent<RectTransform>();
+            cbRect.anchorMin = new Vector2(0.51f, 0.02f);
+            cbRect.anchorMax = new Vector2(0.98f, 0.20f);
+            cbRect.offsetMin = Vector2.zero;
+            cbRect.offsetMax = Vector2.zero;
+
+            _btnConfirmPpeBg = confirmBtnObj.AddComponent<Image>();
+            _btnConfirmPpeBg.color = new Color(0.18f, 0.62f, 0.32f, 0.98f);
+            _btnConfirmPpe = confirmBtnObj.AddComponent<Button>();
+            _btnConfirmPpe.targetGraphic = _btnConfirmPpeBg;
+
+            var cbTap = confirmBtnObj.AddComponent<TapGatedButton>();
+            cbTap.Initialize(() => {
+                if (_controller != null)
+                {
+                    _controller.SubmitPpeSelection();
+                    UpdatePpePaletteVisuals();
+                }
+            });
+
+            var cLblObj = new GameObject("Label");
+            cLblObj.transform.SetParent(confirmBtnObj.transform, false);
+            var clRect = cLblObj.AddComponent<RectTransform>();
+            clRect.anchorMin = Vector2.zero;
+            clRect.anchorMax = Vector2.one;
+            _btnConfirmPpeText = cLblObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _btnConfirmPpeText.font = font;
+            _btnConfirmPpeText.text = "<b>CONFIRM PPE ✓</b>";
+            _btnConfirmPpeText.alignment = TextAlignmentOptions.Center;
+            _btnConfirmPpeText.fontSize = 13;
+            _btnConfirmPpeText.color = Color.white;
+
+            _ppePaletteRootObj.SetActive(false);
+        }
+
+        private void BuildPpeItemButton(GameObject parent, TMP_FontAsset font, float xMin, float xMax, float yMin, float yMax, string itemId, string defaultLabel)
+        {
+            var btnObj = new GameObject($"PpeBtn_{itemId}");
+            btnObj.transform.SetParent(parent.transform, false);
+            var rect = btnObj.AddComponent<RectTransform>();
+            rect.anchorMin = new Vector2(xMin, yMin);
+            rect.anchorMax = new Vector2(xMax, yMax);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            var bg = btnObj.AddComponent<Image>();
+            bg.color = new Color(0.16f, 0.20f, 0.28f, 0.95f);
+            var btn = btnObj.AddComponent<Button>();
+            btn.targetGraphic = bg;
+
+            var tapGated = btnObj.AddComponent<TapGatedButton>();
+            tapGated.Initialize(() => {
+                if (_controller != null)
+                {
+                    _controller.TogglePpeItem(itemId);
+                    UpdatePpePaletteVisuals();
+                }
+            });
+
+            var textObj = new GameObject("Text");
+            textObj.transform.SetParent(btnObj.transform, false);
+            var tRect = textObj.AddComponent<RectTransform>();
+            tRect.anchorMin = Vector2.zero;
+            tRect.anchorMax = Vector2.one;
+            tRect.offsetMin = new Vector2(6, 2);
+            tRect.offsetMax = new Vector2(-6, -2);
+
+            var tmp = textObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) tmp.font = font;
+            tmp.text = $"[  ] {defaultLabel}";
+            tmp.alignment = TextAlignmentOptions.MidlineLeft;
+            tmp.fontSize = 12;
+            tmp.enableAutoSizing = true;
+            tmp.fontSizeMin = 9;
+            tmp.fontSizeMax = 13;
+            tmp.color = Color.white;
+
+            _ppeButtons[itemId] = btn;
+            _ppeLabels[itemId] = tmp;
+            _ppeItemBgs[itemId] = bg;
+        }
+
+        private void UpdatePpePaletteVisuals()
+        {
+            if (_controller == null) return;
+            var loc = LocaleService.Instance;
+
+            if (_ppeHeaderWarningText != null)
+            {
+                _ppeHeaderWarningText.text = $"<b><color=#E74C3C>{loc.Get("status_unsafe_atmosphere", "ATMOSPHERE: UNSAFE")}</color> • {loc.Get("ppe_unsafe_warning", "PPE DOES NOT MAKE AN UNSAFE ATMOSPHERE SAFE. DO NOT ENTER.")}</b>";
+            }
+
+            foreach (var kvp in _ppeButtons)
+            {
+                string itemId = kvp.Key;
+                bool isSelected = _controller.IsPpeItemSelected(itemId);
+                string itemTitle = loc.Get($"ppe_item_{itemId.Replace("ppe_", "")}", itemId);
+
+                if (_ppeLabels.TryGetValue(itemId, out var label))
+                {
+                    label.text = isSelected ? $"<b><color=#2ECC71>[✓]</color></b> {itemTitle}" : $"[  ] {itemTitle}";
+                    label.color = isSelected ? new Color(0.3f, 0.9f, 0.4f) : Color.white;
+                }
+
+                if (_ppeItemBgs.TryGetValue(itemId, out var bg))
+                {
+                    bg.color = isSelected ? new Color(0.10f, 0.35f, 0.18f, 0.98f) : new Color(0.16f, 0.20f, 0.28f, 0.95f);
+                }
+            }
+
+            if (_btnConfirmPpeText != null)
+            {
+                _btnConfirmPpeText.text = $"<b>{loc.Get("ppe_btn_confirm", "CONFIRM PPE ✓")}</b>";
+            }
+        }
+
+        // =============================================================
+        // STEP 5: PPE VERIFICATION BUILDER & UPDATER
+        // =============================================================
+        private void BuildPpeVerificationUI(GameObject parent, TMP_FontAsset font)
+        {
+            _ppeVerificationRootObj = new GameObject("PpeVerificationUI");
+            _ppeVerificationRootObj.transform.SetParent(parent.transform, false);
+            var vRect = _ppeVerificationRootObj.AddComponent<RectTransform>();
+            vRect.anchorMin = Vector2.zero;
+            vRect.anchorMax = Vector2.one;
+            vRect.offsetMin = Vector2.zero;
+            vRect.offsetMax = Vector2.zero;
+
+            var vBg = _ppeVerificationRootObj.AddComponent<Image>();
+            vBg.color = new Color(0.08f, 0.10f, 0.14f, 0.98f);
+
+            // Header Warning
+            var warnObj = new GameObject("VerifyWarningBanner");
+            warnObj.transform.SetParent(_ppeVerificationRootObj.transform, false);
+            var wRect = warnObj.AddComponent<RectTransform>();
+            wRect.anchorMin = new Vector2(0.02f, 0.78f);
+            wRect.anchorMax = new Vector2(0.98f, 0.98f);
+            wRect.offsetMin = Vector2.zero;
+            wRect.offsetMax = Vector2.zero;
+
+            _verifyHeaderWarningText = warnObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _verifyHeaderWarningText.font = font;
+            _verifyHeaderWarningText.text = "<b><color=#F39C12>EQUIPMENT READINESS INSPECTION</color>\n<size=80%>(PPE does NOT make an unsafe atmosphere safe • Entry prohibited)</size></b>";
+            _verifyHeaderWarningText.fontSize = 12;
+            _verifyHeaderWarningText.alignment = TextAlignmentOptions.Center;
+
+            // Row 1: SCBA Face Seal Check (y: 0.52 to 0.76)
+            BuildVerificationRow(_ppeVerificationRootObj, font, 0.52f, 0.76f, "SCBA Seal Check",
+                out _sealStatusText, out _btnVerifySeal, out _btnVerifySealText, out _btnVerifySealBg,
+                () => {
+                    if (_controller != null) {
+                        _controller.VerifyScbaSeal();
+                        UpdatePpeVerificationVisuals();
+                    }
+                });
+
+            // Row 2: Harness Fit Inspection (y: 0.27 to 0.51)
+            BuildVerificationRow(_ppeVerificationRootObj, font, 0.27f, 0.51f, "Harness Fit & D-Ring",
+                out _harnessStatusText, out _btnVerifyHarness, out _btnVerifyHarnessText, out _btnVerifyHarnessBg,
+                () => {
+                    if (_controller != null) {
+                        _controller.VerifyHarnessFit();
+                        UpdatePpeVerificationVisuals();
+                    }
+                });
+
+            // Row 3: Cylinder Pressure Check (y: 0.02 to 0.26)
+            BuildVerificationRow(_ppeVerificationRootObj, font, 0.02f, 0.26f, "Cylinder Pressure (300 Bar)",
+                out _pressureStatusText, out _btnCheckPressure, out _btnCheckPressureText, out _btnCheckPressureBg,
+                () => {
+                    if (_controller != null) {
+                        _controller.CheckCylinderPressure();
+                        UpdatePpeVerificationVisuals();
+                    }
+                });
+
+            _ppeVerificationRootObj.SetActive(false);
+        }
+
+        private void BuildVerificationRow(GameObject parent, TMP_FontAsset font, float yMin, float yMax,
+            string rowLabel, out TextMeshProUGUI statusText, out Button actionBtn, out TextMeshProUGUI btnText, out Image btnBg,
+            Action onActionClicked)
+        {
+            var rowObj = new GameObject($"Row_{rowLabel}");
+            rowObj.transform.SetParent(parent.transform, false);
+            var rRect = rowObj.AddComponent<RectTransform>();
+            rRect.anchorMin = new Vector2(0.02f, yMin);
+            rRect.anchorMax = new Vector2(0.98f, yMax);
+            rRect.offsetMin = Vector2.zero;
+            rRect.offsetMax = Vector2.zero;
+
+            var rBg = rowObj.AddComponent<Image>();
+            rBg.color = new Color(0.14f, 0.18f, 0.25f, 0.95f);
+
+            var labelObj = new GameObject("StatusLabel");
+            labelObj.transform.SetParent(rowObj.transform, false);
+            var lRect = labelObj.AddComponent<RectTransform>();
+            lRect.anchorMin = new Vector2(0.03f, 0.05f);
+            lRect.anchorMax = new Vector2(0.64f, 0.95f);
+            lRect.offsetMin = Vector2.zero;
+            lRect.offsetMax = Vector2.zero;
+
+            statusText = labelObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) statusText.font = font;
+            statusText.text = $"<b>{rowLabel}</b>: Pending";
+            statusText.fontSize = 14;
+            statusText.alignment = TextAlignmentOptions.MidlineLeft;
+            statusText.color = Color.white;
+
+            var btnObj = new GameObject("VerifyButton");
+            btnObj.transform.SetParent(rowObj.transform, false);
+            var bRect = btnObj.AddComponent<RectTransform>();
+            bRect.anchorMin = new Vector2(0.66f, 0.10f);
+            bRect.anchorMax = new Vector2(0.97f, 0.90f);
+            bRect.offsetMin = Vector2.zero;
+            bRect.offsetMax = Vector2.zero;
+
+            btnBg = btnObj.AddComponent<Image>();
+            btnBg.color = new Color(0.20f, 0.50f, 0.85f, 0.98f);
+            actionBtn = btnObj.AddComponent<Button>();
+            actionBtn.targetGraphic = btnBg;
+
+            var tapGated = btnObj.AddComponent<TapGatedButton>();
+            tapGated.Initialize(onActionClicked);
+
+            var btnLblObj = new GameObject("BtnLabel");
+            btnLblObj.transform.SetParent(btnObj.transform, false);
+            var blRect = btnLblObj.AddComponent<RectTransform>();
+            blRect.anchorMin = Vector2.zero;
+            blRect.anchorMax = Vector2.one;
+            btnText = btnLblObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) btnText.font = font;
+            btnText.text = "<b>VERIFY</b>";
+            btnText.alignment = TextAlignmentOptions.Center;
+            btnText.fontSize = 14;
+            btnText.color = Color.white;
+        }
+
+        private void UpdatePpeVerificationVisuals()
+        {
+            if (_controller == null) return;
+            var loc = LocaleService.Instance;
+
+            if (_verifyHeaderWarningText != null)
+            {
+                _verifyHeaderWarningText.text = $"<b><color=#F39C12>{loc.Get("verify_title", "PPE INSPECTION & VERIFICATION")}</color>\n<size=80%>({loc.Get("verify_warning", "PPE does not make atmosphere safe • Entry prohibited")})</size></b>";
+            }
+
+            // Seal
+            bool sealOk = _controller.IsSealCheckPassed;
+            if (_sealStatusText != null)
+            {
+                _sealStatusText.text = $"<b>{loc.Get("verify_scba_seal", "SCBA Seal")}</b>: {(sealOk ? "<color=#2ECC71>VERIFIED ✓</color>" : "Pending")}";
+            }
+            if (_btnVerifySeal != null)
+            {
+                _btnVerifySeal.interactable = !sealOk;
+                if (_btnVerifySealBg != null) _btnVerifySealBg.color = sealOk ? new Color(0.15f, 0.45f, 0.22f) : new Color(0.20f, 0.50f, 0.85f);
+                if (_btnVerifySealText != null) _btnVerifySealText.text = sealOk ? "DONE ✓" : loc.Get("verify_btn_action", "VERIFY");
+            }
+
+            // Harness
+            bool harnessOk = _controller.IsHarnessFitPassed;
+            if (_harnessStatusText != null)
+            {
+                _harnessStatusText.text = $"<b>{loc.Get("verify_harness_fit", "Harness Fit")}</b>: {(harnessOk ? "<color=#2ECC71>VERIFIED ✓</color>" : "Pending")}";
+            }
+            if (_btnVerifyHarness != null)
+            {
+                _btnVerifyHarness.interactable = !harnessOk;
+                if (_btnVerifyHarnessBg != null) _btnVerifyHarnessBg.color = harnessOk ? new Color(0.15f, 0.45f, 0.22f) : new Color(0.20f, 0.50f, 0.85f);
+                if (_btnVerifyHarnessText != null) _btnVerifyHarnessText.text = harnessOk ? "DONE ✓" : loc.Get("verify_btn_action", "VERIFY");
+            }
+
+            // Cylinder
+            bool cylOk = _controller.IsCylinderPressurePassed;
+            if (_pressureStatusText != null)
+            {
+                _pressureStatusText.text = $"<b>{loc.Get("verify_cylinder_pressure", "Cylinder Pressure")}</b>: {(cylOk ? "<color=#2ECC71>300 BAR (OK) ✓</color>" : "Pending")}";
+            }
+            if (_btnCheckPressure != null)
+            {
+                _btnCheckPressure.interactable = !cylOk;
+                if (_btnCheckPressureBg != null) _btnCheckPressureBg.color = cylOk ? new Color(0.15f, 0.45f, 0.22f) : new Color(0.20f, 0.50f, 0.85f);
+                if (_btnCheckPressureText != null) _btnCheckPressureText.text = cylOk ? "DONE ✓" : loc.Get("verify_btn_action", "VERIFY");
+            }
+        }
+
+        // =============================================================
+        // STEP 6: BUDDY SYSTEM BUILDER & UPDATER
+        // =============================================================
+        private void BuildBuddySystemUI(GameObject parent, TMP_FontAsset font)
+        {
+            _buddySystemRootObj = new GameObject("BuddySystemUI");
+            _buddySystemRootObj.transform.SetParent(parent.transform, false);
+            var bRect = _buddySystemRootObj.AddComponent<RectTransform>();
+            bRect.anchorMin = Vector2.zero;
+            bRect.anchorMax = Vector2.one;
+            bRect.offsetMin = Vector2.zero;
+            bRect.offsetMax = Vector2.zero;
+
+            var bBg = _buddySystemRootObj.AddComponent<Image>();
+            bBg.color = new Color(0.08f, 0.10f, 0.14f, 0.98f);
+
+            // Rule Warning Header
+            var ruleObj = new GameObject("BuddyRuleBanner");
+            ruleObj.transform.SetParent(_buddySystemRootObj.transform, false);
+            var rRect = ruleObj.AddComponent<RectTransform>();
+            rRect.anchorMin = new Vector2(0.02f, 0.74f);
+            rRect.anchorMax = new Vector2(0.98f, 0.98f);
+            rRect.offsetMin = Vector2.zero;
+            rRect.offsetMax = Vector2.zero;
+
+            _buddyHeaderRuleText = ruleObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _buddyHeaderRuleText.font = font;
+            _buddyHeaderRuleText.text = "<b><color=#E67E22>SAFETY ATTENDANT MUST REMAIN OUTSIDE</color>\n<size=80%>Stationed outside danger perimeter • Maintain radio contact</size></b>";
+            _buddyHeaderRuleText.fontSize = 12;
+            _buddyHeaderRuleText.alignment = TextAlignmentOptions.Center;
+
+            // Row 1: Assign Outside Attendant (y: 0.38 to 0.72)
+            var attRowObj = new GameObject("Row_AssignAttendant");
+            attRowObj.transform.SetParent(_buddySystemRootObj.transform, false);
+            var arRect = attRowObj.AddComponent<RectTransform>();
+            arRect.anchorMin = new Vector2(0.02f, 0.38f);
+            arRect.anchorMax = new Vector2(0.98f, 0.72f);
+            arRect.offsetMin = Vector2.zero;
+            arRect.offsetMax = Vector2.zero;
+            attRowObj.AddComponent<Image>().color = new Color(0.14f, 0.18f, 0.25f, 0.95f);
+
+            var attLblObj = new GameObject("AttendantStatusLabel");
+            attLblObj.transform.SetParent(attRowObj.transform, false);
+            var alRect = attLblObj.AddComponent<RectTransform>();
+            alRect.anchorMin = new Vector2(0.03f, 0.05f);
+            alRect.anchorMax = new Vector2(0.60f, 0.95f);
+            alRect.offsetMin = Vector2.zero;
+            alRect.offsetMax = Vector2.zero;
+
+            _attendantStatusText = attLblObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _attendantStatusText.font = font;
+            _attendantStatusText.text = "<b>Attendant</b>: Standby outside (3.4m)";
+            _attendantStatusText.fontSize = 13;
+            _attendantStatusText.alignment = TextAlignmentOptions.MidlineLeft;
+            _attendantStatusText.color = Color.white;
+
+            var attBtnObj = new GameObject("AssignAttendantButton");
+            attBtnObj.transform.SetParent(attRowObj.transform, false);
+            var abRect = attBtnObj.AddComponent<RectTransform>();
+            abRect.anchorMin = new Vector2(0.62f, 0.10f);
+            abRect.anchorMax = new Vector2(0.98f, 0.90f);
+            abRect.offsetMin = Vector2.zero;
+            abRect.offsetMax = Vector2.zero;
+
+            _btnAssignAttendantBg = attBtnObj.AddComponent<Image>();
+            _btnAssignAttendantBg.color = new Color(0.20f, 0.50f, 0.85f, 0.98f);
+            _btnAssignAttendant = attBtnObj.AddComponent<Button>();
+            _btnAssignAttendant.targetGraphic = _btnAssignAttendantBg;
+            var attTap = attBtnObj.AddComponent<TapGatedButton>();
+            attTap.Initialize(() => {
+                if (_controller != null) {
+                    _controller.AssignAttendant();
+                    UpdateBuddySystemVisuals();
+                }
+            });
+
+            var ablObj = new GameObject("Label");
+            ablObj.transform.SetParent(attBtnObj.transform, false);
+            var ablRect = ablObj.AddComponent<RectTransform>();
+            ablRect.anchorMin = Vector2.zero;
+            ablRect.anchorMax = Vector2.one;
+            _btnAssignAttendantText = ablObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _btnAssignAttendantText.font = font;
+            _btnAssignAttendantText.text = "<b>ASSIGN</b>";
+            _btnAssignAttendantText.fontSize = 14;
+            _btnAssignAttendantText.alignment = TextAlignmentOptions.Center;
+            _btnAssignAttendantText.color = Color.white;
+
+            // Row 2: Check Two-Way Radio (y: 0.04 to 0.36)
+            var commRowObj = new GameObject("Row_CheckRadio");
+            commRowObj.transform.SetParent(_buddySystemRootObj.transform, false);
+            var crRect = commRowObj.AddComponent<RectTransform>();
+            crRect.anchorMin = new Vector2(0.02f, 0.04f);
+            crRect.anchorMax = new Vector2(0.98f, 0.36f);
+            crRect.offsetMin = Vector2.zero;
+            crRect.offsetMax = Vector2.zero;
+            commRowObj.AddComponent<Image>().color = new Color(0.14f, 0.18f, 0.25f, 0.95f);
+
+            var commLblObj = new GameObject("CommStatusLabel");
+            commLblObj.transform.SetParent(commRowObj.transform, false);
+            var clRect = commLblObj.AddComponent<RectTransform>();
+            clRect.anchorMin = new Vector2(0.03f, 0.05f);
+            clRect.anchorMax = new Vector2(0.60f, 0.95f);
+            clRect.offsetMin = Vector2.zero;
+            clRect.offsetMax = Vector2.zero;
+
+            _commStatusText = commLblObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _commStatusText.font = font;
+            _commStatusText.text = "<b>Radio</b>: Waiting for attendant";
+            _commStatusText.fontSize = 13;
+            _commStatusText.alignment = TextAlignmentOptions.MidlineLeft;
+            _commStatusText.color = Color.white;
+
+            var commBtnObj = new GameObject("CheckCommButton");
+            commBtnObj.transform.SetParent(commRowObj.transform, false);
+            var cbRect = commBtnObj.AddComponent<RectTransform>();
+            cbRect.anchorMin = new Vector2(0.62f, 0.10f);
+            cbRect.anchorMax = new Vector2(0.98f, 0.90f);
+            cbRect.offsetMin = Vector2.zero;
+            cbRect.offsetMax = Vector2.zero;
+
+            _btnCheckCommunicationBg = commBtnObj.AddComponent<Image>();
+            _btnCheckCommunicationBg.color = new Color(0.25f, 0.28f, 0.32f, 0.98f);
+            _btnCheckCommunication = commBtnObj.AddComponent<Button>();
+            _btnCheckCommunication.targetGraphic = _btnCheckCommunicationBg;
+            _btnCheckCommunication.interactable = false;
+
+            var commTap = commBtnObj.AddComponent<TapGatedButton>();
+            commTap.Initialize(() => {
+                if (_controller != null) {
+                    _controller.CheckCommunication();
+                    UpdateBuddySystemVisuals();
+                }
+            });
+
+            var cblObj = new GameObject("Label");
+            cblObj.transform.SetParent(commBtnObj.transform, false);
+            var cblRect = cblObj.AddComponent<RectTransform>();
+            cblRect.anchorMin = Vector2.zero;
+            cblRect.anchorMax = Vector2.one;
+            _btnCheckCommunicationText = cblObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _btnCheckCommunicationText.font = font;
+            _btnCheckCommunicationText.text = "<b>RADIO</b>";
+            _btnCheckCommunicationText.fontSize = 14;
+            _btnCheckCommunicationText.alignment = TextAlignmentOptions.Center;
+            _btnCheckCommunicationText.color = Color.white;
+
+            _buddySystemRootObj.SetActive(false);
+        }
+
+        private void UpdateBuddySystemVisuals()
+        {
+            if (_controller == null) return;
+            var loc = LocaleService.Instance;
+
+            if (_buddyHeaderRuleText != null)
+            {
+                _buddyHeaderRuleText.text = $"<b><color=#E67E22>{loc.Get("attendant_title", "SAFETY ATTENDANT MUST REMAIN OUTSIDE")}</color>\n<size=80%>{loc.Get("attendant_rule", "Stationed outside danger perimeter • Maintain radio contact")}</size></b>";
+            }
+
+            bool attAssigned = _controller.IsAttendantAssigned;
+            if (_attendantStatusText != null)
+            {
+                _attendantStatusText.text = $"<b>{loc.Get("attendant_title", "Attendant")}</b>: {(attAssigned ? $"<color=#2ECC71>{loc.Get("attendant_status_assigned", "ASSIGNED (OUTSIDE) ✓")}</color>" : loc.Get("attendant_outside", "Standby outside (3.4m)"))}";
+            }
+            if (_btnAssignAttendant != null)
+            {
+                _btnAssignAttendant.interactable = !attAssigned;
+                if (_btnAssignAttendantBg != null) _btnAssignAttendantBg.color = attAssigned ? new Color(0.15f, 0.45f, 0.22f) : new Color(0.20f, 0.50f, 0.85f);
+                if (_btnAssignAttendantText != null) _btnAssignAttendantText.text = attAssigned ? "DONE ✓" : loc.Get("attendant_btn_assign", "ASSIGN");
+            }
+
+            bool commOk = _controller.IsCommunicationChecked;
+            if (_commStatusText != null)
+            {
+                _commStatusText.text = $"<b>{loc.Get("comm_title", "Radio Link")}</b>: {(commOk ? $"<color=#2ECC71>{loc.Get("comm_status_verified", "RADIO LINK VERIFIED ✓")}</color>" : (attAssigned ? "Ready to test" : "Waiting for attendant"))}";
+            }
+            if (_btnCheckCommunication != null)
+            {
+                _btnCheckCommunication.interactable = attAssigned && !commOk;
+                if (_btnCheckCommunicationBg != null)
+                {
+                    _btnCheckCommunicationBg.color = commOk ? new Color(0.15f, 0.45f, 0.22f) : (attAssigned ? new Color(0.20f, 0.50f, 0.85f) : new Color(0.25f, 0.28f, 0.32f));
+                }
+                if (_btnCheckCommunicationText != null)
+                {
+                    _btnCheckCommunicationText.text = commOk ? "VERIFIED ✓" : loc.Get("comm_btn_check", "CHECK RADIO");
+                }
+            }
+        }
+
         private void OnEnable()
         {
             SubscribeEvents();
@@ -879,6 +1471,30 @@ namespace IndustrialSafetyAR.UI
                 if (step == 3)
                 {
                     UpdateDetectorVisuals();
+                }
+            }
+            if (_ppePaletteRootObj != null)
+            {
+                _ppePaletteRootObj.SetActive(step == 4);
+                if (step == 4)
+                {
+                    UpdatePpePaletteVisuals();
+                }
+            }
+            if (_ppeVerificationRootObj != null)
+            {
+                _ppeVerificationRootObj.SetActive(step == 5);
+                if (step == 5)
+                {
+                    UpdatePpeVerificationVisuals();
+                }
+            }
+            if (_buddySystemRootObj != null)
+            {
+                _buddySystemRootObj.SetActive(step == 6);
+                if (step == 6)
+                {
+                    UpdateBuddySystemVisuals();
                 }
             }
 

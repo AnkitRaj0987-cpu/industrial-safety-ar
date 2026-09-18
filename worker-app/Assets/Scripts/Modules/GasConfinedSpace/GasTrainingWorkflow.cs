@@ -124,11 +124,18 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
         public RubricDefinition BoundRubric { get; private set; }
         public GasAtmosphericSimulator AtmosphericSimulator { get; } = new GasAtmosphericSimulator();
         public GasPpeSystem PpeSystem { get; } = new GasPpeSystem();
+        public bool IsPpeSelected => PpeSystem.IsPpeSelected;
+        public bool IsPpeVerified => PpeSystem.IsPpeVerified;
 
         public bool IsAttendantAssigned { get; private set; }
         public bool IsCommunicationChecked { get; private set; }
         public bool IsEntryDecisionMade { get; private set; }
         public string EntryDecisionResult { get; private set; }
+
+        public void ResetWorkflow()
+        {
+            Reset();
+        }
 
         public event Action<GasWorkflowStage> OnStageChanged;
         public event Action<string> OnFeedbackChanged;
