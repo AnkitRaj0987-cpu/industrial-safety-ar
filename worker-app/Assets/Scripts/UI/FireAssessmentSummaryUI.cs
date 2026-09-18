@@ -204,6 +204,11 @@ namespace IndustrialSafetyAR.UI
                 WorkerHomeController.Instance.SetState(WorkerHomeController.WorkerAppScreenState.Results);
             }
 
+            if (IndustrialSafetyAR.AR.ARModeController.Instance != null)
+            {
+                IndustrialSafetyAR.AR.ARModeController.Instance.DisableAR();
+            }
+
             UpdateUIContents();
         }
 
@@ -583,6 +588,14 @@ namespace IndustrialSafetyAR.UI
             }
         }
 
+        /// <summary>
+        /// Compatibility wrapper for Retake action used by tests and UI bindings.
+        /// </summary>
+        public void OnRetakeClicked()
+        {
+            OnRetakeTrainingClicked();
+        }
+
         public void OnRetakeTrainingClicked()
         {
             HideSummary();
@@ -601,6 +614,12 @@ namespace IndustrialSafetyAR.UI
                 IndustrialSafetyAR.Core.Audio.FireAudioService.Instance.StopEmergencyAlarm();
                 IndustrialSafetyAR.Core.Audio.FireAudioService.Instance.StopAllAudio();
             }
+
+            if (IndustrialSafetyAR.AR.ARModeController.Instance != null)
+            {
+                IndustrialSafetyAR.AR.ARModeController.Instance.EnableAR();
+            }
+
             if (_controller != null)
             {
                 _controller.RetakeTraining();
@@ -617,6 +636,11 @@ namespace IndustrialSafetyAR.UI
             {
                 IndustrialSafetyAR.Core.Audio.FireAudioService.Instance.StopEmergencyAlarm();
                 IndustrialSafetyAR.Core.Audio.FireAudioService.Instance.StopAllAudio();
+            }
+
+            if (IndustrialSafetyAR.AR.ARModeController.Instance != null)
+            {
+                IndustrialSafetyAR.AR.ARModeController.Instance.DisableAR();
             }
 
             var fireUI = FindAnyObjectByType<FireInteractionFeedbackUI>(FindObjectsInactive.Include);

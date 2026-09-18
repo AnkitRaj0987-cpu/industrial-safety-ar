@@ -56,6 +56,12 @@ namespace IndustrialSafetyAR.AR
 
         private void Update()
         {
+            if (ARModeController.Instance != null && !ARModeController.Instance.IsARActive)
+            {
+                SetText(string.Empty);
+                return;
+            }
+
             if (_facade == null)
             {
                 // Facade reference not set — show initializing and warn once in debug builds.

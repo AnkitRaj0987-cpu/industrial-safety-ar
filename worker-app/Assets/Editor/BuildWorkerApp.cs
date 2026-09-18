@@ -34,13 +34,13 @@ namespace IndustrialSafetyAR.Editor
         [MenuItem("Industrial Safety AR/Build Fire Training APK")]
         public static void PerformBuild()
         {
-            DoBuild("worker-app-step7c-touch-fix.apk", autoRun: false);
+            DoBuild("worker-app-ui-camera-v2.apk", autoRun: false);
         }
 
         [MenuItem("Industrial Safety AR/Build and Run Fire Training APK")]
         public static void PerformBuildAndRun()
         {
-            DoBuild("worker-app-step7c-touch-fix.apk", autoRun: true);
+            DoBuild("worker-app-ui-camera-v2.apk", autoRun: true);
         }
 
         [MenuItem("Industrial Safety AR/Run Fire Training Tests")]
@@ -173,7 +173,7 @@ namespace IndustrialSafetyAR.Editor
             }
         }
 
-        private static void DoBuild(string targetApkName = "worker-app-step7c-touch-fix.apk", bool autoRun = false)
+        private static void DoBuild(string targetApkName = "worker-app-ui-camera-v2.apk", bool autoRun = false)
         {
             string projectRoot = Path.GetDirectoryName(Application.dataPath);
             string logPath = Path.Combine(projectRoot, "../builds/build_result.txt");

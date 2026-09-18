@@ -4,13 +4,16 @@
 // Common Worker App Foundation shell:
 // - Worker Home Screen with app branding, offline badge, and profile card.
 // - Module Selection system (Fire: Available/In Progress/Completed, Gas: Coming Soon).
-// - Bottom Navigation (Home, Certificates, Profile).
-// - Clean Screen State Isolation (Home, Settings, TrainingFire, Results, Certificates, Profile).
+// - Controlled AR Launch Screen with explicit Camera ON/OFF toggle.
+// - 4-Tab Bottom Navigation (Home, AR, Certificates, Profile).
+// - Clean Screen State Isolation (Home, AR, Settings, TrainingFire, Results, Certificates, Profile).
+// - Authoritative AR camera lifecycle enforcement (Camera OFF on launch, Home, Settings, Certificates, Profile).
 // - Settings Panel with Sound controls (FireAudioService) and Language selection (LocaleService).
 // - Stationary tap gating on all interactive buttons.
 
 using System;
 using System.Collections.Generic;
+using IndustrialSafetyAR.AR;
 using IndustrialSafetyAR.Core;
 using IndustrialSafetyAR.Core.Audio;
 using IndustrialSafetyAR.Modules.FireExplosion;
@@ -28,6 +31,7 @@ namespace IndustrialSafetyAR.UI
         public enum WorkerAppScreenState
         {
             Home,
+            AR,
             Settings,
             TrainingFire,
             Results,
@@ -46,6 +50,7 @@ namespace IndustrialSafetyAR.UI
 
         // Content Views inside HomeRoot
         private GameObject _homeContentRoot;
+        private GameObject _arContentRoot;
         private GameObject _certificatesContentRoot;
         private GameObject _profileContentRoot;
 
@@ -81,6 +86,18 @@ namespace IndustrialSafetyAR.UI
         private Button _gasStartButton;
         private TextMeshProUGUI _gasStartButtonText;
 
+        // AR View components
+        private TextMeshProUGUI _arTitleText;
+        private TextMeshProUGUI _arSubtitleText;
+        private TextMeshProUGUI _arDescText;
+        private TextMeshProUGUI _arStatusText;
+        private Image _arStatusBg;
+        private Button _arToggleButton;
+        private TextMeshProUGUI _arToggleButtonText;
+        private Image _arToggleBtnBg;
+        private Button _arStartFireShortcutBtn;
+        private TextMeshProUGUI _arStartFireShortcutBtnText;
+
         // Certificates View components
         private TextMeshProUGUI _certTitleText;
         private TextMeshProUGUI _certIconText;
@@ -105,6 +122,9 @@ namespace IndustrialSafetyAR.UI
         private Button _navHomeBtn;
         private TextMeshProUGUI _navHomeText;
         private Image _navHomeBg;
+        private Button _navArBtn;
+        private TextMeshProUGUI _navArText;
+        private Image _navArBg;
         private Button _navCertBtn;
         private TextMeshProUGUI _navCertText;
         private Image _navCertBg;
@@ -170,7 +190,16 @@ namespace IndustrialSafetyAR.UI
             get
             {
                 EnsureUIHierarchy();
-                return _homeRoot != null && _homeRoot.activeSelf;
+                return _homeRoot != null && _homeRoot.activeSelf && _homeContentRoot != null && _homeContentRoot.activeSelf;
+            }
+        }
+
+        public bool IsArVisible
+        {
+            get
+            {
+                EnsureUIHierarchy();
+                return _homeRoot != null && _homeRoot.activeSelf && _arContentRoot != null && _arContentRoot.activeSelf;
             }
         }
 
@@ -188,7 +217,7 @@ namespace IndustrialSafetyAR.UI
             get
             {
                 EnsureUIHierarchy();
-                return _certificatesContentRoot != null && _certificatesContentRoot.activeSelf;
+                return _homeRoot != null && _homeRoot.activeSelf && _certificatesContentRoot != null && _certificatesContentRoot.activeSelf;
             }
         }
 
@@ -197,7 +226,7 @@ namespace IndustrialSafetyAR.UI
             get
             {
                 EnsureUIHierarchy();
-                return _profileContentRoot != null && _profileContentRoot.activeSelf;
+                return _homeRoot != null && _homeRoot.activeSelf && _profileContentRoot != null && _profileContentRoot.activeSelf;
             }
         }
 
@@ -211,8 +240,10 @@ namespace IndustrialSafetyAR.UI
         public Button SoundToggleButton => _soundToggleButton;
         public Button AlarmToggleButton => _alarmToggleButton;
         public Button NavHomeButton => _navHomeBtn;
+        public Button NavArButton => _navArBtn;
         public Button NavCertificatesButton => _navCertBtn;
         public Button NavProfileButton => _navProfBtn;
+        public Button ArToggleButton => _arToggleButton;
 
         public void SetState(WorkerAppScreenState state)
         {
@@ -227,6 +258,12 @@ namespace IndustrialSafetyAR.UI
             }
 
             EnsureUIHierarchy();
+
+            // Strictly enforce AR OFF on application launch
+            if (ARModeController.Instance != null)
+            {
+                ARModeController.Instance.DisableAR();
+            }
         }
 
         private void OnEnable()
@@ -274,7 +311,7 @@ namespace IndustrialSafetyAR.UI
         }
 
         /// <summary>
-        /// Displays the Worker Home screen (modules list) and deactivates training UI or modals.
+        /// Displays the Worker Home screen (modules list) and authoritatively deactivates AR camera.
         /// </summary>
         public void ShowHome()
         {
@@ -284,11 +321,18 @@ namespace IndustrialSafetyAR.UI
 
             if (_homeRoot != null) _homeRoot.SetActive(true);
             if (_homeContentRoot != null) _homeContentRoot.SetActive(true);
+            if (_arContentRoot != null) _arContentRoot.SetActive(false);
             if (_certificatesContentRoot != null) _certificatesContentRoot.SetActive(false);
             if (_profileContentRoot != null) _profileContentRoot.SetActive(false);
             if (_settingsRoot != null) _settingsRoot.SetActive(false);
 
             UpdateNavHighlight();
+
+            // Authoritatively disable camera and AR on Home
+            if (ARModeController.Instance != null)
+            {
+                ARModeController.Instance.DisableAR();
+            }
 
             // Explicitly hide Fire Training UI canvas
             var fireUI = FindAnyObjectByType<FireInteractionFeedbackUI>(FindObjectsInactive.Include);
@@ -322,6 +366,60 @@ namespace IndustrialSafetyAR.UI
         }
 
         /// <summary>
+        /// Displays the controlled AR launch screen. Camera remains OFF until explicitly enabled by user.
+        /// </summary>
+        public void ShowAR()
+        {
+            EnsureUIHierarchy();
+            _currentState = WorkerAppScreenState.AR;
+            _previousNavState = WorkerAppScreenState.AR;
+
+            if (_homeRoot != null) _homeRoot.SetActive(true);
+            if (_homeContentRoot != null) _homeContentRoot.SetActive(false);
+            if (_arContentRoot != null) _arContentRoot.SetActive(true);
+            if (_certificatesContentRoot != null) _certificatesContentRoot.SetActive(false);
+            if (_profileContentRoot != null) _profileContentRoot.SetActive(false);
+            if (_settingsRoot != null) _settingsRoot.SetActive(false);
+
+            UpdateNavHighlight();
+            UpdateArScreenUI();
+
+            var fireUI = FindAnyObjectByType<FireInteractionFeedbackUI>(FindObjectsInactive.Include);
+            if (fireUI != null) fireUI.HideTrainingUI();
+
+            var summaryUI = FindAnyObjectByType<FireAssessmentSummaryUI>(FindObjectsInactive.Include);
+            if (summaryUI != null) summaryUI.HideSummary();
+
+            if (FireAudioService.Instance != null)
+            {
+                FireAudioService.Instance.StopEmergencyAlarm();
+                FireAudioService.Instance.StopAllAudio();
+            }
+
+            UpdateOfflineStatus();
+            RefreshTexts();
+        }
+
+        /// <summary>
+        /// Explicit user action to toggle AR Camera on or off from the AR screen.
+        /// </summary>
+        public void ToggleARCamera()
+        {
+            if (ARModeController.Instance != null)
+            {
+                if (ARModeController.Instance.IsARActive)
+                {
+                    ARModeController.Instance.DisableAR();
+                }
+                else
+                {
+                    ARModeController.Instance.EnableAR();
+                }
+            }
+            UpdateArScreenUI();
+        }
+
+        /// <summary>
         /// Displays the Certificates screen (safe empty state without fake certificates).
         /// </summary>
         public void ShowCertificates()
@@ -332,11 +430,17 @@ namespace IndustrialSafetyAR.UI
 
             if (_homeRoot != null) _homeRoot.SetActive(true);
             if (_homeContentRoot != null) _homeContentRoot.SetActive(false);
+            if (_arContentRoot != null) _arContentRoot.SetActive(false);
             if (_certificatesContentRoot != null) _certificatesContentRoot.SetActive(true);
             if (_profileContentRoot != null) _profileContentRoot.SetActive(false);
             if (_settingsRoot != null) _settingsRoot.SetActive(false);
 
             UpdateNavHighlight();
+
+            if (ARModeController.Instance != null)
+            {
+                ARModeController.Instance.DisableAR();
+            }
 
             var fireUI = FindAnyObjectByType<FireInteractionFeedbackUI>(FindObjectsInactive.Include);
             if (fireUI != null) fireUI.HideTrainingUI();
@@ -365,11 +469,17 @@ namespace IndustrialSafetyAR.UI
 
             if (_homeRoot != null) _homeRoot.SetActive(true);
             if (_homeContentRoot != null) _homeContentRoot.SetActive(false);
+            if (_arContentRoot != null) _arContentRoot.SetActive(false);
             if (_certificatesContentRoot != null) _certificatesContentRoot.SetActive(false);
             if (_profileContentRoot != null) _profileContentRoot.SetActive(true);
             if (_settingsRoot != null) _settingsRoot.SetActive(false);
 
             UpdateNavHighlight();
+
+            if (ARModeController.Instance != null)
+            {
+                ARModeController.Instance.DisableAR();
+            }
 
             var fireUI = FindAnyObjectByType<FireInteractionFeedbackUI>(FindObjectsInactive.Include);
             if (fireUI != null) fireUI.HideTrainingUI();
@@ -389,10 +499,11 @@ namespace IndustrialSafetyAR.UI
 
         private void UpdateNavHighlight()
         {
-            Color activeCol = new Color(0.18f, 0.45f, 0.75f, 0.95f);
-            Color inactiveCol = new Color(0.12f, 0.16f, 0.24f, 0.70f);
+            Color activeCol = new Color(0.12f, 0.53f, 0.90f, 0.98f); // Safety Blue
+            Color inactiveCol = new Color(0.10f, 0.14f, 0.22f, 0.70f);
 
             if (_navHomeBg != null) _navHomeBg.color = _currentState == WorkerAppScreenState.Home ? activeCol : inactiveCol;
+            if (_navArBg != null) _navArBg.color = _currentState == WorkerAppScreenState.AR ? activeCol : inactiveCol;
             if (_navCertBg != null) _navCertBg.color = _currentState == WorkerAppScreenState.Certificates ? activeCol : inactiveCol;
             if (_navProfBg != null) _navProfBg.color = _currentState == WorkerAppScreenState.Profile ? activeCol : inactiveCol;
         }
@@ -420,6 +531,9 @@ namespace IndustrialSafetyAR.UI
         {
             switch (_previousNavState)
             {
+                case WorkerAppScreenState.AR:
+                    ShowAR();
+                    break;
                 case WorkerAppScreenState.Certificates:
                     ShowCertificates();
                     break;
@@ -433,7 +547,7 @@ namespace IndustrialSafetyAR.UI
         }
 
         /// <summary>
-        /// Initiates the Fire & Explosion Response training scenario.
+        /// Initiates the Fire & Explosion Response training scenario and authoritatively enables AR camera.
         /// </summary>
         public void StartFireTraining()
         {
@@ -441,6 +555,12 @@ namespace IndustrialSafetyAR.UI
             _currentState = WorkerAppScreenState.TrainingFire;
             if (_homeRoot != null) _homeRoot.SetActive(false);
             if (_settingsRoot != null) _settingsRoot.SetActive(false);
+
+            // Authoritatively enable AR subsystem and camera
+            if (ARModeController.Instance != null)
+            {
+                ARModeController.Instance.EnableAR();
+            }
 
             // Activate Fire AR Interaction UI and ensure canvas is visible
             var fireUI = FindAnyObjectByType<FireInteractionFeedbackUI>(FindObjectsInactive.Include);
@@ -457,11 +577,14 @@ namespace IndustrialSafetyAR.UI
                 fireCtrl.enabled = true;
             }
 
-            FireAudioService.Instance.PlayStepCompleted();
+            if (FireAudioService.Instance != null)
+            {
+                FireAudioService.Instance.PlayStepCompleted();
+            }
         }
 
         /// <summary>
-        /// Returns from training scenario back to the Worker Home menu.
+        /// Returns from training scenario back to the Worker Home menu, disabling AR camera.
         /// </summary>
         public void ReturnToHome()
         {
@@ -492,6 +615,55 @@ namespace IndustrialSafetyAR.UI
                 _offlineBadgeText.text = $"● {onlineText} • {syncReady}";
                 if (_offlineBadgeBg != null) _offlineBadgeBg.color = new Color(0.10f, 0.35f, 0.65f, 0.94f); // Calming Blue
             }
+        }
+
+        public void UpdateArScreenUI()
+        {
+            var loc = LocaleService.Instance;
+            bool isArActive = ARModeController.Instance != null && ARModeController.Instance.IsARActive;
+
+            if (_arTitleText != null) _arTitleText.text = $"<b>{loc.Get("ar_screen_title", "AR SAFETY TRAINING")}</b>";
+            if (_arSubtitleText != null) _arSubtitleText.text = loc.Get("ar_screen_subtitle", "Interactive Industrial Safety Training");
+            if (_arDescText != null) _arDescText.text = loc.Get("ar_screen_desc", "Use your phone camera to enter an interactive safety scenario.");
+
+            if (_arStatusText != null)
+            {
+                _arStatusText.text = isArActive
+                    ? $"● {loc.Get("ar_camera_active", "AR Camera is active. Look for floor surfaces.")}"
+                    : $"○ {loc.Get("ar_camera_inactive", "Camera is currently inactive.")}";
+                _arStatusText.color = isArActive ? new Color(0.40f, 0.85f, 0.50f) : new Color(0.70f, 0.78f, 0.88f);
+            }
+
+            if (_arStatusBg != null)
+            {
+                _arStatusBg.color = isArActive ? new Color(0.10f, 0.32f, 0.18f, 0.94f) : new Color(0.12f, 0.16f, 0.24f, 0.94f);
+            }
+
+            if (_arToggleButtonText != null)
+            {
+                _arToggleButtonText.text = isArActive
+                    ? $"<b>{loc.Get("btn_exit_ar", "EXIT AR")}</b>"
+                    : $"<b>{loc.Get("btn_enable_ar", "ENABLE AR CAMERA")}</b>";
+            }
+
+            if (_arToggleBtnBg != null)
+            {
+                _arToggleBtnBg.color = isArActive
+                    ? new Color(0.75f, 0.20f, 0.18f, 0.96f) // Crimson / danger
+                    : new Color(0.12f, 0.53f, 0.90f, 0.98f); // Safety Blue
+            }
+
+            if (_arStartFireShortcutBtn != null)
+            {
+                _arStartFireShortcutBtn.gameObject.SetActive(isArActive);
+            }
+
+            if (_arStartFireShortcutBtnText != null)
+            {
+                _arStartFireShortcutBtnText.text = $"<b>{loc.Get("btn_start_training", "START TRAINING →")}</b>";
+            }
+
+            if (_navArText != null) _navArText.text = $"<b>{loc.Get("nav_ar", "AR")}</b>";
         }
 
         /// <summary>
@@ -561,6 +733,9 @@ namespace IndustrialSafetyAR.UI
             // Home Prominent Settings Button
             if (_homeSettingsButtonText != null) _homeSettingsButtonText.text = $"<b>{loc.Get("settings_title", "APPLICATION SETTINGS")}</b>";
 
+            // AR Screen
+            UpdateArScreenUI();
+
             // Certificates View
             if (_certTitleText != null) _certTitleText.text = $"<b>{loc.Get("certificates_title", "Certificates")}</b>";
             if (_certIconText != null) _certIconText.text = "";
@@ -580,6 +755,7 @@ namespace IndustrialSafetyAR.UI
 
             // Bottom Navigation Bar
             if (_navHomeText != null) _navHomeText.text = $"<b>{loc.Get("nav_home", "HOME")}</b>";
+            if (_navArText != null) _navArText.text = $"<b>{loc.Get("nav_ar", "AR")}</b>";
             if (_navCertText != null) _navCertText.text = $"<b>{loc.Get("nav_certificates", "CERTIFICATES")}</b>";
             if (_navProfText != null) _navProfText.text = $"<b>{loc.Get("nav_profile", "PROFILE")}</b>";
 
@@ -632,7 +808,7 @@ namespace IndustrialSafetyAR.UI
         }
 
         /// <summary>
-        /// Procedurally constructs the complete Home, Certificates, Profile, and Settings UI hierarchies on a ScreenSpaceOverlay Canvas.
+        /// Procedurally constructs the complete Home, AR, Certificates, Profile, and Settings UI hierarchies on a ScreenSpaceOverlay Canvas.
         /// </summary>
         public void EnsureUIHierarchy()
         {
@@ -676,7 +852,7 @@ namespace IndustrialSafetyAR.UI
 
             // Full dark industrial background
             var homeBg = _homeRoot.AddComponent<Image>();
-            homeBg.color = new Color(0.06f, 0.08f, 0.12f, 0.98f);
+            homeBg.color = new Color(0.043f, 0.059f, 0.090f, 0.98f); // Deep charcoal/navy
 
             // -------------------------------------------------------------
             // Top Header Bar (y: 0.89 to 0.99)
@@ -694,13 +870,13 @@ namespace IndustrialSafetyAR.UI
             titleObj.transform.SetParent(headerObj.transform, false);
             var titleRect = titleObj.AddComponent<RectTransform>();
             titleRect.anchorMin = new Vector2(0f, 0.62f);
-            titleRect.anchorMax = new Vector2(0.82f, 1f);
+            titleRect.anchorMax = new Vector2(0.80f, 1f);
             titleRect.offsetMin = Vector2.zero;
             titleRect.offsetMax = Vector2.zero;
 
             _titleText = titleObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _titleText.font = defaultFont;
-            _titleText.fontSize = 26;
+            _titleText.fontSize = 24;
             _titleText.alignment = TextAlignmentOptions.Left;
             _titleText.color = Color.white;
 
@@ -709,13 +885,13 @@ namespace IndustrialSafetyAR.UI
             welcomeObj.transform.SetParent(headerObj.transform, false);
             var welcomeRect = welcomeObj.AddComponent<RectTransform>();
             welcomeRect.anchorMin = new Vector2(0f, 0.32f);
-            welcomeRect.anchorMax = new Vector2(0.82f, 0.62f);
+            welcomeRect.anchorMax = new Vector2(0.80f, 0.62f);
             welcomeRect.offsetMin = Vector2.zero;
             welcomeRect.offsetMax = Vector2.zero;
 
             _welcomeBackText = welcomeObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _welcomeBackText.font = defaultFont;
-            _welcomeBackText.fontSize = 16;
+            _welcomeBackText.fontSize = 15;
             _welcomeBackText.alignment = TextAlignmentOptions.Left;
             _welcomeBackText.color = new Color(0.85f, 0.90f, 0.98f);
 
@@ -724,27 +900,27 @@ namespace IndustrialSafetyAR.UI
             subObj.transform.SetParent(headerObj.transform, false);
             var subRect = subObj.AddComponent<RectTransform>();
             subRect.anchorMin = new Vector2(0f, 0f);
-            subRect.anchorMax = new Vector2(0.82f, 0.32f);
+            subRect.anchorMax = new Vector2(0.80f, 0.32f);
             subRect.offsetMin = Vector2.zero;
             subRect.offsetMax = Vector2.zero;
 
             _subtitleText = subObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _subtitleText.font = defaultFont;
-            _subtitleText.fontSize = 13;
+            _subtitleText.fontSize = 12;
             _subtitleText.alignment = TextAlignmentOptions.Left;
             _subtitleText.color = new Color(0.68f, 0.75f, 0.85f);
 
-            // Header Settings Button (quick gear icon)
+            // Header Settings Button (touch target >= 44dp)
             var headerSettingsBtnObj = new GameObject("HeaderSettingsButton");
             headerSettingsBtnObj.transform.SetParent(headerObj.transform, false);
             var hsBtnRect = headerSettingsBtnObj.AddComponent<RectTransform>();
-            hsBtnRect.anchorMin = new Vector2(0.72f, 0.18f);
-            hsBtnRect.anchorMax = new Vector2(1.0f, 0.82f);
+            hsBtnRect.anchorMin = new Vector2(0.72f, 0.16f);
+            hsBtnRect.anchorMax = new Vector2(1.0f, 0.84f);
             hsBtnRect.offsetMin = Vector2.zero;
             hsBtnRect.offsetMax = Vector2.zero;
 
             var hsBtnImg = headerSettingsBtnObj.AddComponent<Image>();
-            hsBtnImg.color = new Color(0.18f, 0.24f, 0.35f, 0.95f);
+            hsBtnImg.color = new Color(0.14f, 0.20f, 0.30f, 0.96f);
             _headerSettingsButton = headerSettingsBtnObj.AddComponent<Button>();
             var hsTapGated = headerSettingsBtnObj.AddComponent<TapGatedButton>();
             hsTapGated.Initialize(() => OpenSettings());
@@ -794,7 +970,7 @@ namespace IndustrialSafetyAR.UI
             pcRect.offsetMax = Vector2.zero;
 
             var pcBg = profileCardObj.AddComponent<Image>();
-            pcBg.color = new Color(0.12f, 0.16f, 0.24f, 0.96f);
+            pcBg.color = new Color(0.08f, 0.11f, 0.17f, 0.96f);
 
             var pHeaderObj = new GameObject("ProfileHeader");
             pHeaderObj.transform.SetParent(profileCardObj.transform, false);
@@ -807,7 +983,7 @@ namespace IndustrialSafetyAR.UI
             _profileHeaderLabelText = pHeaderObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _profileHeaderLabelText.font = defaultFont;
             _profileHeaderLabelText.text = "<color=#90CAF9><b>● WORKER PROFILE</b></color>";
-            _profileHeaderLabelText.fontSize = 14;
+            _profileHeaderLabelText.fontSize = 12;
             _profileHeaderLabelText.alignment = TextAlignmentOptions.Left;
 
             var pNameObj = new GameObject("ProfileName");
@@ -866,7 +1042,7 @@ namespace IndustrialSafetyAR.UI
             fcRect.offsetMax = Vector2.zero;
 
             var fcBg = fireCardObj.AddComponent<Image>();
-            fcBg.color = new Color(0.12f, 0.17f, 0.25f, 0.96f);
+            fcBg.color = new Color(0.08f, 0.12f, 0.18f, 0.96f);
 
             // Fire AR Badge
             var fireArBadgeObj = new GameObject("FireArBadge");
@@ -878,7 +1054,7 @@ namespace IndustrialSafetyAR.UI
             fabRect.offsetMax = Vector2.zero;
 
             var fabBg = fireArBadgeObj.AddComponent<Image>();
-            fabBg.color = new Color(0.25f, 0.45f, 0.75f, 0.95f); // Tech Blue Pill
+            fabBg.color = new Color(0.12f, 0.45f, 0.80f, 0.95f); // Safety Blue Pill
 
             var fabTextObj = new GameObject("Text");
             fabTextObj.transform.SetParent(fireArBadgeObj.transform, false);
@@ -889,7 +1065,7 @@ namespace IndustrialSafetyAR.UI
             _fireArBadgeText = fabTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _fireArBadgeText.font = defaultFont;
             _fireArBadgeText.text = "<b>AR</b>";
-            _fireArBadgeText.fontSize = 12;
+            _fireArBadgeText.fontSize = 11;
             _fireArBadgeText.alignment = TextAlignmentOptions.Center;
             _fireArBadgeText.color = Color.white;
 
@@ -905,7 +1081,7 @@ namespace IndustrialSafetyAR.UI
             _fireTitleText = fireTitleObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _fireTitleText.font = defaultFont;
             _fireTitleText.text = "<b>Fire & Explosion Response</b>";
-            _fireTitleText.fontSize = 17;
+            _fireTitleText.fontSize = 16;
             _fireTitleText.alignment = TextAlignmentOptions.Left;
             _fireTitleText.color = Color.white;
 
@@ -966,7 +1142,7 @@ namespace IndustrialSafetyAR.UI
             _fireOfflineTagText.alignment = TextAlignmentOptions.Left;
             _fireOfflineTagText.color = new Color(0.40f, 0.80f, 0.50f);
 
-            // Fire Start Button
+            // Fire Start Button (touch target >= 48dp)
             var fireBtnObj = new GameObject("StartFireButton");
             fireBtnObj.transform.SetParent(fireCardObj.transform, false);
             var fbRect = fireBtnObj.AddComponent<RectTransform>();
@@ -976,7 +1152,7 @@ namespace IndustrialSafetyAR.UI
             fbRect.offsetMax = Vector2.zero;
 
             var fbImg = fireBtnObj.AddComponent<Image>();
-            fbImg.color = new Color(0.15f, 0.65f, 0.35f);
+            fbImg.color = new Color(0.12f, 0.53f, 0.90f, 0.98f); // Safety Blue Action
             _fireStartButton = fireBtnObj.AddComponent<Button>();
             var fireTapGated = fireBtnObj.AddComponent<TapGatedButton>();
             fireTapGated.Initialize(() => StartFireTraining());
@@ -1004,7 +1180,7 @@ namespace IndustrialSafetyAR.UI
             gcRect.offsetMax = Vector2.zero;
 
             var gcBg = gasCardObj.AddComponent<Image>();
-            gcBg.color = new Color(0.10f, 0.13f, 0.19f, 0.90f);
+            gcBg.color = new Color(0.06f, 0.09f, 0.14f, 0.90f);
 
             // Gas AR Badge
             var gasArBadgeObj = new GameObject("GasArBadge");
@@ -1016,7 +1192,7 @@ namespace IndustrialSafetyAR.UI
             gabRect.offsetMax = Vector2.zero;
 
             var gabBg = gasArBadgeObj.AddComponent<Image>();
-            gabBg.color = new Color(0.28f, 0.32f, 0.40f, 0.80f);
+            gabBg.color = new Color(0.24f, 0.28f, 0.36f, 0.80f);
 
             var gabTextObj = new GameObject("Text");
             gabTextObj.transform.SetParent(gasArBadgeObj.transform, false);
@@ -1027,7 +1203,7 @@ namespace IndustrialSafetyAR.UI
             _gasArBadgeText = gabTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _gasArBadgeText.font = defaultFont;
             _gasArBadgeText.text = "<b>AR</b>";
-            _gasArBadgeText.fontSize = 12;
+            _gasArBadgeText.fontSize = 11;
             _gasArBadgeText.alignment = TextAlignmentOptions.Center;
             _gasArBadgeText.color = new Color(0.7f, 0.7f, 0.7f);
 
@@ -1043,7 +1219,7 @@ namespace IndustrialSafetyAR.UI
             _gasTitleText = gasTitleObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _gasTitleText.font = defaultFont;
             _gasTitleText.text = "<b>Gas Leak & Confined Space Safety</b>";
-            _gasTitleText.fontSize = 17;
+            _gasTitleText.fontSize = 16;
             _gasTitleText.alignment = TextAlignmentOptions.Left;
             _gasTitleText.color = new Color(0.65f, 0.70f, 0.78f);
 
@@ -1057,7 +1233,7 @@ namespace IndustrialSafetyAR.UI
             gsbRect.offsetMax = Vector2.zero;
 
             var gsbBg = gasStatusObj.AddComponent<Image>();
-            gsbBg.color = new Color(0.50f, 0.32f, 0.12f, 0.96f);
+            gsbBg.color = new Color(0.40f, 0.28f, 0.12f, 0.96f);
 
             var gsbTextObj = new GameObject("Text");
             gsbTextObj.transform.SetParent(gasStatusObj.transform, false);
@@ -1098,7 +1274,7 @@ namespace IndustrialSafetyAR.UI
             gbRect.offsetMax = Vector2.zero;
 
             var gbImg = gasBtnObj.AddComponent<Image>();
-            gbImg.color = new Color(0.20f, 0.22f, 0.28f, 0.8f);
+            gbImg.color = new Color(0.16f, 0.20f, 0.26f, 0.8f);
             _gasStartButton = gasBtnObj.AddComponent<Button>();
             _gasStartButton.interactable = false;
 
@@ -1111,9 +1287,9 @@ namespace IndustrialSafetyAR.UI
             _gasStartButtonText = gbTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _gasStartButtonText.font = defaultFont;
             _gasStartButtonText.text = "<b>COMING SOON</b>";
-            _gasStartButtonText.fontSize = 16;
+            _gasStartButtonText.fontSize = 15;
             _gasStartButtonText.alignment = TextAlignmentOptions.Center;
-            _gasStartButtonText.color = new Color(0.6f, 0.6f, 0.6f);
+            _gasStartButtonText.color = new Color(0.5f, 0.55f, 0.65f);
 
             // Prominent Settings Button in Home view (y: 0.02 to 0.12 of container)
             var prominentSettingsBtnObj = new GameObject("ProminentSettingsButton");
@@ -1125,7 +1301,7 @@ namespace IndustrialSafetyAR.UI
             psbRect.offsetMax = Vector2.zero;
 
             var psbImg = prominentSettingsBtnObj.AddComponent<Image>();
-            psbImg.color = new Color(0.18f, 0.25f, 0.38f, 0.98f);
+            psbImg.color = new Color(0.14f, 0.20f, 0.30f, 0.98f);
             _homeSettingsButton = prominentSettingsBtnObj.AddComponent<Button>();
             var psbTapGated = prominentSettingsBtnObj.AddComponent<TapGatedButton>();
             psbTapGated.Initialize(() => OpenSettings());
@@ -1139,12 +1315,166 @@ namespace IndustrialSafetyAR.UI
             _homeSettingsButtonText = psbTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _homeSettingsButtonText.font = defaultFont;
             _homeSettingsButtonText.text = "<b>APPLICATION SETTINGS</b>";
-            _homeSettingsButtonText.fontSize = 16;
+            _homeSettingsButtonText.fontSize = 15;
             _homeSettingsButtonText.alignment = TextAlignmentOptions.Center;
             _homeSettingsButtonText.color = Color.white;
 
             // =============================================================
-            // TAB 2: CERTIFICATES CONTENT ROOT (Safe Empty State)
+            // TAB 2: AR CONTENT ROOT (Controlled AR Entry & Camera Toggle)
+            // =============================================================
+            _arContentRoot = new GameObject("ArContentRoot");
+            _arContentRoot.transform.SetParent(contentContainer.transform, false);
+            var arcrRect = _arContentRoot.AddComponent<RectTransform>();
+            arcrRect.anchorMin = Vector2.zero;
+            arcrRect.anchorMax = Vector2.one;
+            arcrRect.offsetMin = Vector2.zero;
+            arcrRect.offsetMax = Vector2.zero;
+
+            var arCardObj = new GameObject("ArLaunchCard");
+            arCardObj.transform.SetParent(_arContentRoot.transform, false);
+            var arCardRect = arCardObj.AddComponent<RectTransform>();
+            arCardRect.anchorMin = new Vector2(0.04f, 0.10f);
+            arCardRect.anchorMax = new Vector2(0.96f, 0.90f);
+            arCardRect.offsetMin = Vector2.zero;
+            arCardRect.offsetMax = Vector2.zero;
+
+            var arCardBg = arCardObj.AddComponent<Image>();
+            arCardBg.color = new Color(0.08f, 0.12f, 0.18f, 0.96f);
+
+            // AR Screen Title
+            var arTitleObj = new GameObject("ArTitle");
+            arTitleObj.transform.SetParent(arCardObj.transform, false);
+            var atRect = arTitleObj.AddComponent<RectTransform>();
+            atRect.anchorMin = new Vector2(0.06f, 0.82f);
+            atRect.anchorMax = new Vector2(0.94f, 0.94f);
+            atRect.offsetMin = Vector2.zero;
+            atRect.offsetMax = Vector2.zero;
+
+            _arTitleText = arTitleObj.AddComponent<TextMeshProUGUI>();
+            if (defaultFont != null) _arTitleText.font = defaultFont;
+            _arTitleText.text = "<b>AR SAFETY TRAINING</b>";
+            _arTitleText.fontSize = 22;
+            _arTitleText.alignment = TextAlignmentOptions.Center;
+            _arTitleText.color = Color.white;
+
+            // AR Screen Subtitle
+            var arSubObj = new GameObject("ArSubtitle");
+            arSubObj.transform.SetParent(arCardObj.transform, false);
+            var asRect = arSubObj.AddComponent<RectTransform>();
+            asRect.anchorMin = new Vector2(0.06f, 0.74f);
+            asRect.anchorMax = new Vector2(0.94f, 0.82f);
+            asRect.offsetMin = Vector2.zero;
+            asRect.offsetMax = Vector2.zero;
+
+            _arSubtitleText = arSubObj.AddComponent<TextMeshProUGUI>();
+            if (defaultFont != null) _arSubtitleText.font = defaultFont;
+            _arSubtitleText.text = "Interactive Industrial Safety Training";
+            _arSubtitleText.fontSize = 13;
+            _arSubtitleText.alignment = TextAlignmentOptions.Center;
+            _arSubtitleText.color = new Color(0.65f, 0.75f, 0.88f);
+
+            // AR Description Body
+            var arDescObj = new GameObject("ArDesc");
+            arDescObj.transform.SetParent(arCardObj.transform, false);
+            var adRect = arDescObj.AddComponent<RectTransform>();
+            adRect.anchorMin = new Vector2(0.08f, 0.50f);
+            adRect.anchorMax = new Vector2(0.92f, 0.70f);
+            adRect.offsetMin = Vector2.zero;
+            adRect.offsetMax = Vector2.zero;
+
+            _arDescText = arDescObj.AddComponent<TextMeshProUGUI>();
+            if (defaultFont != null) _arDescText.font = defaultFont;
+            _arDescText.text = "Use your phone camera to enter an interactive safety scenario.";
+            _arDescText.fontSize = 15;
+            _arDescText.alignment = TextAlignmentOptions.Center;
+            _arDescText.color = new Color(0.85f, 0.90f, 0.96f);
+
+            // AR Camera Status Indicator
+            var arStatusBoxObj = new GameObject("ArStatusBox");
+            arStatusBoxObj.transform.SetParent(arCardObj.transform, false);
+            var asbRect = arStatusBoxObj.AddComponent<RectTransform>();
+            asbRect.anchorMin = new Vector2(0.08f, 0.36f);
+            asbRect.anchorMax = new Vector2(0.92f, 0.46f);
+            asbRect.offsetMin = Vector2.zero;
+            asbRect.offsetMax = Vector2.zero;
+
+            _arStatusBg = arStatusBoxObj.AddComponent<Image>();
+            _arStatusBg.color = new Color(0.12f, 0.16f, 0.24f, 0.94f);
+
+            var arStatusTextObj = new GameObject("Text");
+            arStatusTextObj.transform.SetParent(arStatusBoxObj.transform, false);
+            var astRect = arStatusTextObj.AddComponent<RectTransform>();
+            astRect.anchorMin = Vector2.zero;
+            astRect.anchorMax = Vector2.one;
+
+            _arStatusText = arStatusTextObj.AddComponent<TextMeshProUGUI>();
+            if (defaultFont != null) _arStatusText.font = defaultFont;
+            _arStatusText.text = "○ Camera is currently inactive.";
+            _arStatusText.fontSize = 13;
+            _arStatusText.alignment = TextAlignmentOptions.Center;
+            _arStatusText.color = new Color(0.70f, 0.78f, 0.88f);
+
+            // Primary Toggle Button (ENABLE AR CAMERA / EXIT AR)
+            var arToggleBtnObj = new GameObject("ArToggleButton");
+            arToggleBtnObj.transform.SetParent(arCardObj.transform, false);
+            var atbRect = arToggleBtnObj.AddComponent<RectTransform>();
+            atbRect.anchorMin = new Vector2(0.08f, 0.20f);
+            atbRect.anchorMax = new Vector2(0.92f, 0.32f);
+            atbRect.offsetMin = Vector2.zero;
+            atbRect.offsetMax = Vector2.zero;
+
+            _arToggleBtnBg = arToggleBtnObj.AddComponent<Image>();
+            _arToggleBtnBg.color = new Color(0.12f, 0.53f, 0.90f, 0.98f);
+            _arToggleButton = arToggleBtnObj.AddComponent<Button>();
+            var atbTap = arToggleBtnObj.AddComponent<TapGatedButton>();
+            atbTap.Initialize(() => ToggleARCamera());
+
+            var atbTextObj = new GameObject("Text");
+            atbTextObj.transform.SetParent(arToggleBtnObj.transform, false);
+            var atbtRect = atbTextObj.AddComponent<RectTransform>();
+            atbtRect.anchorMin = Vector2.zero;
+            atbtRect.anchorMax = Vector2.one;
+
+            _arToggleButtonText = atbTextObj.AddComponent<TextMeshProUGUI>();
+            if (defaultFont != null) _arToggleButtonText.font = defaultFont;
+            _arToggleButtonText.text = "<b>ENABLE AR CAMERA</b>";
+            _arToggleButtonText.fontSize = 16;
+            _arToggleButtonText.alignment = TextAlignmentOptions.Center;
+            _arToggleButtonText.color = Color.white;
+
+            // Fire Shortcut button (visible when AR camera is active)
+            var arFireBtnObj = new GameObject("ArStartFireShortcut");
+            arFireBtnObj.transform.SetParent(arCardObj.transform, false);
+            var afbRect = arFireBtnObj.AddComponent<RectTransform>();
+            afbRect.anchorMin = new Vector2(0.08f, 0.06f);
+            afbRect.anchorMax = new Vector2(0.92f, 0.17f);
+            afbRect.offsetMin = Vector2.zero;
+            afbRect.offsetMax = Vector2.zero;
+
+            var afbImg = arFireBtnObj.AddComponent<Image>();
+            afbImg.color = new Color(0.12f, 0.55f, 0.28f, 0.96f);
+            _arStartFireShortcutBtn = arFireBtnObj.AddComponent<Button>();
+            var afbTap = arFireBtnObj.AddComponent<TapGatedButton>();
+            afbTap.Initialize(() => StartFireTraining());
+
+            var afbTextObj = new GameObject("Text");
+            afbTextObj.transform.SetParent(arFireBtnObj.transform, false);
+            var afbtRect = afbTextObj.AddComponent<RectTransform>();
+            afbtRect.anchorMin = Vector2.zero;
+            afbtRect.anchorMax = Vector2.one;
+
+            _arStartFireShortcutBtnText = afbTextObj.AddComponent<TextMeshProUGUI>();
+            if (defaultFont != null) _arStartFireShortcutBtnText.font = defaultFont;
+            _arStartFireShortcutBtnText.text = "<b>START TRAINING →</b>";
+            _arStartFireShortcutBtnText.fontSize = 15;
+            _arStartFireShortcutBtnText.alignment = TextAlignmentOptions.Center;
+            _arStartFireShortcutBtnText.color = Color.white;
+            arFireBtnObj.SetActive(false);
+
+            _arContentRoot.SetActive(false);
+
+            // =============================================================
+            // TAB 3: CERTIFICATES CONTENT ROOT (Safe Empty State)
             // =============================================================
             _certificatesContentRoot = new GameObject("CertificatesContentRoot");
             _certificatesContentRoot.transform.SetParent(contentContainer.transform, false);
@@ -1163,7 +1493,7 @@ namespace IndustrialSafetyAR.UI
             ccardRect.offsetMax = Vector2.zero;
 
             var ccardBg = certCardObj.AddComponent<Image>();
-            ccardBg.color = new Color(0.10f, 0.14f, 0.22f, 0.96f);
+            ccardBg.color = new Color(0.08f, 0.12f, 0.18f, 0.96f);
 
             var certTitleObj = new GameObject("CertTitle");
             certTitleObj.transform.SetParent(certCardObj.transform, false);
@@ -1176,7 +1506,7 @@ namespace IndustrialSafetyAR.UI
             _certTitleText = certTitleObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _certTitleText.font = defaultFont;
             _certTitleText.text = "<b>Certificates</b>";
-            _certTitleText.fontSize = 24;
+            _certTitleText.fontSize = 22;
             _certTitleText.alignment = TextAlignmentOptions.Center;
             _certTitleText.color = Color.white;
 
@@ -1227,7 +1557,7 @@ namespace IndustrialSafetyAR.UI
             _certificatesContentRoot.SetActive(false);
 
             // =============================================================
-            // TAB 3: PROFILE CONTENT ROOT (Worker Identity & Preferences)
+            // TAB 4: PROFILE CONTENT ROOT (Worker Identity & Preferences)
             // =============================================================
             _profileContentRoot = new GameObject("ProfileContentRoot");
             _profileContentRoot.transform.SetParent(contentContainer.transform, false);
@@ -1246,24 +1576,24 @@ namespace IndustrialSafetyAR.UI
             pdcRect.offsetMax = Vector2.zero;
 
             var pdcBg = pCardObj.AddComponent<Image>();
-            pdcBg.color = new Color(0.10f, 0.14f, 0.22f, 0.96f);
+            pdcBg.color = new Color(0.08f, 0.12f, 0.18f, 0.96f);
 
-            var pvTitleObj = new GameObject("Title");
-            pvTitleObj.transform.SetParent(pCardObj.transform, false);
-            var pvtRect = pvTitleObj.AddComponent<RectTransform>();
+            var pvtObj = new GameObject("ProfileTitle");
+            pvtObj.transform.SetParent(pCardObj.transform, false);
+            var pvtRect = pvtObj.AddComponent<RectTransform>();
             pvtRect.anchorMin = new Vector2(0.05f, 0.88f);
-            pvtRect.anchorMax = new Vector2(0.95f, 0.98f);
+            pvtRect.anchorMax = new Vector2(0.95f, 0.96f);
             pvtRect.offsetMin = Vector2.zero;
             pvtRect.offsetMax = Vector2.zero;
 
-            _profileViewTitleText = pvTitleObj.AddComponent<TextMeshProUGUI>();
+            _profileViewTitleText = pvtObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _profileViewTitleText.font = defaultFont;
             _profileViewTitleText.text = "<b>WORKER PROFILE</b>";
             _profileViewTitleText.fontSize = 22;
             _profileViewTitleText.alignment = TextAlignmentOptions.Center;
             _profileViewTitleText.color = Color.white;
 
-            // Worker Name Field
+            // Name Field
             var pvNameObj = new GameObject("NameField");
             pvNameObj.transform.SetParent(pCardObj.transform, false);
             var pvnRect = pvNameObj.AddComponent<RectTransform>();
@@ -1289,7 +1619,7 @@ namespace IndustrialSafetyAR.UI
             _pvNameVal = pvNameValObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _pvNameVal.font = defaultFont;
             _pvNameVal.text = $"<b>{_workerName}</b>";
-            _pvNameVal.fontSize = 18;
+            _pvNameVal.fontSize = 16;
             _pvNameVal.color = Color.white;
 
             // Worker ID Field
@@ -1361,7 +1691,7 @@ namespace IndustrialSafetyAR.UI
             _pvLangVal = pvLangValObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _pvLangVal.font = defaultFont;
             _pvLangVal.text = "<b>English</b>";
-            _pvLangVal.fontSize = 16;
+            _pvLangVal.fontSize = 15;
             _pvLangVal.color = new Color(0.4f, 0.9f, 1f);
 
             // Profile Settings button
@@ -1374,7 +1704,7 @@ namespace IndustrialSafetyAR.UI
             pvsRect.offsetMax = Vector2.zero;
 
             var pvsImg = pvSetBtnObj.AddComponent<Image>();
-            pvsImg.color = new Color(0.18f, 0.25f, 0.38f, 0.98f);
+            pvsImg.color = new Color(0.14f, 0.20f, 0.30f, 0.98f);
             _pvSettingsBtn = pvSetBtnObj.AddComponent<Button>();
             var pvsTap = pvSetBtnObj.AddComponent<TapGatedButton>();
             pvsTap.Initialize(() => OpenSettings());
@@ -1395,7 +1725,7 @@ namespace IndustrialSafetyAR.UI
             _profileContentRoot.SetActive(false);
 
             // -------------------------------------------------------------
-            // Offline Status Bar (y: 0.07 to 0.11)
+            // Offline Status Bar (y: 0.075 to 0.115)
             // -------------------------------------------------------------
             var offlineBarObj = new GameObject("OfflineStatusBar");
             offlineBarObj.transform.SetParent(_homeRoot.transform, false);
@@ -1419,12 +1749,12 @@ namespace IndustrialSafetyAR.UI
             _offlineBadgeText = obTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _offlineBadgeText.font = defaultFont;
             _offlineBadgeText.text = "● OFFLINE • SAVED LOCALLY";
-            _offlineBadgeText.fontSize = 13;
+            _offlineBadgeText.fontSize = 12;
             _offlineBadgeText.alignment = TextAlignmentOptions.Center;
             _offlineBadgeText.color = Color.white;
 
             // -------------------------------------------------------------
-            // Bottom Navigation Bar (y: 0.00 to 0.07)
+            // Bottom Navigation Bar (4 TABS: HOME, AR, CERTIFICATES, PROFILE)
             // -------------------------------------------------------------
             _bottomNavBar = new GameObject("BottomNavBar");
             _bottomNavBar.transform.SetParent(_homeRoot.transform, false);
@@ -1435,19 +1765,19 @@ namespace IndustrialSafetyAR.UI
             bnbRect.offsetMax = Vector2.zero;
 
             var bnbBg = _bottomNavBar.AddComponent<Image>();
-            bnbBg.color = new Color(0.08f, 0.10f, 0.15f, 0.98f);
+            bnbBg.color = new Color(0.06f, 0.08f, 0.12f, 0.98f);
 
-            // Tab 1: HOME
+            // Tab 1: HOME (0.02 to 0.245)
             var navHomeObj = new GameObject("NavTab_Home");
             navHomeObj.transform.SetParent(_bottomNavBar.transform, false);
             var nhRect = navHomeObj.AddComponent<RectTransform>();
-            nhRect.anchorMin = new Vector2(0.02f, 0.10f);
-            nhRect.anchorMax = new Vector2(0.32f, 0.90f);
+            nhRect.anchorMin = new Vector2(0.02f, 0.08f);
+            nhRect.anchorMax = new Vector2(0.245f, 0.92f);
             nhRect.offsetMin = Vector2.zero;
             nhRect.offsetMax = Vector2.zero;
 
             _navHomeBg = navHomeObj.AddComponent<Image>();
-            _navHomeBg.color = new Color(0.18f, 0.45f, 0.75f, 0.95f);
+            _navHomeBg.color = new Color(0.12f, 0.53f, 0.90f, 0.98f);
             _navHomeBtn = navHomeObj.AddComponent<Button>();
             var nhTap = navHomeObj.AddComponent<TapGatedButton>();
             nhTap.Initialize(() => ShowHome());
@@ -1461,21 +1791,49 @@ namespace IndustrialSafetyAR.UI
             _navHomeText = nhTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _navHomeText.font = defaultFont;
             _navHomeText.text = "<b>HOME</b>";
-            _navHomeText.fontSize = 13;
+            _navHomeText.fontSize = 12;
             _navHomeText.alignment = TextAlignmentOptions.Center;
             _navHomeText.color = Color.white;
 
-            // Tab 2: CERTIFICATES
+            // Tab 2: AR (0.265 to 0.490)
+            var navArObj = new GameObject("NavTab_AR");
+            navArObj.transform.SetParent(_bottomNavBar.transform, false);
+            var naRect = navArObj.AddComponent<RectTransform>();
+            naRect.anchorMin = new Vector2(0.265f, 0.08f);
+            naRect.anchorMax = new Vector2(0.490f, 0.92f);
+            naRect.offsetMin = Vector2.zero;
+            naRect.offsetMax = Vector2.zero;
+
+            _navArBg = navArObj.AddComponent<Image>();
+            _navArBg.color = new Color(0.10f, 0.14f, 0.22f, 0.70f);
+            _navArBtn = navArObj.AddComponent<Button>();
+            var naTap = navArObj.AddComponent<TapGatedButton>();
+            naTap.Initialize(() => ShowAR());
+
+            var naTextObj = new GameObject("Text");
+            naTextObj.transform.SetParent(navArObj.transform, false);
+            var natRect = naTextObj.AddComponent<RectTransform>();
+            natRect.anchorMin = Vector2.zero;
+            natRect.anchorMax = Vector2.one;
+
+            _navArText = naTextObj.AddComponent<TextMeshProUGUI>();
+            if (defaultFont != null) _navArText.font = defaultFont;
+            _navArText.text = "<b>AR</b>";
+            _navArText.fontSize = 12;
+            _navArText.alignment = TextAlignmentOptions.Center;
+            _navArText.color = Color.white;
+
+            // Tab 3: CERTIFICATES (0.510 to 0.735)
             var navCertObj = new GameObject("NavTab_Certificates");
             navCertObj.transform.SetParent(_bottomNavBar.transform, false);
             var ncRect = navCertObj.AddComponent<RectTransform>();
-            ncRect.anchorMin = new Vector2(0.35f, 0.10f);
-            ncRect.anchorMax = new Vector2(0.65f, 0.90f);
+            ncRect.anchorMin = new Vector2(0.510f, 0.08f);
+            ncRect.anchorMax = new Vector2(0.735f, 0.92f);
             ncRect.offsetMin = Vector2.zero;
             ncRect.offsetMax = Vector2.zero;
 
             _navCertBg = navCertObj.AddComponent<Image>();
-            _navCertBg.color = new Color(0.12f, 0.16f, 0.24f, 0.70f);
+            _navCertBg.color = new Color(0.10f, 0.14f, 0.22f, 0.70f);
             _navCertBtn = navCertObj.AddComponent<Button>();
             var ncTap = navCertObj.AddComponent<TapGatedButton>();
             ncTap.Initialize(() => ShowCertificates());
@@ -1489,21 +1847,21 @@ namespace IndustrialSafetyAR.UI
             _navCertText = ncTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _navCertText.font = defaultFont;
             _navCertText.text = "<b>CERTIFICATES</b>";
-            _navCertText.fontSize = 13;
+            _navCertText.fontSize = 11;
             _navCertText.alignment = TextAlignmentOptions.Center;
             _navCertText.color = Color.white;
 
-            // Tab 3: PROFILE
+            // Tab 4: PROFILE (0.755 to 0.980)
             var navProfObj = new GameObject("NavTab_Profile");
             navProfObj.transform.SetParent(_bottomNavBar.transform, false);
             var npRect = navProfObj.AddComponent<RectTransform>();
-            npRect.anchorMin = new Vector2(0.68f, 0.10f);
-            npRect.anchorMax = new Vector2(0.98f, 0.90f);
+            npRect.anchorMin = new Vector2(0.755f, 0.08f);
+            npRect.anchorMax = new Vector2(0.980f, 0.92f);
             npRect.offsetMin = Vector2.zero;
             npRect.offsetMax = Vector2.zero;
 
             _navProfBg = navProfObj.AddComponent<Image>();
-            _navProfBg.color = new Color(0.12f, 0.16f, 0.24f, 0.70f);
+            _navProfBg.color = new Color(0.10f, 0.14f, 0.22f, 0.70f);
             _navProfBtn = navProfObj.AddComponent<Button>();
             var npTap = navProfObj.AddComponent<TapGatedButton>();
             npTap.Initialize(() => ShowProfile());
@@ -1517,15 +1875,13 @@ namespace IndustrialSafetyAR.UI
             _navProfText = npTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _navProfText.font = defaultFont;
             _navProfText.text = "<b>PROFILE</b>";
-            _navProfText.fontSize = 13;
-            _navProfText.alignment = TextAlignmentOptions.Center;
-            _navProfText.color = Color.white;
+            _navProfText.fontSize = 12;
             _navProfText.alignment = TextAlignmentOptions.Center;
             _navProfText.color = Color.white;
 
-            // =========================================================================
+            // =============================================================
             // 3. SETTINGS PANEL MODAL OVERLAY (Full-Screen Raycast Blocker)
-            // =========================================================================
+            // =============================================================
             _settingsRoot = new GameObject("SettingsPanelModal");
             _settingsRoot.transform.SetParent(_rootCanvas.transform, false);
 
@@ -1562,7 +1918,7 @@ namespace IndustrialSafetyAR.UI
             _settingsTitleText = stObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _settingsTitleText.font = defaultFont;
             _settingsTitleText.text = "<b>APPLICATION SETTINGS</b>";
-            _settingsTitleText.fontSize = 22;
+            _settingsTitleText.fontSize = 20;
             _settingsTitleText.alignment = TextAlignmentOptions.Center;
             _settingsTitleText.color = Color.white;
 
@@ -1613,7 +1969,7 @@ namespace IndustrialSafetyAR.UI
             _soundToggleLabel = seLabelObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _soundToggleLabel.font = defaultFont;
             _soundToggleLabel.text = "Sound Effects";
-            _soundToggleLabel.fontSize = 17;
+            _soundToggleLabel.fontSize = 16;
             _soundToggleLabel.alignment = TextAlignmentOptions.Left;
             _soundToggleLabel.color = Color.white;
 
@@ -1626,7 +1982,7 @@ namespace IndustrialSafetyAR.UI
             sebRect.offsetMax = Vector2.zero;
 
             var sebImg = seBtnObj.AddComponent<Image>();
-            sebImg.color = new Color(0.18f, 0.24f, 0.35f);
+            sebImg.color = new Color(0.14f, 0.20f, 0.30f);
             _soundToggleButton = seBtnObj.AddComponent<Button>();
             var seTapGated = seBtnObj.AddComponent<TapGatedButton>();
             seTapGated.Initialize(() =>
@@ -1645,16 +2001,16 @@ namespace IndustrialSafetyAR.UI
             _soundToggleButtonText = sebTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _soundToggleButtonText.font = defaultFont;
             _soundToggleButtonText.text = "<b>ON</b>";
-            _soundToggleButtonText.fontSize = 16;
+            _soundToggleButtonText.fontSize = 15;
             _soundToggleButtonText.alignment = TextAlignmentOptions.Center;
             _soundToggleButtonText.color = Color.white;
 
             // Emergency Alarm Row
-            var eaObj = new GameObject("EmergencyAlarmRow");
+            var eaObj = new GameObject("AlarmRow");
             eaObj.transform.SetParent(settingsCardObj.transform, false);
             var eaRect = eaObj.AddComponent<RectTransform>();
-            eaRect.anchorMin = new Vector2(0.06f, 0.65f);
-            eaRect.anchorMax = new Vector2(0.94f, 0.75f);
+            eaRect.anchorMin = new Vector2(0.06f, 0.64f);
+            eaRect.anchorMax = new Vector2(0.94f, 0.74f);
             eaRect.offsetMin = Vector2.zero;
             eaRect.offsetMax = Vector2.zero;
 
@@ -1669,7 +2025,7 @@ namespace IndustrialSafetyAR.UI
             _alarmToggleLabel = eaLabelObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _alarmToggleLabel.font = defaultFont;
             _alarmToggleLabel.text = "Emergency Alarm Siren";
-            _alarmToggleLabel.fontSize = 17;
+            _alarmToggleLabel.fontSize = 16;
             _alarmToggleLabel.alignment = TextAlignmentOptions.Left;
             _alarmToggleLabel.color = Color.white;
 
@@ -1682,7 +2038,7 @@ namespace IndustrialSafetyAR.UI
             eabRect.offsetMax = Vector2.zero;
 
             var eabImg = eaBtnObj.AddComponent<Image>();
-            eabImg.color = new Color(0.18f, 0.24f, 0.35f);
+            eabImg.color = new Color(0.14f, 0.20f, 0.30f);
             _alarmToggleButton = eaBtnObj.AddComponent<Button>();
             var eaTapGated = eaBtnObj.AddComponent<TapGatedButton>();
             eaTapGated.Initialize(() =>
@@ -1694,108 +2050,112 @@ namespace IndustrialSafetyAR.UI
 
             var eabTextObj = new GameObject("Text");
             eabTextObj.transform.SetParent(eaBtnObj.transform, false);
-            var eabTextRect = eabTextObj.AddComponent<RectTransform>();
-            eabTextRect.anchorMin = Vector2.zero;
-            eabTextRect.anchorMax = Vector2.one;
+            var eabtRect = eabTextObj.AddComponent<RectTransform>();
+            eabtRect.anchorMin = Vector2.zero;
+            eabtRect.anchorMax = Vector2.one;
 
             _alarmToggleButtonText = eabTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _alarmToggleButtonText.font = defaultFont;
             _alarmToggleButtonText.text = "<b>ON</b>";
-            _alarmToggleButtonText.fontSize = 16;
+            _alarmToggleButtonText.fontSize = 15;
             _alarmToggleButtonText.alignment = TextAlignmentOptions.Center;
             _alarmToggleButtonText.color = Color.white;
 
-            // Effects Volume Row
-            var evObj = new GameObject("EffectsVolumeRow");
-            evObj.transform.SetParent(settingsCardObj.transform, false);
-            var evRect = evObj.AddComponent<RectTransform>();
-            evRect.anchorMin = new Vector2(0.06f, 0.52f);
-            evRect.anchorMax = new Vector2(0.94f, 0.62f);
-            evRect.offsetMin = Vector2.zero;
-            evRect.offsetMax = Vector2.zero;
+            // Volume Section
+            var volObj = new GameObject("VolumeRow");
+            volObj.transform.SetParent(settingsCardObj.transform, false);
+            var volRect = volObj.AddComponent<RectTransform>();
+            volRect.anchorMin = new Vector2(0.06f, 0.50f);
+            volRect.anchorMax = new Vector2(0.94f, 0.60f);
+            volRect.offsetMin = Vector2.zero;
+            volRect.offsetMax = Vector2.zero;
 
-            var evLabelObj = new GameObject("Label");
-            evLabelObj.transform.SetParent(evObj.transform, false);
-            var evlRect = evLabelObj.AddComponent<RectTransform>();
-            evlRect.anchorMin = new Vector2(0f, 0f);
-            evlRect.anchorMax = new Vector2(0.40f, 1f);
-            evlRect.offsetMin = Vector2.zero;
-            evlRect.offsetMax = Vector2.zero;
+            var vlObj = new GameObject("Label");
+            vlObj.transform.SetParent(volObj.transform, false);
+            var vlRect = vlObj.AddComponent<RectTransform>();
+            vlRect.anchorMin = new Vector2(0f, 0.55f);
+            vlRect.anchorMax = new Vector2(0.60f, 1f);
+            vlRect.offsetMin = Vector2.zero;
+            vlRect.offsetMax = Vector2.zero;
 
-            _volumeLabel = evLabelObj.AddComponent<TextMeshProUGUI>();
+            _volumeLabel = vlObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _volumeLabel.font = defaultFont;
             _volumeLabel.text = "Effects Volume";
-            _volumeLabel.fontSize = 17;
+            _volumeLabel.fontSize = 15;
             _volumeLabel.alignment = TextAlignmentOptions.Left;
             _volumeLabel.color = Color.white;
 
-            var evValObj = new GameObject("ValueText");
-            evValObj.transform.SetParent(evObj.transform, false);
-            var evvRect = evValObj.AddComponent<RectTransform>();
-            evvRect.anchorMin = new Vector2(0.85f, 0f);
-            evvRect.anchorMax = new Vector2(1.0f, 1f);
-            evvRect.offsetMin = Vector2.zero;
-            evvRect.offsetMax = Vector2.zero;
+            var vvObj = new GameObject("ValueText");
+            vvObj.transform.SetParent(volObj.transform, false);
+            var vvRect = vvObj.AddComponent<RectTransform>();
+            vvRect.anchorMin = new Vector2(0.62f, 0.55f);
+            vvRect.anchorMax = new Vector2(1f, 1f);
+            vvRect.offsetMin = Vector2.zero;
+            vvRect.offsetMax = Vector2.zero;
 
-            _volumeValueText = evValObj.AddComponent<TextMeshProUGUI>();
+            _volumeValueText = vvObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _volumeValueText.font = defaultFont;
-            _volumeValueText.text = "70%";
+            _volumeValueText.text = "100%";
             _volumeValueText.fontSize = 15;
             _volumeValueText.alignment = TextAlignmentOptions.Right;
-            _volumeValueText.color = new Color(0.9f, 0.9f, 0.9f);
+            _volumeValueText.color = new Color(0.4f, 0.9f, 1f);
 
-            // Volume Minus Button
-            var vMinusObj = new GameObject("VolMinus");
-            vMinusObj.transform.SetParent(evObj.transform, false);
-            var vmRect = vMinusObj.AddComponent<RectTransform>();
-            vmRect.anchorMin = new Vector2(0.42f, 0.15f);
-            vmRect.anchorMax = new Vector2(0.60f, 0.85f);
-            vmRect.offsetMin = Vector2.zero;
-            vmRect.offsetMax = Vector2.zero;
-            vMinusObj.AddComponent<Image>().color = new Color(0.18f, 0.24f, 0.35f);
-            var vMinusBtn = vMinusObj.AddComponent<Button>();
-            var vmTap = vMinusObj.AddComponent<TapGatedButton>();
+            // Volume Step - Button
+            var vmBtnObj = new GameObject("VolMinusBtn");
+            vmBtnObj.transform.SetParent(volObj.transform, false);
+            var vmbRect = vmBtnObj.AddComponent<RectTransform>();
+            vmbRect.anchorMin = new Vector2(0f, 0f);
+            vmbRect.anchorMax = new Vector2(0.46f, 0.50f);
+            vmbRect.offsetMin = Vector2.zero;
+            vmbRect.offsetMax = Vector2.zero;
+
+            vmBtnObj.AddComponent<Image>().color = new Color(0.14f, 0.20f, 0.30f);
+            var vmBtn = vmBtnObj.AddComponent<Button>();
+            var vmTap = vmBtnObj.AddComponent<TapGatedButton>();
             vmTap.Initialize(() =>
             {
                 var audio = FireAudioService.Instance;
-                audio.EffectsVolume = Mathf.Max(0f, audio.EffectsVolume - 0.10f);
+                audio.EffectsVolume = Mathf.Clamp01(audio.EffectsVolume - 0.10f);
                 UpdateSettingsControls();
             });
-            var vMinusTextObj = new GameObject("Text");
-            vMinusTextObj.transform.SetParent(vMinusObj.transform, false);
-            var vmtRect = vMinusTextObj.AddComponent<RectTransform>();
-            vmtRect.anchorMin = Vector2.zero;
-            vmtRect.anchorMax = Vector2.one;
-            var vmtTmp = vMinusTextObj.AddComponent<TextMeshProUGUI>();
+
+            var vmtObj = new GameObject("Text");
+            vmtObj.transform.SetParent(vmBtnObj.transform, false);
+            var vmtrRect = vmtObj.AddComponent<RectTransform>();
+            vmtrRect.anchorMin = Vector2.zero;
+            vmtrRect.anchorMax = Vector2.one;
+            var vmtTmp = vmtObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) vmtTmp.font = defaultFont;
             vmtTmp.text = "<b>- 10%</b>";
             vmtTmp.fontSize = 13;
             vmtTmp.alignment = TextAlignmentOptions.Center;
             vmtTmp.color = Color.white;
 
-            // Volume Plus Button
-            var vPlusObj = new GameObject("VolPlus");
-            vPlusObj.transform.SetParent(evObj.transform, false);
-            var vpRect = vPlusObj.AddComponent<RectTransform>();
-            vpRect.anchorMin = new Vector2(0.63f, 0.15f);
-            vpRect.anchorMax = new Vector2(0.81f, 0.85f);
-            vpRect.offsetMin = Vector2.zero;
-            vpRect.offsetMax = Vector2.zero;
-            vPlusObj.AddComponent<Image>().color = new Color(0.18f, 0.24f, 0.35f);
-            var vPlusBtn = vPlusObj.AddComponent<Button>();
-            var vpTap = vPlusObj.AddComponent<TapGatedButton>();
+            // Volume Step + Button
+            var vpBtnObj = new GameObject("VolPlusBtn");
+            vpBtnObj.transform.SetParent(volObj.transform, false);
+            var vpbRect = vpBtnObj.AddComponent<RectTransform>();
+            vpbRect.anchorMin = new Vector2(0.54f, 0f);
+            vpbRect.anchorMax = new Vector2(1f, 0.50f);
+            vpbRect.offsetMin = Vector2.zero;
+            vpbRect.offsetMax = Vector2.zero;
+
+            vpBtnObj.AddComponent<Image>().color = new Color(0.14f, 0.20f, 0.30f);
+            var vpBtn = vpBtnObj.AddComponent<Button>();
+            var vpTap = vpBtnObj.AddComponent<TapGatedButton>();
             vpTap.Initialize(() =>
             {
                 var audio = FireAudioService.Instance;
-                audio.EffectsVolume = Mathf.Min(1f, audio.EffectsVolume + 0.10f);
+                audio.EffectsVolume = Mathf.Clamp01(audio.EffectsVolume + 0.10f);
                 UpdateSettingsControls();
             });
-            var vPlusTextObj = new GameObject("Text");
-            vPlusTextObj.transform.SetParent(vPlusObj.transform, false);
-            var vptRect = vPlusTextObj.AddComponent<RectTransform>();
-            vptRect.anchorMin = Vector2.zero;
-            vptRect.anchorMax = Vector2.one;
-            var vptTmp = vPlusTextObj.AddComponent<TextMeshProUGUI>();
+
+            var vptObj = new GameObject("Text");
+            vptObj.transform.SetParent(vpBtnObj.transform, false);
+            var vptrRect = vptObj.AddComponent<RectTransform>();
+            vptrRect.anchorMin = Vector2.zero;
+            vptrRect.anchorMax = Vector2.one;
+            var vptTmp = vptObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) vptTmp.font = defaultFont;
             vptTmp.text = "<b>+ 10%</b>";
             vptTmp.fontSize = 13;
@@ -1814,7 +2174,7 @@ namespace IndustrialSafetyAR.UI
             _languageHeader = langHeaderObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _languageHeader.font = defaultFont;
             _languageHeader.text = "Language / भाषा / ᱯᱟᱹᱨᱥᱤ";
-            _languageHeader.fontSize = 17;
+            _languageHeader.fontSize = 16;
             _languageHeader.alignment = TextAlignmentOptions.Left;
             _languageHeader.color = Color.white;
 
@@ -1826,7 +2186,7 @@ namespace IndustrialSafetyAR.UI
             lenRect.anchorMax = new Vector2(0.33f, 0.36f);
             lenRect.offsetMin = Vector2.zero;
             lenRect.offsetMax = Vector2.zero;
-            lEnObj.AddComponent<Image>().color = new Color(0.18f, 0.24f, 0.35f);
+            lEnObj.AddComponent<Image>().color = new Color(0.14f, 0.20f, 0.30f);
             _btnLangEnglish = lEnObj.AddComponent<Button>();
             var enTap = lEnObj.AddComponent<TapGatedButton>();
             enTap.Initialize(() => LocaleService.Instance.SetLanguage(LocaleService.LangEnglish));
@@ -1851,7 +2211,7 @@ namespace IndustrialSafetyAR.UI
             lhiRect.anchorMax = new Vector2(0.63f, 0.36f);
             lhiRect.offsetMin = Vector2.zero;
             lhiRect.offsetMax = Vector2.zero;
-            lHiObj.AddComponent<Image>().color = new Color(0.18f, 0.24f, 0.35f);
+            lHiObj.AddComponent<Image>().color = new Color(0.14f, 0.20f, 0.30f);
             _btnLangHindi = lHiObj.AddComponent<Button>();
             var hiTap = lHiObj.AddComponent<TapGatedButton>();
             hiTap.Initialize(() => LocaleService.Instance.SetLanguage(LocaleService.LangHindi));
@@ -1876,7 +2236,7 @@ namespace IndustrialSafetyAR.UI
             lsatRect.anchorMax = new Vector2(0.94f, 0.36f);
             lsatRect.offsetMin = Vector2.zero;
             lsatRect.offsetMax = Vector2.zero;
-            lSatObj.AddComponent<Image>().color = new Color(0.18f, 0.24f, 0.35f);
+            lSatObj.AddComponent<Image>().color = new Color(0.14f, 0.20f, 0.30f);
             _btnLangSantali = lSatObj.AddComponent<Button>();
             var satTap = lSatObj.AddComponent<TapGatedButton>();
             satTap.Initialize(() => LocaleService.Instance.SetLanguage(LocaleService.LangSantali));
@@ -1903,7 +2263,7 @@ namespace IndustrialSafetyAR.UI
             cbRect.offsetMax = Vector2.zero;
 
             var cbImg = closeBtnObj.AddComponent<Image>();
-            cbImg.color = new Color(0.22f, 0.32f, 0.48f, 0.98f);
+            cbImg.color = new Color(0.20f, 0.28f, 0.42f, 0.98f);
             _settingsCloseButton = closeBtnObj.AddComponent<Button>();
             var cbTap = closeBtnObj.AddComponent<TapGatedButton>();
             cbTap.Initialize(() => CloseSettings());
@@ -1917,7 +2277,7 @@ namespace IndustrialSafetyAR.UI
             _settingsCloseButtonText = cbTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _settingsCloseButtonText.font = defaultFont;
             _settingsCloseButtonText.text = "<b>CLOSE [X]</b>";
-            _settingsCloseButtonText.fontSize = 17;
+            _settingsCloseButtonText.fontSize = 16;
             _settingsCloseButtonText.alignment = TextAlignmentOptions.Center;
             _settingsCloseButtonText.color = Color.white;
 

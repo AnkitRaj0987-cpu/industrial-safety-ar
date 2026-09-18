@@ -16,6 +16,7 @@ using IndustrialSafetyAR.Core.Events;
 using IndustrialSafetyAR.Core.Audio;
 using IndustrialSafetyAR.Assessment;
 using IndustrialSafetyAR.Modules.FireExplosion;
+using IndustrialSafetyAR.AR;
 using IndustrialSafetyAR.UI;
 using TMPro;
 using UnityEngine;
@@ -200,6 +201,15 @@ namespace IndustrialSafetyAR.Tests
             if (!RunTest("WorkerHome_CertificatesNavigation_SafeState", Test_WorkerHome_CertificatesNavigation_SafeState, logMessages)) allPassed = false;
             if (!RunTest("WorkerHome_ProfileNavigation_DisplaysWorkerData", Test_WorkerHome_ProfileNavigation_DisplaysWorkerData, logMessages)) allPassed = false;
             if (!RunTest("WorkerHome_ScreenStateIsolation_MutuallyExclusive", Test_WorkerHome_ScreenStateIsolation_MutuallyExclusive, logMessages)) allPassed = false;
+
+            // AR CAMERA LIFECYCLE & 4-TAB NAVIGATION TESTS
+            if (!RunTest("ARMode_InitialStateIsDisabled", Test_ARMode_InitialStateIsDisabled, logMessages)) allPassed = false;
+            if (!RunTest("ARMode_EnableAR_ActivatesSubsystems", Test_ARMode_EnableAR_ActivatesSubsystems, logMessages)) allPassed = false;
+            if (!RunTest("ARMode_DisableAR_DeactivatesSubsystems", Test_ARMode_DisableAR_DeactivatesSubsystems, logMessages)) allPassed = false;
+            if (!RunTest("WorkerHome_FourBottomNavTabsWork", Test_WorkerHome_FourBottomNavTabsWork, logMessages)) allPassed = false;
+            if (!RunTest("WorkerHome_ARNavigation_StartsDisabled", Test_WorkerHome_ARNavigation_StartsDisabled, logMessages)) allPassed = false;
+            if (!RunTest("WorkerHome_FireTraining_ControlsARLifecycle", Test_WorkerHome_FireTraining_ControlsARLifecycle, logMessages)) allPassed = false;
+            if (!RunTest("FireAssessmentSummary_ARCameraLifecycle", Test_FireAssessmentSummary_ARCameraLifecycle, logMessages)) allPassed = false;
 
             return allPassed;
         }
@@ -6464,6 +6474,8 @@ namespace IndustrialSafetyAR.Tests
                     throw new Exception("Certificates must be hidden in Home state");
                 if (ctrl.IsProfileVisible)
                     throw new Exception("Profile must be hidden in Home state");
+                if (ctrl.IsArVisible)
+                    throw new Exception("AR must be hidden in Home state");
 
                 // 2. Settings state
                 ctrl.OpenSettings();
@@ -6471,6 +6483,8 @@ namespace IndustrialSafetyAR.Tests
                     throw new Exception("State should be Settings");
                 if (!ctrl.IsSettingsVisible)
                     throw new Exception("Settings must be visible in Settings state");
+                if (ctrl.IsArVisible)
+                    throw new Exception("AR must be hidden in Settings state");
 
                 // 3. Certificates state
                 ctrl.ShowCertificates();
@@ -6482,6 +6496,8 @@ namespace IndustrialSafetyAR.Tests
                     throw new Exception("Certificates must be visible in Certificates state");
                 if (ctrl.IsProfileVisible)
                     throw new Exception("Profile must be hidden in Certificates state");
+                if (ctrl.IsArVisible)
+                    throw new Exception("AR must be hidden in Certificates state");
 
                 // 4. Profile state
                 ctrl.ShowProfile();
@@ -6491,8 +6507,25 @@ namespace IndustrialSafetyAR.Tests
                     throw new Exception("Profile must be visible in Profile state");
                 if (ctrl.IsCertificatesVisible)
                     throw new Exception("Certificates must be hidden in Profile state");
+                if (ctrl.IsArVisible)
+                    throw new Exception("AR must be hidden in Profile state");
 
-                // 5. Fire Training state
+                // 5. AR state
+                ctrl.ShowAR();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.AR)
+                    throw new Exception("State should be AR");
+                if (!ctrl.IsArVisible)
+                    throw new Exception("AR must be visible in AR state");
+                if (ctrl.IsHomeVisible)
+                    throw new Exception("Home content must be hidden in AR state");
+                if (ctrl.IsSettingsVisible)
+                    throw new Exception("Settings must be hidden in AR state");
+                if (ctrl.IsCertificatesVisible)
+                    throw new Exception("Certificates must be hidden in AR state");
+                if (ctrl.IsProfileVisible)
+                    throw new Exception("Profile must be hidden in AR state");
+
+                // 6. Fire Training state
                 ctrl.StartFireTraining();
                 if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.TrainingFire)
                     throw new Exception("State should be TrainingFire");
@@ -6500,18 +6533,192 @@ namespace IndustrialSafetyAR.Tests
                     throw new Exception("Home shell must be hidden during TrainingFire");
                 if (ctrl.IsSettingsVisible)
                     throw new Exception("Settings must be hidden during TrainingFire");
+                if (ctrl.IsArVisible)
+                    throw new Exception("AR screen must be hidden during TrainingFire");
 
-                // 6. Return to Home
+                // 7. Return to Home
                 ctrl.ReturnToHome();
                 if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Home)
                     throw new Exception("State should be Home after return");
                 if (!ctrl.IsHomeVisible)
                     throw new Exception("Home must be restored after return");
+                if (ctrl.IsArVisible)
+                    throw new Exception("AR must be hidden after return to Home");
             }
             finally
             {
                 GameObject.DestroyImmediate(go);
                 GameObject.DestroyImmediate(fireMgrObj);
+            }
+        }
+
+        public static void Test_ARMode_InitialStateIsDisabled()
+        {
+            var go = new GameObject("TestARModeInit");
+            try
+            {
+                var arCtrl = go.AddComponent<ARModeController>();
+                if (arCtrl.IsARActive)
+                    throw new Exception("ARModeController must initialize with IsARActive = false");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_ARMode_EnableAR_ActivatesSubsystems()
+        {
+            var go = new GameObject("TestARModeEnable");
+            try
+            {
+                var arCtrl = go.AddComponent<ARModeController>();
+                arCtrl.EnableAR();
+                if (!arCtrl.IsARActive)
+                    throw new Exception("ARModeController.IsARActive must be true after EnableAR()");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_ARMode_DisableAR_DeactivatesSubsystems()
+        {
+            var go = new GameObject("TestARModeDisable");
+            try
+            {
+                var arCtrl = go.AddComponent<ARModeController>();
+                arCtrl.EnableAR();
+                arCtrl.DisableAR();
+                if (arCtrl.IsARActive)
+                    throw new Exception("ARModeController.IsARActive must be false after DisableAR()");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_WorkerHome_FourBottomNavTabsWork()
+        {
+            var go = new GameObject("TestFourNavTabs");
+            try
+            {
+                var ctrl = go.AddComponent<WorkerHomeController>();
+                ctrl.ShowHome();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Home || !ctrl.IsHomeVisible)
+                    throw new Exception("Home tab failed");
+
+                ctrl.ShowAR();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.AR || !ctrl.IsArVisible)
+                    throw new Exception("AR tab failed");
+
+                ctrl.ShowCertificates();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Certificates || !ctrl.IsCertificatesVisible)
+                    throw new Exception("Certificates tab failed");
+
+                ctrl.ShowProfile();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Profile || !ctrl.IsProfileVisible)
+                    throw new Exception("Profile tab failed");
+
+                ctrl.ShowHome();
+                if (ctrl.CurrentState != WorkerHomeController.WorkerAppScreenState.Home || !ctrl.IsHomeVisible)
+                    throw new Exception("Return to Home tab failed");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_WorkerHome_ARNavigation_StartsDisabled()
+        {
+            var arGo = new GameObject("TestArCtrl");
+            var go = new GameObject("TestArNavDisabled");
+            try
+            {
+                var arCtrl = arGo.AddComponent<ARModeController>();
+                var ctrl = go.AddComponent<WorkerHomeController>();
+                ctrl.ShowAR();
+                if (arCtrl.IsARActive)
+                    throw new Exception("Navigating to AR tab must NOT turn on camera by default; IsARActive must remain false");
+                if (!ctrl.IsArVisible)
+                    throw new Exception("AR screen must be visible");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(go);
+                GameObject.DestroyImmediate(arGo);
+            }
+        }
+
+        public static void Test_WorkerHome_FireTraining_ControlsARLifecycle()
+        {
+            var arGo = new GameObject("TestArCtrlLifecycle");
+            var go = new GameObject("TestFireTrainingARLifecycle");
+            var fireMgrObj = new GameObject("TestFireMgrStateLifecycle");
+            try
+            {
+                var arCtrl = arGo.AddComponent<ARModeController>();
+                var ctrl = go.AddComponent<WorkerHomeController>();
+                var fireCtrl = fireMgrObj.AddComponent<FireArInteractionController>();
+                var fireUI = fireMgrObj.AddComponent<FireInteractionFeedbackUI>();
+                fireUI.Controller = fireCtrl;
+
+                ctrl.ShowHome();
+                if (arCtrl.IsARActive)
+                    throw new Exception("AR must be disabled on Home");
+
+                ctrl.StartFireTraining();
+                if (!arCtrl.IsARActive)
+                    throw new Exception("AR must be enabled when Fire Training starts");
+
+                ctrl.ReturnToHome();
+                if (arCtrl.IsARActive)
+                    throw new Exception("AR must be disabled when returning to Home");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(go);
+                GameObject.DestroyImmediate(fireMgrObj);
+                GameObject.DestroyImmediate(arGo);
+            }
+        }
+
+        public static void Test_FireAssessmentSummary_ARCameraLifecycle()
+        {
+            var arGo = new GameObject("TestArSummaryLifecycle");
+            var homeObj = new GameObject("TestSummaryExitHomeAr");
+            var summaryObj = new GameObject("TestSummaryExitAr");
+            try
+            {
+                var arCtrl = arGo.AddComponent<ARModeController>();
+                var homeCtrl = homeObj.AddComponent<WorkerHomeController>();
+                var summary = summaryObj.AddComponent<FireAssessmentSummaryUI>();
+
+                homeCtrl.StartFireTraining();
+                if (!arCtrl.IsARActive)
+                    throw new Exception("AR should be active during training");
+
+                summary.ShowSummary(new AssessmentSummaryViewModel());
+                if (arCtrl.IsARActive)
+                    throw new Exception("AR camera must be disabled when Assessment Summary opens");
+
+                summary.OnRetakeClicked();
+                if (!arCtrl.IsARActive)
+                    throw new Exception("AR camera must be re-enabled when Retake is clicked");
+
+                summary.ShowSummary(new AssessmentSummaryViewModel());
+                summary.OnReturnToHomeClicked();
+                if (arCtrl.IsARActive)
+                    throw new Exception("AR camera must be disabled when Return to Home is clicked");
+            }
+            finally
+            {
+                GameObject.DestroyImmediate(homeObj);
+                GameObject.DestroyImmediate(summaryObj);
+                GameObject.DestroyImmediate(arGo);
             }
         }
     }
