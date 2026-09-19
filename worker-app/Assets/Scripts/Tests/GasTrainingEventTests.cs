@@ -148,6 +148,14 @@ namespace IndustrialSafetyAR.Tests
             if (!RunTest("113_Localization_Phase3_Keys_EnHiSat", Test_113_Localization_Phase3_Keys_EnHiSat, logMessages)) allPassed = false;
             if (!RunTest("114_OlChiki_Santali_Phase3_ValidUnicode", Test_114_OlChiki_Santali_Phase3_ValidUnicode, logMessages)) allPassed = false;
             if (!RunTest("115_FullEndToEnd_Scenario_HomeToCompletion", Test_115_FullEndToEnd_Scenario_HomeToCompletion, logMessages)) allPassed = false;
+            if (!RunTest("116_Step4_PpeSelection_InitialConfirmDisabled", Test_116_Step4_PpeSelection_InitialConfirmDisabled, logMessages)) allPassed = false;
+            if (!RunTest("117_Step4_PpeSelection_ValidSelection_EnablesConfirmAndNext", Test_117_Step4_PpeSelection_ValidSelection_EnablesConfirmAndNext, logMessages)) allPassed = false;
+            if (!RunTest("118_Step4_PpeSelection_InvalidSelection_DoesNotEnableProgression", Test_118_Step4_PpeSelection_InvalidSelection_DoesNotEnableProgression, logMessages)) allPassed = false;
+            if (!RunTest("119_Step4_PpeSelection_SubmitAndAdvance_TransitionsToStep5", Test_119_Step4_PpeSelection_SubmitAndAdvance_TransitionsToStep5, logMessages)) allPassed = false;
+            if (!RunTest("120_Step4_PpeSelection_UIButtonsPresentAndGated", Test_120_Step4_PpeSelection_UIButtonsPresentAndGated, logMessages)) allPassed = false;
+            if (!RunTest("121_Step3To4_BackNavigation_ResetsStep3TransientState", Test_121_Step3To4_BackNavigation_ResetsStep3TransientState, logMessages)) allPassed = false;
+            if (!RunTest("122_Step3_CanBeCompletedAgainAfterBackReset", Test_122_Step3_CanBeCompletedAgainAfterBackReset, logMessages)) allPassed = false;
+            if (!RunTest("123_UITheme_TokensAndFont_AreValid", Test_123_UITheme_TokensAndFont_AreValid, logMessages)) allPassed = false;
 
             return allPassed;
         }
@@ -3265,6 +3273,249 @@ namespace IndustrialSafetyAR.Tests
                 UnityEngine.Object.DestroyImmediate(arObj);
                 UnityEngine.Object.DestroyImmediate(gasObj);
             }
+        }
+
+        public static void Test_116_Step4_PpeSelection_InitialConfirmDisabled()
+        {
+            var go = new GameObject("Test_GasAr_116");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To3(ctrl);
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 4)
+                    throw new Exception($"Expected Step 4, got {ctrl.StepNavigator.CurrentStepIndex}");
+
+                if (ctrl.HasValidPpeSelection())
+                    throw new Exception("HasValidPpeSelection() should be false initially in Step 4.");
+
+                if (ctrl.StepNavigator.CanGoNext)
+                    throw new Exception("CanGoNext should be false before valid PPE is selected.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_117_Step4_PpeSelection_ValidSelection_EnablesConfirmAndNext()
+        {
+            var go = new GameObject("Test_GasAr_117");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To3(ctrl);
+
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHelmet);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHarness);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemGloves);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemBoots);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemScba);
+
+                if (!ctrl.HasValidPpeSelection())
+                    throw new Exception("HasValidPpeSelection() should be true after required PPE selected.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_118_Step4_PpeSelection_InvalidSelection_DoesNotEnableProgression()
+        {
+            var go = new GameObject("Test_GasAr_118");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To3(ctrl);
+
+                // Try invalid items
+                ctrl.SelectPpeItem(GasPpeSystem.ItemDustMask);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemClothMask);
+
+                if (ctrl.HasValidPpeSelection())
+                    throw new Exception("HasValidPpeSelection() should be false for invalid distractors.");
+
+                // Incomplete valid items (missing SCBA)
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHelmet);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHarness);
+                if (ctrl.HasValidPpeSelection())
+                    throw new Exception("HasValidPpeSelection() should be false for incomplete PPE.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_119_Step4_PpeSelection_SubmitAndAdvance_TransitionsToStep5()
+        {
+            var go = new GameObject("Test_GasAr_119");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To3(ctrl);
+
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHelmet);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHarness);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemGloves);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemBoots);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemScba);
+
+                bool advanced = ctrl.SubmitPpeSelectionAndAdvance();
+                if (!advanced)
+                    throw new Exception("SubmitPpeSelectionAndAdvance returned false for valid PPE.");
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 5)
+                    throw new Exception($"Expected transition to Step 5, got {ctrl.StepNavigator.CurrentStepIndex}");
+
+                if (!ctrl.StepNavigator.IsStepCompleted(4))
+                    throw new Exception("Step 4 should be marked completed.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_120_Step4_PpeSelection_UIButtonsPresentAndGated()
+        {
+            var go = new GameObject("Test_GasAr_120");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var ui = go.AddComponent<GasInteractionFeedbackUI>();
+                ui.Controller = ctrl;
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+
+                ui.ShowTrainingUI();
+                SetupArSteps1To3(ctrl);
+                ui.RefreshUI();
+
+                if (ui.BtnConfirmPpe == null)
+                    throw new Exception("BtnConfirmPpe is null in UI hierarchy.");
+
+                // Initially disabled
+                if (ui.BtnConfirmPpe.interactable)
+                    throw new Exception("BtnConfirmPpe should be non-interactable when PPE is incomplete.");
+
+                // Select valid PPE
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHelmet);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHarness);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemGloves);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemBoots);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemScba);
+                ui.RefreshUI();
+
+                if (!ui.BtnConfirmPpe.interactable)
+                    throw new Exception("BtnConfirmPpe should be interactable when PPE is complete and valid.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_121_Step3To4_BackNavigation_ResetsStep3TransientState()
+        {
+            var go = new GameObject("Test_GasAr_121");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+
+                // Step 1 -> Step 2 -> Step 3 completed -> Step 4
+                SetupArSteps1To3(ctrl);
+                if (ctrl.StepNavigator.CurrentStepIndex != 4)
+                    throw new Exception($"Expected step 4, got {ctrl.StepNavigator.CurrentStepIndex}");
+
+                int eventCountBeforeBack = bus.DispatchedEvents.Count;
+
+                // Press Back
+                ctrl.ReturnToPreviousStep();
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 3)
+                    throw new Exception($"Expected return to Step 3, got {ctrl.StepNavigator.CurrentStepIndex}");
+
+                // State must be reset
+                if (ctrl.StepNavigator.IsStepCompleted(3))
+                    throw new Exception("Step 3 completion must be reset after back navigation.");
+
+                if (ctrl.StepNavigator.CanGoNext)
+                    throw new Exception("CanGoNext must be false after Step 3 back navigation reset.");
+
+                if (ctrl.AtmosphericSimulator.IsOxygenTested || ctrl.AtmosphericSimulator.IsAssessmentCompleted)
+                    throw new Exception("AtmosphericSimulator sensor testing state must be reset.");
+
+                // Dispatched events history must remain intact (immutable log)
+                if (bus.DispatchedEvents.Count != eventCountBeforeBack)
+                    throw new Exception("Dispatched events history must not be deleted or corrupted upon back navigation.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_122_Step3_CanBeCompletedAgainAfterBackReset()
+        {
+            var go = new GameObject("Test_GasAr_122");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+
+                SetupArSteps1To3(ctrl);
+                ctrl.ReturnToPreviousStep();
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 3)
+                    throw new Exception($"Expected Step 3, got {ctrl.StepNavigator.CurrentStepIndex}");
+
+                // Test sensor sequence again
+                bool o2Ok = ctrl.TestSensor(GasSensorType.Oxygen, out var o2Err);
+                if (!o2Ok) throw new Exception($"Testing O2 after reset failed: {o2Err}");
+
+                bool lelOk = ctrl.TestSensor(GasSensorType.Flammable, out var lelErr);
+                if (!lelOk) throw new Exception($"Testing LEL after reset failed: {lelErr}");
+
+                bool h2sOk = ctrl.TestSensor(GasSensorType.Toxic, out var h2sErr);
+                if (!h2sOk) throw new Exception($"Testing H2S after reset failed: {h2sErr}");
+
+                if (!ctrl.StepNavigator.IsStepCompleted(3))
+                    throw new Exception("Step 3 should be completed again after sequence finishes.");
+
+                if (!ctrl.StepNavigator.CanGoNext)
+                    throw new Exception("CanGoNext should be true again after sequence completes.");
+
+                // Advance to Step 4 again
+                ctrl.AdvanceToNextStep();
+                if (ctrl.StepNavigator.CurrentStepIndex != 4)
+                    throw new Exception($"Expected transition to Step 4, got {ctrl.StepNavigator.CurrentStepIndex}");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_123_UITheme_TokensAndFont_AreValid()
+        {
+            if (UITheme.ScreenBackground.a < 0.9f) throw new Exception("UITheme.ScreenBackground alpha invalid.");
+            if (UITheme.CardBackground.a < 0.9f) throw new Exception("UITheme.CardBackground alpha invalid.");
+            if (UITheme.PrimaryAction.r <= UITheme.PrimaryAction.b) throw new Exception("UITheme.PrimaryAction must be orange.");
+            if (UITheme.Success.g <= UITheme.Success.r) throw new Exception("UITheme.Success must be green.");
+            if (UITheme.Danger.r <= UITheme.Danger.g) throw new Exception("UITheme.Danger must be red.");
         }
     }
 }

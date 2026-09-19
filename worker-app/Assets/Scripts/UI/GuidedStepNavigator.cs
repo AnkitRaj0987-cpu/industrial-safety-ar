@@ -254,6 +254,27 @@ namespace IndustrialSafetyAR.UI
         }
 
         /// <summary>
+        /// Invalidates/clears completion state for the specified step.
+        /// Re-locks forward navigation past this step until the requirement is satisfied again.
+        /// </summary>
+        public bool InvalidateStep(int stepNumber)
+        {
+            if (stepNumber < 1 || stepNumber >= _stepCompleted.Length)
+            {
+                return false;
+            }
+
+            _stepCompleted[stepNumber] = false;
+            _stepSuccessFeedback[stepNumber] = null;
+            if (HighestCompletedStep >= stepNumber)
+            {
+                HighestCompletedStep = stepNumber - 1;
+            }
+            return true;
+        }
+
+
+        /// <summary>
         /// Advances forward exactly one step if the current step is completed.
         /// If on the final step, requests assessment completion.
         /// </summary>

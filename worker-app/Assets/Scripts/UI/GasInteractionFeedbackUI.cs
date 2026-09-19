@@ -88,6 +88,7 @@ namespace IndustrialSafetyAR.UI
         private GameObject _nextButtonObj;
         private Button _nextButton;
         private TextMeshProUGUI _nextButtonText;
+        private Image _nextButtonBg;
 
         // Step 4: PPE Palette UI
         private GameObject _ppePaletteRootObj;
@@ -311,9 +312,9 @@ namespace IndustrialSafetyAR.UI
             rect.offsetMax = Vector2.zero;
 
             _bannerBg = bannerObj.AddComponent<Image>();
-            _bannerBg.color = new Color(0.07f, 0.09f, 0.13f, 0.97f);
+            _bannerBg.color = UITheme.ArHudBackground;
 
-            // Top accent strip (Gas Warning Amber / Gold)
+            // Top accent strip (Safety Orange CTA color)
             var accentObj = new GameObject("TopAccentStrip");
             accentObj.transform.SetParent(bannerObj.transform, false);
             var accentRect = accentObj.AddComponent<RectTransform>();
@@ -322,7 +323,7 @@ namespace IndustrialSafetyAR.UI
             accentRect.offsetMin = Vector2.zero;
             accentRect.offsetMax = Vector2.zero;
             var accentImg = accentObj.AddComponent<Image>();
-            accentImg.color = new Color(0.95f, 0.65f, 0.12f, 1.0f);
+            accentImg.color = UITheme.PrimaryOrange;
 
             // Back button (top-left inside header)
             _backButtonObj = new GameObject("BackButton");
@@ -334,7 +335,7 @@ namespace IndustrialSafetyAR.UI
             backRect.offsetMax = Vector2.zero;
 
             var backImg = _backButtonObj.AddComponent<Image>();
-            backImg.color = new Color(0.16f, 0.20f, 0.28f, 0.98f);
+            backImg.color = UITheme.CardSecondaryBg;
             _backButton = _backButtonObj.AddComponent<Button>();
             _backButton.targetGraphic = backImg;
 
@@ -351,9 +352,9 @@ namespace IndustrialSafetyAR.UI
             _backButtonText = backLabelObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _backButtonText.font = font;
             _backButtonText.text = $"<b>{LocaleService.Instance.Get("btn_back", "← BACK")}</b>";
-            _backButtonText.fontSize = 17;
+            _backButtonText.fontSize = 20;
             _backButtonText.alignment = TextAlignmentOptions.Center;
-            _backButtonText.color = new Color(0.96f, 0.72f, 0.20f);
+            _backButtonText.color = UITheme.TextPrimary;
 
             // Module Title Header
             var headerObj = new GameObject("HeaderTitle");
@@ -367,13 +368,13 @@ namespace IndustrialSafetyAR.UI
             _headerTitleText = headerObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _headerTitleText.font = font;
             _headerTitleText.text = LocaleService.Instance.Get("gas_header_title", "GAS LEAK & CONFINED SPACE SAFETY");
-            _headerTitleText.fontSize = 18;
+            _headerTitleText.fontSize = 24;
             _headerTitleText.enableAutoSizing = true;
-            _headerTitleText.fontSizeMin = 13;
-            _headerTitleText.fontSizeMax = 20;
+            _headerTitleText.fontSizeMin = 18;
+            _headerTitleText.fontSizeMax = 28;
             _headerTitleText.fontStyle = FontStyles.Bold;
             _headerTitleText.alignment = TextAlignmentOptions.Center;
-            _headerTitleText.color = new Color(0.96f, 0.68f, 0.15f);
+            _headerTitleText.color = UITheme.TextPrimary;
 
             // Alarm Toggle Button (in header)
             _alarmButtonObj = new GameObject("AlarmButton");
@@ -385,7 +386,7 @@ namespace IndustrialSafetyAR.UI
             alarmRect.offsetMax = Vector2.zero;
 
             var alarmImg = _alarmButtonObj.AddComponent<Image>();
-            alarmImg.color = new Color(0.20f, 0.16f, 0.22f, 0.98f);
+            alarmImg.color = UITheme.DangerSurface;
             _alarmButton = _alarmButtonObj.AddComponent<Button>();
             _alarmButton.targetGraphic = alarmImg;
 
@@ -402,12 +403,12 @@ namespace IndustrialSafetyAR.UI
             _alarmButtonText = alarmLabelObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _alarmButtonText.font = font;
             _alarmButtonText.text = "<b>ALARM ON</b>";
-            _alarmButtonText.fontSize = 13;
+            _alarmButtonText.fontSize = 18;
             _alarmButtonText.enableAutoSizing = true;
-            _alarmButtonText.fontSizeMin = 10;
-            _alarmButtonText.fontSizeMax = 15;
+            _alarmButtonText.fontSizeMin = 14;
+            _alarmButtonText.fontSizeMax = 22;
             _alarmButtonText.alignment = TextAlignmentOptions.Center;
-            _alarmButtonText.color = new Color(1f, 0.5f, 0.5f);
+            _alarmButtonText.color = UITheme.DangerText;
             UpdateAlarmButtonVisual();
 
             // Sound Toggle Button (top-right inside header)
@@ -420,7 +421,7 @@ namespace IndustrialSafetyAR.UI
             soundRect.offsetMax = Vector2.zero;
 
             var soundImg = _soundButtonObj.AddComponent<Image>();
-            soundImg.color = new Color(0.16f, 0.20f, 0.28f, 0.98f);
+            soundImg.color = UITheme.CardSecondaryBg;
             _soundButton = _soundButtonObj.AddComponent<Button>();
             _soundButton.targetGraphic = soundImg;
 
@@ -437,9 +438,9 @@ namespace IndustrialSafetyAR.UI
             _soundButtonText = soundLabelObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _soundButtonText.font = font;
             _soundButtonText.text = "<b>SND</b>";
-            _soundButtonText.fontSize = 14;
+            _soundButtonText.fontSize = 18;
             _soundButtonText.alignment = TextAlignmentOptions.Center;
-            _soundButtonText.color = new Color(0.96f, 0.82f, 0.25f);
+            _soundButtonText.color = UITheme.TextSecondary;
             UpdateSoundButtonVisual();
 
             // Step Badge (e.g. STEP 1/9 • RECOGNIZE GAS HAZARD)
@@ -453,11 +454,11 @@ namespace IndustrialSafetyAR.UI
 
             _stepBadgeText = badgeObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _stepBadgeText.font = font;
-            _stepBadgeText.text = "<color=#F39C12><b>STEP 1/9</b></color> • RECOGNIZE GAS HAZARD";
-            _stepBadgeText.fontSize = 20;
+            _stepBadgeText.text = "<color=#EA580C><b>STEP 1/9</b></color> • RECOGNIZE GAS HAZARD";
+            _stepBadgeText.fontSize = 26;
             _stepBadgeText.fontStyle = FontStyles.Bold;
             _stepBadgeText.alignment = TextAlignmentOptions.Center;
-            _stepBadgeText.color = new Color(0.88f, 0.92f, 0.98f);
+            _stepBadgeText.color = UITheme.TextPrimary;
 
             // Progress Indicator (e.g. ● ○ ○ ○ ○ ○ ○ ○ ○   1 / 9)
             var progObj = new GameObject("ProgressIndicator");
@@ -471,9 +472,9 @@ namespace IndustrialSafetyAR.UI
             _progressText = progObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _progressText.font = font;
             _progressText.text = "● ○ ○ ○ ○ ○ ○ ○ ○   1 / 9";
-            _progressText.fontSize = 17;
+            _progressText.fontSize = 22;
             _progressText.alignment = TextAlignmentOptions.Center;
-            _progressText.color = new Color(0.80f, 0.84f, 0.90f);
+            _progressText.color = UITheme.TextSecondary;
 
             // Instruction Prompt Text
             var textObj = new GameObject("PromptText");
@@ -486,12 +487,12 @@ namespace IndustrialSafetyAR.UI
 
             _promptText = textObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _promptText.font = font;
-            _promptText.fontSize = 21;
+            _promptText.fontSize = 28;
             _promptText.enableAutoSizing = true;
-            _promptText.fontSizeMin = 15;
-            _promptText.fontSizeMax = 25;
+            _promptText.fontSizeMin = 20;
+            _promptText.fontSizeMax = 32;
             _promptText.alignment = TextAlignmentOptions.Center;
-            _promptText.color = Color.white;
+            _promptText.color = UITheme.TextPrimary;
             _promptText.text = "Initializing Gas module...";
 
             // State Feedback Sub-banner
@@ -504,7 +505,7 @@ namespace IndustrialSafetyAR.UI
             fbBoxRect.offsetMax = Vector2.zero;
 
             _feedbackBg = feedbackBoxObj.AddComponent<Image>();
-            _feedbackBg.color = new Color(0.12f, 0.16f, 0.24f, 0.95f);
+            _feedbackBg.color = UITheme.CardSecondaryBg;
 
             var feedbackTextObj = new GameObject("FeedbackText");
             feedbackTextObj.transform.SetParent(feedbackBoxObj.transform, false);
@@ -516,12 +517,12 @@ namespace IndustrialSafetyAR.UI
 
             _feedbackText = feedbackTextObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _feedbackText.font = font;
-            _feedbackText.fontSize = 17;
+            _feedbackText.fontSize = 22;
             _feedbackText.enableAutoSizing = true;
-            _feedbackText.fontSizeMin = 13;
-            _feedbackText.fontSizeMax = 20;
+            _feedbackText.fontSizeMin = 18;
+            _feedbackText.fontSizeMax = 26;
             _feedbackText.alignment = TextAlignmentOptions.Center;
-            _feedbackText.color = new Color(0.85f, 0.88f, 0.92f);
+            _feedbackText.color = UITheme.TextPrimary;
             _feedbackText.text = "Scanning floor surfaces...";
         }
 
@@ -563,7 +564,7 @@ namespace IndustrialSafetyAR.UI
             s1Rect.offsetMax = Vector2.zero;
 
             var s1Img = _step1ActionBtnObj.AddComponent<Image>();
-            s1Img.color = new Color(0.85f, 0.52f, 0.10f, 0.98f);
+            s1Img.color = UITheme.PrimaryOrange;
             _step1ActionBtn = _step1ActionBtnObj.AddComponent<Button>();
             _step1ActionBtn.targetGraphic = s1Img;
 
@@ -579,8 +580,8 @@ namespace IndustrialSafetyAR.UI
             if (font != null) _step1ActionBtnText.font = font;
             _step1ActionBtnText.text = "<b>IDENTIFY GAS HAZARD →</b>";
             _step1ActionBtnText.alignment = TextAlignmentOptions.Center;
-            _step1ActionBtnText.fontSize = 20;
-            _step1ActionBtnText.color = Color.white;
+            _step1ActionBtnText.fontSize = 28;
+            _step1ActionBtnText.color = UITheme.TextLightOnDark;
 
             // 2. Step 2 Action Button
             _step2ActionBtnObj = new GameObject("Step2DangerZoneActionButton");
@@ -592,7 +593,7 @@ namespace IndustrialSafetyAR.UI
             s2Rect.offsetMax = Vector2.zero;
 
             var s2Img = _step2ActionBtnObj.AddComponent<Image>();
-            s2Img.color = new Color(0.85f, 0.35f, 0.12f, 0.98f);
+            s2Img.color = UITheme.PrimaryOrange;
             _step2ActionBtn = _step2ActionBtnObj.AddComponent<Button>();
             _step2ActionBtn.targetGraphic = s2Img;
 
@@ -608,8 +609,8 @@ namespace IndustrialSafetyAR.UI
             if (font != null) _step2ActionBtnText.font = font;
             _step2ActionBtnText.text = "<b>MARK 3m DANGER PERIMETER →</b>";
             _step2ActionBtnText.alignment = TextAlignmentOptions.Center;
-            _step2ActionBtnText.fontSize = 20;
-            _step2ActionBtnText.color = Color.white;
+            _step2ActionBtnText.fontSize = 28;
+            _step2ActionBtnText.color = UITheme.TextLightOnDark;
             _step2ActionBtnObj.SetActive(false);
 
             // 3. Step 3 Handheld Multi-Gas Detector Representation
@@ -642,11 +643,11 @@ namespace IndustrialSafetyAR.UI
             nextRect.offsetMin = Vector2.zero;
             nextRect.offsetMax = Vector2.zero;
 
-            var nextImg = _nextButtonObj.AddComponent<Image>();
-            nextImg.color = new Color(0.12f, 0.58f, 0.28f, 0.98f); // Emerald Green
+            _nextButtonBg = _nextButtonObj.AddComponent<Image>();
+            _nextButtonBg.color = UITheme.PrimaryOrange;
 
             _nextButton = _nextButtonObj.AddComponent<Button>();
-            _nextButton.targetGraphic = nextImg;
+            _nextButton.targetGraphic = _nextButtonBg;
 
             var nextTapGated = _nextButtonObj.AddComponent<TapGatedButton>();
             nextTapGated.Initialize(() => OnNextButtonClicked());
@@ -663,12 +664,12 @@ namespace IndustrialSafetyAR.UI
             if (font != null) _nextButtonText.font = font;
             _nextButtonText.text = "NEXT STEP →";
             _nextButtonText.alignment = TextAlignmentOptions.Center;
-            _nextButtonText.fontSize = 24;
+            _nextButtonText.fontSize = 28;
             _nextButtonText.enableAutoSizing = true;
-            _nextButtonText.fontSizeMin = 16;
-            _nextButtonText.fontSizeMax = 28;
+            _nextButtonText.fontSizeMin = 20;
+            _nextButtonText.fontSizeMax = 32;
             _nextButtonText.fontStyle = FontStyles.Bold;
-            _nextButtonText.color = Color.white;
+            _nextButtonText.color = UITheme.TextLightOnDark;
 
             _nextButtonObj.SetActive(false);
         }
@@ -684,7 +685,7 @@ namespace IndustrialSafetyAR.UI
             dRect.offsetMax = Vector2.zero;
 
             var dBg = _detectorRootObj.AddComponent<Image>();
-            dBg.color = new Color(0.10f, 0.12f, 0.16f, 0.98f); // Ruggedized detector housing
+            dBg.color = UITheme.CardBackground; // Clean light card detector housing
 
             // Status bar on top of detector
             var statusObj = new GameObject("DetectorStatusBar");
@@ -698,9 +699,9 @@ namespace IndustrialSafetyAR.UI
             _detectorHeaderStatus = statusObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _detectorHeaderStatus.font = font;
             _detectorHeaderStatus.text = "<b>MULTI-GAS DETECTOR • READY (SEQUENCE: O2 -> LEL -> H2S)</b>";
-            _detectorHeaderStatus.fontSize = 15;
+            _detectorHeaderStatus.fontSize = 22;
             _detectorHeaderStatus.alignment = TextAlignmentOptions.Center;
-            _detectorHeaderStatus.color = new Color(0.95f, 0.75f, 0.20f);
+            _detectorHeaderStatus.color = UITheme.TextPrimary;
 
             // Row 1: Oxygen (O2)
             BuildSensorRow(_detectorRootObj, font, 0.52f, 0.76f, "O2 (Oxygen)", "--- % Vol",
@@ -734,7 +735,7 @@ namespace IndustrialSafetyAR.UI
             rRect.offsetMax = Vector2.zero;
 
             var rBg = rowObj.AddComponent<Image>();
-            rBg.color = new Color(0.14f, 0.18f, 0.25f, 0.95f);
+            rBg.color = UITheme.CardSecondaryBg;
 
             // Readout label (left 60%)
             var labelObj = new GameObject("ReadoutLabel");
@@ -748,9 +749,9 @@ namespace IndustrialSafetyAR.UI
             readoutText = labelObj.AddComponent<TextMeshProUGUI>();
             if (font != null) readoutText.font = font;
             readoutText.text = $"<b>{sensorLabel}</b>: {initialReadout}";
-            readoutText.fontSize = 15;
+            readoutText.fontSize = 24;
             readoutText.alignment = TextAlignmentOptions.MidlineLeft;
-            readoutText.color = Color.white;
+            readoutText.color = UITheme.TextPrimary;
 
             // Action button (right 35%)
             var btnObj = new GameObject("TestButton");
@@ -762,7 +763,7 @@ namespace IndustrialSafetyAR.UI
             bRect.offsetMax = Vector2.zero;
 
             btnBg = btnObj.AddComponent<Image>();
-            btnBg.color = new Color(0.20f, 0.50f, 0.85f, 0.98f);
+            btnBg.color = UITheme.PrimaryOrange;
             testBtn = btnObj.AddComponent<Button>();
             testBtn.targetGraphic = btnBg;
 
@@ -778,8 +779,8 @@ namespace IndustrialSafetyAR.UI
             if (font != null) btnText.font = font;
             btnText.text = "<b>TEST</b>";
             btnText.alignment = TextAlignmentOptions.Center;
-            btnText.fontSize = 15;
-            btnText.color = Color.white;
+            btnText.fontSize = 22;
+            btnText.color = UITheme.TextLightOnDark;
         }
 
         private void PerformTest(GasSensorType sensorType)
@@ -804,69 +805,77 @@ namespace IndustrialSafetyAR.UI
             // O2
             if (sim.IsOxygenTested)
             {
-                _o2ReadoutText.text = $"<b>O2 (Oxygen)</b>: <color=#E74C3C><b>19.1 % Vol (DEFICIENT)</b></color> ✓";
+                _o2ReadoutText.text = $"<b>O2 (Oxygen)</b>: <color=#DC2626><b>19.1 % Vol (DEFICIENT)</b></color> ✓";
                 _btnTestO2.interactable = false;
-                _btnTestO2Bg.color = new Color(0.25f, 0.30f, 0.38f);
-                _btnTestO2Text.text = "DONE";
+                _btnTestO2Bg.color = UITheme.SuccessSurface;
+                _btnTestO2Text.text = "DONE ✓";
+                _btnTestO2Text.color = UITheme.SuccessText;
             }
             else
             {
                 _o2ReadoutText.text = "<b>O2 (Oxygen)</b>: [ READY ] →";
                 _btnTestO2.interactable = true;
-                _btnTestO2Bg.color = new Color(0.20f, 0.55f, 0.90f);
+                _btnTestO2Bg.color = UITheme.PrimaryOrange;
                 _btnTestO2Text.text = "TEST O2";
+                _btnTestO2Text.color = UITheme.TextLightOnDark;
             }
 
             // LEL
             if (sim.IsFlammableTested)
             {
-                _lelReadoutText.text = $"<b>LEL (Combustible)</b>: <color=#E74C3C><b>18.0 % LEL (HAZARDOUS)</b></color> ✓";
+                _lelReadoutText.text = $"<b>LEL (Combustible)</b>: <color=#DC2626><b>18.0 % LEL (HAZARDOUS)</b></color> ✓";
                 _btnTestLel.interactable = false;
-                _btnTestLelBg.color = new Color(0.25f, 0.30f, 0.38f);
-                _btnTestLelText.text = "DONE";
+                _btnTestLelBg.color = UITheme.SuccessSurface;
+                _btnTestLelText.text = "DONE ✓";
+                _btnTestLelText.color = UITheme.SuccessText;
             }
             else if (sim.IsOxygenTested)
             {
                 _lelReadoutText.text = "<b>LEL (Combustible)</b>: [ READY ] →";
                 _btnTestLel.interactable = true;
-                _btnTestLelBg.color = new Color(0.85f, 0.55f, 0.15f);
+                _btnTestLelBg.color = UITheme.PrimaryOrange;
                 _btnTestLelText.text = "TEST LEL";
+                _btnTestLelText.color = UITheme.TextLightOnDark;
             }
             else
             {
                 _lelReadoutText.text = "<b>LEL (Combustible)</b>: 🔒 LOCKED";
                 _btnTestLel.interactable = false;
-                _btnTestLelBg.color = new Color(0.25f, 0.28f, 0.32f);
+                _btnTestLelBg.color = UITheme.CardBorder;
                 _btnTestLelText.text = "LOCKED";
+                _btnTestLelText.color = UITheme.TextMuted;
             }
 
             // H2S
             if (sim.IsToxicTested)
             {
-                _h2sReadoutText.text = $"<b>H2S (Toxic)</b>: <color=#E74C3C><b>35.0 ppm (LETHAL DANGER)</b></color> ✓";
+                _h2sReadoutText.text = $"<b>H2S (Toxic)</b>: <color=#DC2626><b>35.0 ppm (LETHAL DANGER)</b></color> ✓";
                 _btnTestH2s.interactable = false;
-                _btnTestH2sBg.color = new Color(0.25f, 0.30f, 0.38f);
-                _btnTestH2sText.text = "DONE";
+                _btnTestH2sBg.color = UITheme.SuccessSurface;
+                _btnTestH2sText.text = "DONE ✓";
+                _btnTestH2sText.color = UITheme.SuccessText;
             }
             else if (sim.IsFlammableTested)
             {
                 _h2sReadoutText.text = "<b>H2S (Toxic)</b>: [ READY ] →";
                 _btnTestH2s.interactable = true;
-                _btnTestH2sBg.color = new Color(0.85f, 0.25f, 0.20f);
+                _btnTestH2sBg.color = UITheme.PrimaryOrange;
                 _btnTestH2sText.text = "TEST H2S";
+                _btnTestH2sText.color = UITheme.TextLightOnDark;
             }
             else
             {
                 _h2sReadoutText.text = "<b>H2S (Toxic)</b>: 🔒 LOCKED";
                 _btnTestH2s.interactable = false;
-                _btnTestH2sBg.color = new Color(0.25f, 0.28f, 0.32f);
+                _btnTestH2sBg.color = UITheme.CardBorder;
                 _btnTestH2sText.text = "LOCKED";
+                _btnTestH2sText.color = UITheme.TextMuted;
             }
 
             // Assessment summary
             if (sim.IsAssessmentCompleted)
             {
-                _detectorHeaderStatus.text = "<b><color=#E74C3C>ATMOSPHERE: UNSAFE • DO NOT ENTER</color></b>";
+                _detectorHeaderStatus.text = "<b><color=#DC2626>ATMOSPHERE: UNSAFE • DO NOT ENTER</color></b>";
             }
             else if (sim.IsFlammableTested)
             {
@@ -896,7 +905,7 @@ namespace IndustrialSafetyAR.UI
             pRect.offsetMax = Vector2.zero;
 
             var pBg = _ppePaletteRootObj.AddComponent<Image>();
-            pBg.color = new Color(0.08f, 0.10f, 0.14f, 0.98f);
+            pBg.color = UITheme.CardBackground;
 
             // Warning Header Banner
             var warnObj = new GameObject("PpeWarningBanner");
@@ -909,12 +918,12 @@ namespace IndustrialSafetyAR.UI
 
             _ppeHeaderWarningText = warnObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _ppeHeaderWarningText.font = font;
-            _ppeHeaderWarningText.text = "<b><color=#E74C3C>ATMOSPHERE: UNSAFE</color> • PPE PREPARATION REQUIRED (ENTRY PROHIBITED)</b>";
-            _ppeHeaderWarningText.fontSize = 12;
+            _ppeHeaderWarningText.text = "<b><color=#DC2626>ATMOSPHERE: UNSAFE</color> • PPE PREPARATION REQUIRED (ENTRY PROHIBITED)</b>";
+            _ppeHeaderWarningText.fontSize = 20;
             _ppeHeaderWarningText.alignment = TextAlignmentOptions.Center;
             _ppeHeaderWarningText.enableAutoSizing = true;
-            _ppeHeaderWarningText.fontSizeMin = 9;
-            _ppeHeaderWarningText.fontSizeMax = 14;
+            _ppeHeaderWarningText.fontSizeMin = 15;
+            _ppeHeaderWarningText.fontSizeMax = 22;
 
             // 2-Column layout for PPE items:
             // Left Column (x: 0.02 to 0.49):
@@ -938,16 +947,16 @@ namespace IndustrialSafetyAR.UI
             cbRect.offsetMax = Vector2.zero;
 
             _btnConfirmPpeBg = confirmBtnObj.AddComponent<Image>();
-            _btnConfirmPpeBg.color = new Color(0.18f, 0.62f, 0.32f, 0.98f);
+            _btnConfirmPpeBg.color = UITheme.PrimaryDisabled;
             _btnConfirmPpe = confirmBtnObj.AddComponent<Button>();
             _btnConfirmPpe.targetGraphic = _btnConfirmPpeBg;
+            _btnConfirmPpe.interactable = false;
 
             var cbTap = confirmBtnObj.AddComponent<TapGatedButton>();
             cbTap.Initialize(() => {
-                if (_controller != null)
+                if (_controller != null && _controller.HasValidPpeSelection())
                 {
-                    _controller.SubmitPpeSelection();
-                    UpdatePpePaletteVisuals();
+                    _controller.SubmitPpeSelectionAndAdvance();
                 }
             });
 
@@ -958,10 +967,10 @@ namespace IndustrialSafetyAR.UI
             clRect.anchorMax = Vector2.one;
             _btnConfirmPpeText = cLblObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _btnConfirmPpeText.font = font;
-            _btnConfirmPpeText.text = "<b>CONFIRM PPE ✓</b>";
+            _btnConfirmPpeText.text = "<b>CONFIRM PPE →</b>";
             _btnConfirmPpeText.alignment = TextAlignmentOptions.Center;
-            _btnConfirmPpeText.fontSize = 13;
-            _btnConfirmPpeText.color = Color.white;
+            _btnConfirmPpeText.fontSize = 22;
+            _btnConfirmPpeText.color = UITheme.PrimaryDisabledText;
 
             _ppePaletteRootObj.SetActive(false);
         }
@@ -977,7 +986,7 @@ namespace IndustrialSafetyAR.UI
             rect.offsetMax = Vector2.zero;
 
             var bg = btnObj.AddComponent<Image>();
-            bg.color = new Color(0.16f, 0.20f, 0.28f, 0.95f);
+            bg.color = UITheme.CardSecondaryBg;
             var btn = btnObj.AddComponent<Button>();
             btn.targetGraphic = bg;
 
@@ -995,18 +1004,18 @@ namespace IndustrialSafetyAR.UI
             var tRect = textObj.AddComponent<RectTransform>();
             tRect.anchorMin = Vector2.zero;
             tRect.anchorMax = Vector2.one;
-            tRect.offsetMin = new Vector2(6, 2);
-            tRect.offsetMax = new Vector2(-6, -2);
+            tRect.offsetMin = new Vector2(10, 2);
+            tRect.offsetMax = new Vector2(-10, -2);
 
             var tmp = textObj.AddComponent<TextMeshProUGUI>();
             if (font != null) tmp.font = font;
             tmp.text = $"[  ] {defaultLabel}";
             tmp.alignment = TextAlignmentOptions.MidlineLeft;
-            tmp.fontSize = 12;
+            tmp.fontSize = 22;
             tmp.enableAutoSizing = true;
-            tmp.fontSizeMin = 9;
-            tmp.fontSizeMax = 13;
-            tmp.color = Color.white;
+            tmp.fontSizeMin = 16;
+            tmp.fontSizeMax = 24;
+            tmp.color = UITheme.TextPrimary;
 
             _ppeButtons[itemId] = btn;
             _ppeLabels[itemId] = tmp;
@@ -1020,7 +1029,7 @@ namespace IndustrialSafetyAR.UI
 
             if (_ppeHeaderWarningText != null)
             {
-                _ppeHeaderWarningText.text = $"<b><color=#E74C3C>{loc.Get("status_unsafe_atmosphere", "ATMOSPHERE: UNSAFE")}</color> • {loc.Get("ppe_unsafe_warning", "PPE DOES NOT MAKE AN UNSAFE ATMOSPHERE SAFE. DO NOT ENTER.")}</b>";
+                _ppeHeaderWarningText.text = $"<b><color=#DC2626>{loc.Get("status_unsafe_atmosphere", "ATMOSPHERE: UNSAFE")}</color> • {loc.Get("ppe_unsafe_warning", "PPE DOES NOT MAKE AN UNSAFE ATMOSPHERE SAFE. DO NOT ENTER.")}</b>";
             }
 
             foreach (var kvp in _ppeButtons)
@@ -1031,19 +1040,46 @@ namespace IndustrialSafetyAR.UI
 
                 if (_ppeLabels.TryGetValue(itemId, out var label))
                 {
-                    label.text = isSelected ? $"<b><color=#2ECC71>[✓]</color></b> {itemTitle}" : $"[  ] {itemTitle}";
-                    label.color = isSelected ? new Color(0.3f, 0.9f, 0.4f) : Color.white;
+                    label.text = isSelected ? $"<b><color=#16A34A>[✓]</color></b> {itemTitle}" : $"[  ] {itemTitle}";
+                    label.color = isSelected ? UITheme.SuccessText : UITheme.TextPrimary;
                 }
 
                 if (_ppeItemBgs.TryGetValue(itemId, out var bg))
                 {
-                    bg.color = isSelected ? new Color(0.10f, 0.35f, 0.18f, 0.98f) : new Color(0.16f, 0.20f, 0.28f, 0.95f);
+                    bg.color = isSelected ? UITheme.SuccessSurface : UITheme.CardSecondaryBg;
                 }
             }
 
+            bool isPpeValid = _controller.HasValidPpeSelection();
+
+            // Synchronize Primary Next button at bottom of screen
+            if (_nextButtonObj != null && Navigator.CurrentStepIndex == 4)
+            {
+                _nextButtonObj.SetActive(true);
+                if (_nextButton != null) _nextButton.interactable = isPpeValid;
+                if (_nextButtonBg != null) _nextButtonBg.color = isPpeValid ? UITheme.PrimaryOrange : UITheme.PrimaryDisabled;
+                if (_nextButtonText != null)
+                {
+                    string confirmLabel = loc.Get("ppe_btn_confirm", "CONFIRM PPE SELECTION →");
+                    _nextButtonText.text = $"<b>{confirmLabel}</b>";
+                    _nextButtonText.color = isPpeValid ? UITheme.TextLightOnDark : UITheme.PrimaryDisabledText;
+                }
+            }
+
+            // Also synchronize palette Confirm button
+            if (_btnConfirmPpe != null)
+            {
+                _btnConfirmPpe.interactable = isPpeValid;
+            }
+            if (_btnConfirmPpeBg != null)
+            {
+                _btnConfirmPpeBg.color = isPpeValid ? UITheme.PrimaryOrange : UITheme.PrimaryDisabled;
+            }
             if (_btnConfirmPpeText != null)
             {
-                _btnConfirmPpeText.text = $"<b>{loc.Get("ppe_btn_confirm", "CONFIRM PPE ✓")}</b>";
+                string confirmLabel = loc.Get("ppe_btn_confirm", "CONFIRM PPE SELECTION →");
+                _btnConfirmPpeText.text = $"<b>{confirmLabel}</b>";
+                _btnConfirmPpeText.color = isPpeValid ? UITheme.TextLightOnDark : UITheme.PrimaryDisabledText;
             }
         }
 
@@ -1061,7 +1097,7 @@ namespace IndustrialSafetyAR.UI
             vRect.offsetMax = Vector2.zero;
 
             var vBg = _ppeVerificationRootObj.AddComponent<Image>();
-            vBg.color = new Color(0.08f, 0.10f, 0.14f, 0.98f);
+            vBg.color = UITheme.CardBackground;
 
             // Header Warning
             var warnObj = new GameObject("VerifyWarningBanner");
@@ -1074,8 +1110,8 @@ namespace IndustrialSafetyAR.UI
 
             _verifyHeaderWarningText = warnObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _verifyHeaderWarningText.font = font;
-            _verifyHeaderWarningText.text = "<b><color=#F39C12>EQUIPMENT READINESS INSPECTION</color>\n<size=80%>(PPE does NOT make an unsafe atmosphere safe • Entry prohibited)</size></b>";
-            _verifyHeaderWarningText.fontSize = 12;
+            _verifyHeaderWarningText.text = "<b><color=#D97706>EQUIPMENT READINESS INSPECTION</color>\n<size=80%>(PPE does NOT make an unsafe atmosphere safe • Entry prohibited)</size></b>";
+            _verifyHeaderWarningText.fontSize = 20;
             _verifyHeaderWarningText.alignment = TextAlignmentOptions.Center;
 
             // Row 1: SCBA Face Seal Check (y: 0.52 to 0.76)
@@ -1124,7 +1160,7 @@ namespace IndustrialSafetyAR.UI
             rRect.offsetMax = Vector2.zero;
 
             var rBg = rowObj.AddComponent<Image>();
-            rBg.color = new Color(0.14f, 0.18f, 0.25f, 0.95f);
+            rBg.color = UITheme.CardSecondaryBg;
 
             var labelObj = new GameObject("StatusLabel");
             labelObj.transform.SetParent(rowObj.transform, false);
@@ -1137,9 +1173,9 @@ namespace IndustrialSafetyAR.UI
             statusText = labelObj.AddComponent<TextMeshProUGUI>();
             if (font != null) statusText.font = font;
             statusText.text = $"<b>{rowLabel}</b>: Pending";
-            statusText.fontSize = 14;
+            statusText.fontSize = 22;
             statusText.alignment = TextAlignmentOptions.MidlineLeft;
-            statusText.color = Color.white;
+            statusText.color = UITheme.TextPrimary;
 
             var btnObj = new GameObject("VerifyButton");
             btnObj.transform.SetParent(rowObj.transform, false);
@@ -1150,7 +1186,7 @@ namespace IndustrialSafetyAR.UI
             bRect.offsetMax = Vector2.zero;
 
             btnBg = btnObj.AddComponent<Image>();
-            btnBg.color = new Color(0.20f, 0.50f, 0.85f, 0.98f);
+            btnBg.color = UITheme.PrimaryOrange;
             actionBtn = btnObj.AddComponent<Button>();
             actionBtn.targetGraphic = btnBg;
 
@@ -1166,8 +1202,8 @@ namespace IndustrialSafetyAR.UI
             if (font != null) btnText.font = font;
             btnText.text = "<b>VERIFY</b>";
             btnText.alignment = TextAlignmentOptions.Center;
-            btnText.fontSize = 14;
-            btnText.color = Color.white;
+            btnText.fontSize = 20;
+            btnText.color = UITheme.TextLightOnDark;
         }
 
         private void UpdatePpeVerificationVisuals()
@@ -1177,46 +1213,58 @@ namespace IndustrialSafetyAR.UI
 
             if (_verifyHeaderWarningText != null)
             {
-                _verifyHeaderWarningText.text = $"<b><color=#F39C12>{loc.Get("verify_title", "PPE INSPECTION & VERIFICATION")}</color>\n<size=80%>({loc.Get("verify_warning", "PPE does not make atmosphere safe • Entry prohibited")})</size></b>";
+                _verifyHeaderWarningText.text = $"<b><color=#D97706>{loc.Get("verify_title", "PPE INSPECTION & VERIFICATION")}</color>\n<size=80%>({loc.Get("verify_warning", "PPE does not make atmosphere safe • Entry prohibited")})</size></b>";
             }
 
             // Seal
             bool sealOk = _controller.IsSealCheckPassed;
             if (_sealStatusText != null)
             {
-                _sealStatusText.text = $"<b>{loc.Get("verify_scba_seal", "SCBA Seal")}</b>: {(sealOk ? "<color=#2ECC71>VERIFIED ✓</color>" : "Pending")}";
+                _sealStatusText.text = $"<b>{loc.Get("verify_scba_seal", "SCBA Seal")}</b>: {(sealOk ? "<color=#16A34A>VERIFIED ✓</color>" : "Pending")}";
             }
             if (_btnVerifySeal != null)
             {
                 _btnVerifySeal.interactable = !sealOk;
-                if (_btnVerifySealBg != null) _btnVerifySealBg.color = sealOk ? new Color(0.15f, 0.45f, 0.22f) : new Color(0.20f, 0.50f, 0.85f);
-                if (_btnVerifySealText != null) _btnVerifySealText.text = sealOk ? "DONE ✓" : loc.Get("verify_btn_action", "VERIFY");
+                if (_btnVerifySealBg != null) _btnVerifySealBg.color = sealOk ? UITheme.SuccessSurface : UITheme.PrimaryOrange;
+                if (_btnVerifySealText != null)
+                {
+                    _btnVerifySealText.text = sealOk ? "DONE ✓" : loc.Get("verify_btn_action", "VERIFY");
+                    _btnVerifySealText.color = sealOk ? UITheme.SuccessText : UITheme.TextLightOnDark;
+                }
             }
 
             // Harness
             bool harnessOk = _controller.IsHarnessFitPassed;
             if (_harnessStatusText != null)
             {
-                _harnessStatusText.text = $"<b>{loc.Get("verify_harness_fit", "Harness Fit")}</b>: {(harnessOk ? "<color=#2ECC71>VERIFIED ✓</color>" : "Pending")}";
+                _harnessStatusText.text = $"<b>{loc.Get("verify_harness_fit", "Harness Fit")}</b>: {(harnessOk ? "<color=#16A34A>VERIFIED ✓</color>" : "Pending")}";
             }
             if (_btnVerifyHarness != null)
             {
                 _btnVerifyHarness.interactable = !harnessOk;
-                if (_btnVerifyHarnessBg != null) _btnVerifyHarnessBg.color = harnessOk ? new Color(0.15f, 0.45f, 0.22f) : new Color(0.20f, 0.50f, 0.85f);
-                if (_btnVerifyHarnessText != null) _btnVerifyHarnessText.text = harnessOk ? "DONE ✓" : loc.Get("verify_btn_action", "VERIFY");
+                if (_btnVerifyHarnessBg != null) _btnVerifyHarnessBg.color = harnessOk ? UITheme.SuccessSurface : UITheme.PrimaryOrange;
+                if (_btnVerifyHarnessText != null)
+                {
+                    _btnVerifyHarnessText.text = harnessOk ? "DONE ✓" : loc.Get("verify_btn_action", "VERIFY");
+                    _btnVerifyHarnessText.color = harnessOk ? UITheme.SuccessText : UITheme.TextLightOnDark;
+                }
             }
 
             // Cylinder
             bool cylOk = _controller.IsCylinderPressurePassed;
             if (_pressureStatusText != null)
             {
-                _pressureStatusText.text = $"<b>{loc.Get("verify_cylinder_pressure", "Cylinder Pressure")}</b>: {(cylOk ? "<color=#2ECC71>300 BAR (OK) ✓</color>" : "Pending")}";
+                _pressureStatusText.text = $"<b>{loc.Get("verify_cylinder_pressure", "Cylinder Pressure")}</b>: {(cylOk ? "<color=#16A34A>300 BAR (OK) ✓</color>" : "Pending")}";
             }
             if (_btnCheckPressure != null)
             {
                 _btnCheckPressure.interactable = !cylOk;
-                if (_btnCheckPressureBg != null) _btnCheckPressureBg.color = cylOk ? new Color(0.15f, 0.45f, 0.22f) : new Color(0.20f, 0.50f, 0.85f);
-                if (_btnCheckPressureText != null) _btnCheckPressureText.text = cylOk ? "DONE ✓" : loc.Get("verify_btn_action", "VERIFY");
+                if (_btnCheckPressureBg != null) _btnCheckPressureBg.color = cylOk ? UITheme.SuccessSurface : UITheme.PrimaryOrange;
+                if (_btnCheckPressureText != null)
+                {
+                    _btnCheckPressureText.text = cylOk ? "DONE ✓" : loc.Get("verify_btn_action", "VERIFY");
+                    _btnCheckPressureText.color = cylOk ? UITheme.SuccessText : UITheme.TextLightOnDark;
+                }
             }
         }
 
@@ -1234,7 +1282,7 @@ namespace IndustrialSafetyAR.UI
             bRect.offsetMax = Vector2.zero;
 
             var bBg = _buddySystemRootObj.AddComponent<Image>();
-            bBg.color = new Color(0.08f, 0.10f, 0.14f, 0.98f);
+            bBg.color = UITheme.CardBackground;
 
             // Rule Warning Header
             var ruleObj = new GameObject("BuddyRuleBanner");
@@ -1247,8 +1295,8 @@ namespace IndustrialSafetyAR.UI
 
             _buddyHeaderRuleText = ruleObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _buddyHeaderRuleText.font = font;
-            _buddyHeaderRuleText.text = "<b><color=#E67E22>SAFETY ATTENDANT MUST REMAIN OUTSIDE</color>\n<size=80%>Stationed outside danger perimeter • Maintain radio contact</size></b>";
-            _buddyHeaderRuleText.fontSize = 12;
+            _buddyHeaderRuleText.text = "<b><color=#D97706>SAFETY ATTENDANT MUST REMAIN OUTSIDE</color>\n<size=80%>Stationed outside danger perimeter • Maintain radio contact</size></b>";
+            _buddyHeaderRuleText.fontSize = 22;
             _buddyHeaderRuleText.alignment = TextAlignmentOptions.Center;
 
             // Row 1: Assign Outside Attendant (y: 0.38 to 0.72)
@@ -1259,7 +1307,7 @@ namespace IndustrialSafetyAR.UI
             arRect.anchorMax = new Vector2(0.98f, 0.72f);
             arRect.offsetMin = Vector2.zero;
             arRect.offsetMax = Vector2.zero;
-            attRowObj.AddComponent<Image>().color = new Color(0.14f, 0.18f, 0.25f, 0.95f);
+            attRowObj.AddComponent<Image>().color = UITheme.CardSecondaryBg;
 
             var attLblObj = new GameObject("AttendantStatusLabel");
             attLblObj.transform.SetParent(attRowObj.transform, false);
@@ -1272,9 +1320,9 @@ namespace IndustrialSafetyAR.UI
             _attendantStatusText = attLblObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _attendantStatusText.font = font;
             _attendantStatusText.text = "<b>Attendant</b>: Standby outside (3.4m)";
-            _attendantStatusText.fontSize = 13;
+            _attendantStatusText.fontSize = 22;
             _attendantStatusText.alignment = TextAlignmentOptions.MidlineLeft;
-            _attendantStatusText.color = Color.white;
+            _attendantStatusText.color = UITheme.TextPrimary;
 
             var attBtnObj = new GameObject("AssignAttendantButton");
             attBtnObj.transform.SetParent(attRowObj.transform, false);
@@ -1285,7 +1333,7 @@ namespace IndustrialSafetyAR.UI
             abRect.offsetMax = Vector2.zero;
 
             _btnAssignAttendantBg = attBtnObj.AddComponent<Image>();
-            _btnAssignAttendantBg.color = new Color(0.20f, 0.50f, 0.85f, 0.98f);
+            _btnAssignAttendantBg.color = UITheme.PrimaryOrange;
             _btnAssignAttendant = attBtnObj.AddComponent<Button>();
             _btnAssignAttendant.targetGraphic = _btnAssignAttendantBg;
             var attTap = attBtnObj.AddComponent<TapGatedButton>();
@@ -1304,9 +1352,9 @@ namespace IndustrialSafetyAR.UI
             _btnAssignAttendantText = ablObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _btnAssignAttendantText.font = font;
             _btnAssignAttendantText.text = "<b>ASSIGN</b>";
-            _btnAssignAttendantText.fontSize = 14;
+            _btnAssignAttendantText.fontSize = 22;
             _btnAssignAttendantText.alignment = TextAlignmentOptions.Center;
-            _btnAssignAttendantText.color = Color.white;
+            _btnAssignAttendantText.color = UITheme.TextLightOnDark;
 
             // Row 2: Check Two-Way Radio (y: 0.04 to 0.36)
             var commRowObj = new GameObject("Row_CheckRadio");
@@ -1316,7 +1364,7 @@ namespace IndustrialSafetyAR.UI
             crRect.anchorMax = new Vector2(0.98f, 0.36f);
             crRect.offsetMin = Vector2.zero;
             crRect.offsetMax = Vector2.zero;
-            commRowObj.AddComponent<Image>().color = new Color(0.14f, 0.18f, 0.25f, 0.95f);
+            commRowObj.AddComponent<Image>().color = UITheme.CardSecondaryBg;
 
             var commLblObj = new GameObject("CommStatusLabel");
             commLblObj.transform.SetParent(commRowObj.transform, false);
@@ -1329,9 +1377,9 @@ namespace IndustrialSafetyAR.UI
             _commStatusText = commLblObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _commStatusText.font = font;
             _commStatusText.text = "<b>Radio</b>: Waiting for attendant";
-            _commStatusText.fontSize = 13;
+            _commStatusText.fontSize = 22;
             _commStatusText.alignment = TextAlignmentOptions.MidlineLeft;
-            _commStatusText.color = Color.white;
+            _commStatusText.color = UITheme.TextPrimary;
 
             var commBtnObj = new GameObject("CheckCommButton");
             commBtnObj.transform.SetParent(commRowObj.transform, false);
@@ -1342,7 +1390,7 @@ namespace IndustrialSafetyAR.UI
             cbRect.offsetMax = Vector2.zero;
 
             _btnCheckCommunicationBg = commBtnObj.AddComponent<Image>();
-            _btnCheckCommunicationBg.color = new Color(0.25f, 0.28f, 0.32f, 0.98f);
+            _btnCheckCommunicationBg.color = UITheme.PrimaryDisabled;
             _btnCheckCommunication = commBtnObj.AddComponent<Button>();
             _btnCheckCommunication.targetGraphic = _btnCheckCommunicationBg;
             _btnCheckCommunication.interactable = false;
@@ -1363,9 +1411,9 @@ namespace IndustrialSafetyAR.UI
             _btnCheckCommunicationText = cblObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _btnCheckCommunicationText.font = font;
             _btnCheckCommunicationText.text = "<b>RADIO</b>";
-            _btnCheckCommunicationText.fontSize = 14;
+            _btnCheckCommunicationText.fontSize = 22;
             _btnCheckCommunicationText.alignment = TextAlignmentOptions.Center;
-            _btnCheckCommunicationText.color = Color.white;
+            _btnCheckCommunicationText.color = UITheme.PrimaryDisabledText;
 
             _buddySystemRootObj.SetActive(false);
         }
@@ -1377,36 +1425,41 @@ namespace IndustrialSafetyAR.UI
 
             if (_buddyHeaderRuleText != null)
             {
-                _buddyHeaderRuleText.text = $"<b><color=#E67E22>{loc.Get("attendant_title", "SAFETY ATTENDANT MUST REMAIN OUTSIDE")}</color>\n<size=80%>{loc.Get("attendant_rule", "Stationed outside danger perimeter • Maintain radio contact")}</size></b>";
+                _buddyHeaderRuleText.text = $"<b><color=#D97706>{loc.Get("attendant_title", "SAFETY ATTENDANT MUST REMAIN OUTSIDE")}</color>\n<size=80%>{loc.Get("attendant_rule", "Stationed outside danger perimeter • Maintain radio contact")}</size></b>";
             }
 
             bool attAssigned = _controller.IsAttendantAssigned;
             if (_attendantStatusText != null)
             {
-                _attendantStatusText.text = $"<b>{loc.Get("attendant_title", "Attendant")}</b>: {(attAssigned ? $"<color=#2ECC71>{loc.Get("attendant_status_assigned", "ASSIGNED (OUTSIDE) ✓")}</color>" : loc.Get("attendant_outside", "Standby outside (3.4m)"))}";
+                _attendantStatusText.text = $"<b>{loc.Get("attendant_title", "Attendant")}</b>: {(attAssigned ? $"<color=#16A34A>{loc.Get("attendant_status_assigned", "ASSIGNED (OUTSIDE) ✓")}</color>" : loc.Get("attendant_outside", "Standby outside (3.4m)"))}";
             }
             if (_btnAssignAttendant != null)
             {
                 _btnAssignAttendant.interactable = !attAssigned;
-                if (_btnAssignAttendantBg != null) _btnAssignAttendantBg.color = attAssigned ? new Color(0.15f, 0.45f, 0.22f) : new Color(0.20f, 0.50f, 0.85f);
-                if (_btnAssignAttendantText != null) _btnAssignAttendantText.text = attAssigned ? "DONE ✓" : loc.Get("attendant_btn_assign", "ASSIGN");
+                if (_btnAssignAttendantBg != null) _btnAssignAttendantBg.color = attAssigned ? UITheme.SuccessSurface : UITheme.PrimaryOrange;
+                if (_btnAssignAttendantText != null)
+                {
+                    _btnAssignAttendantText.text = attAssigned ? "DONE ✓" : loc.Get("attendant_btn_assign", "ASSIGN");
+                    _btnAssignAttendantText.color = attAssigned ? UITheme.SuccessText : UITheme.TextLightOnDark;
+                }
             }
 
             bool commOk = _controller.IsCommunicationChecked;
             if (_commStatusText != null)
             {
-                _commStatusText.text = $"<b>{loc.Get("comm_title", "Radio Link")}</b>: {(commOk ? $"<color=#2ECC71>{loc.Get("comm_status_verified", "RADIO LINK VERIFIED ✓")}</color>" : (attAssigned ? "Ready to test" : "Waiting for attendant"))}";
+                _commStatusText.text = $"<b>{loc.Get("comm_title", "Radio Link")}</b>: {(commOk ? $"<color=#16A34A>{loc.Get("comm_status_verified", "RADIO LINK VERIFIED ✓")}</color>" : (attAssigned ? "Ready to test" : "Waiting for attendant"))}";
             }
             if (_btnCheckCommunication != null)
             {
                 _btnCheckCommunication.interactable = attAssigned && !commOk;
                 if (_btnCheckCommunicationBg != null)
                 {
-                    _btnCheckCommunicationBg.color = commOk ? new Color(0.15f, 0.45f, 0.22f) : (attAssigned ? new Color(0.20f, 0.50f, 0.85f) : new Color(0.25f, 0.28f, 0.32f));
+                    _btnCheckCommunicationBg.color = commOk ? UITheme.SuccessSurface : (attAssigned ? UITheme.PrimaryOrange : UITheme.PrimaryDisabled);
                 }
                 if (_btnCheckCommunicationText != null)
                 {
                     _btnCheckCommunicationText.text = commOk ? "VERIFIED ✓" : loc.Get("comm_btn_check", "CHECK RADIO");
+                    _btnCheckCommunicationText.color = commOk ? UITheme.SuccessText : (attAssigned ? UITheme.TextLightOnDark : UITheme.PrimaryDisabledText);
                 }
             }
         }
@@ -1422,7 +1475,7 @@ namespace IndustrialSafetyAR.UI
             rect.offsetMax = Vector2.zero;
 
             var bg = _entryDecisionRootObj.AddComponent<Image>();
-            bg.color = new Color(0.10f, 0.12f, 0.16f, 0.98f);
+            bg.color = UITheme.CardBackground;
 
             var headerObj = new GameObject("EntryHeaderWarning");
             headerObj.transform.SetParent(_entryDecisionRootObj.transform, false);
@@ -1433,9 +1486,9 @@ namespace IndustrialSafetyAR.UI
             hRect.offsetMax = Vector2.zero;
             _entryHeaderWarningText = headerObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _entryHeaderWarningText.font = font;
-            _entryHeaderWarningText.fontSize = 14;
+            _entryHeaderWarningText.fontSize = 24;
             _entryHeaderWarningText.alignment = TextAlignmentOptions.Center;
-            _entryHeaderWarningText.color = new Color(0.95f, 0.75f, 0.20f);
+            _entryHeaderWarningText.color = UITheme.DangerText;
 
             var promptObj = new GameObject("DecisionPrompt");
             promptObj.transform.SetParent(_entryDecisionRootObj.transform, false);
@@ -1446,9 +1499,9 @@ namespace IndustrialSafetyAR.UI
             pRect.offsetMax = Vector2.zero;
             _entryDecisionPromptText = promptObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _entryDecisionPromptText.font = font;
-            _entryDecisionPromptText.fontSize = 13;
+            _entryDecisionPromptText.fontSize = 22;
             _entryDecisionPromptText.alignment = TextAlignmentOptions.Center;
-            _entryDecisionPromptText.color = new Color(0.9f, 0.92f, 0.95f);
+            _entryDecisionPromptText.color = UITheme.TextPrimary;
 
             // Choice 1: DO NOT ENTER (SAFE)
             var doNotEnterObj = new GameObject("BtnDoNotEnter");
@@ -1459,7 +1512,7 @@ namespace IndustrialSafetyAR.UI
             dneRect.offsetMin = Vector2.zero;
             dneRect.offsetMax = Vector2.zero;
             _btnDoNotEnterBg = doNotEnterObj.AddComponent<Image>();
-            _btnDoNotEnterBg.color = new Color(0.75f, 0.22f, 0.17f, 0.98f);
+            _btnDoNotEnterBg.color = UITheme.PrimaryOrange;
             _btnDoNotEnter = doNotEnterObj.AddComponent<Button>();
             _btnDoNotEnter.targetGraphic = _btnDoNotEnterBg;
             Action doNotEnterAction = () => {
@@ -1479,10 +1532,10 @@ namespace IndustrialSafetyAR.UI
             dneLabelRect.anchorMax = Vector2.one;
             _btnDoNotEnterText = dneLabelObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _btnDoNotEnterText.font = font;
-            _btnDoNotEnterText.text = "<b>DO NOT ENTER\n<size=80%>[UNSAFE]</size></b>";
+            _btnDoNotEnterText.text = "<b>DO NOT ENTER\n<size=80%>[CORRECT PROTOCOL]</size></b>";
             _btnDoNotEnterText.alignment = TextAlignmentOptions.Center;
-            _btnDoNotEnterText.fontSize = 14;
-            _btnDoNotEnterText.color = Color.white;
+            _btnDoNotEnterText.fontSize = 22;
+            _btnDoNotEnterText.color = UITheme.TextLightOnDark;
 
             // Choice 2: ENTER CONFINED SPACE (UNSAFE)
             var enterObj = new GameObject("BtnEnterConfinedSpace");
@@ -1493,7 +1546,7 @@ namespace IndustrialSafetyAR.UI
             eRect.offsetMin = Vector2.zero;
             eRect.offsetMax = Vector2.zero;
             _btnEnterConfinedSpaceBg = enterObj.AddComponent<Image>();
-            _btnEnterConfinedSpaceBg.color = new Color(0.35f, 0.38f, 0.42f, 0.98f);
+            _btnEnterConfinedSpaceBg.color = UITheme.CardSecondaryBg;
             _btnEnterConfinedSpace = enterObj.AddComponent<Button>();
             _btnEnterConfinedSpace.targetGraphic = _btnEnterConfinedSpaceBg;
             Action enterAction = () => {
@@ -1513,10 +1566,10 @@ namespace IndustrialSafetyAR.UI
             eLabelRect.anchorMax = Vector2.one;
             _btnEnterConfinedSpaceText = eLabelObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _btnEnterConfinedSpaceText.font = font;
-            _btnEnterConfinedSpaceText.text = "<b>ENTER CONFINED\n<size=80%>SPACE</size></b>";
+            _btnEnterConfinedSpaceText.text = "<b>ENTER CONFINED\n<size=80%>SPACE [RISK]</size></b>";
             _btnEnterConfinedSpaceText.alignment = TextAlignmentOptions.Center;
-            _btnEnterConfinedSpaceText.fontSize = 14;
-            _btnEnterConfinedSpaceText.color = Color.white;
+            _btnEnterConfinedSpaceText.fontSize = 22;
+            _btnEnterConfinedSpaceText.color = UITheme.TextPrimary;
 
             var fbObj = new GameObject("EntryDecisionFeedback");
             fbObj.transform.SetParent(_entryDecisionRootObj.transform, false);
@@ -1527,9 +1580,9 @@ namespace IndustrialSafetyAR.UI
             fbRect.offsetMax = Vector2.zero;
             _entryDecisionFeedbackText = fbObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _entryDecisionFeedbackText.font = font;
-            _entryDecisionFeedbackText.fontSize = 12;
+            _entryDecisionFeedbackText.fontSize = 20;
             _entryDecisionFeedbackText.alignment = TextAlignmentOptions.Center;
-            _entryDecisionFeedbackText.color = new Color(0.85f, 0.88f, 0.92f);
+            _entryDecisionFeedbackText.color = UITheme.TextSecondary;
 
             _entryDecisionRootObj.SetActive(false);
         }
@@ -1541,7 +1594,7 @@ namespace IndustrialSafetyAR.UI
 
             if (_entryHeaderWarningText != null)
             {
-                _entryHeaderWarningText.text = $"<b><color=#E74C3C>{loc.Get("entry_decision_header", "ATMOSPHERIC HAZARD DETECTED • SAFE ENTRY EVALUATION")}</color></b>";
+                _entryHeaderWarningText.text = $"<b><color=#DC2626>{loc.Get("entry_decision_header", "ATMOSPHERIC HAZARD DETECTED • SAFE ENTRY EVALUATION")}</color></b>";
             }
 
             if (_entryDecisionPromptText != null)
@@ -1563,27 +1616,31 @@ namespace IndustrialSafetyAR.UI
             {
                 if (string.Equals(_controller.EntryDecisionResult, "do_not_enter", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (_btnDoNotEnterBg != null) _btnDoNotEnterBg.color = new Color(0.15f, 0.60f, 0.28f, 0.98f);
+                    if (_btnDoNotEnterBg != null) _btnDoNotEnterBg.color = UITheme.SuccessSurface;
+                    if (_btnDoNotEnterText != null) _btnDoNotEnterText.color = UITheme.SuccessText;
                     if (_btnEnterConfinedSpace != null) _btnEnterConfinedSpace.interactable = false;
-                    if (_btnEnterConfinedSpaceBg != null) _btnEnterConfinedSpaceBg.color = new Color(0.2f, 0.2f, 0.2f, 0.5f);
+                    if (_btnEnterConfinedSpaceBg != null) _btnEnterConfinedSpaceBg.color = UITheme.CardSecondaryBg;
                     if (_entryDecisionFeedbackText != null)
                     {
-                        _entryDecisionFeedbackText.text = $"<b><color=#2ECC71>{loc.Get("entry_decision_safe_success", "CORRECT DECISION: Confined space entry prohibited under unsafe atmospheric conditions. Proceed to emergency response.")}</color></b>";
+                        _entryDecisionFeedbackText.text = $"<b><color=#16A34A>{loc.Get("entry_decision_safe_success", "CORRECT DECISION: Confined space entry prohibited under unsafe atmospheric conditions. Proceed to emergency response.")}</color></b>";
                     }
                 }
                 else
                 {
-                    if (_btnEnterConfinedSpaceBg != null) _btnEnterConfinedSpaceBg.color = new Color(0.85f, 0.2f, 0.2f, 0.98f);
+                    if (_btnEnterConfinedSpaceBg != null) _btnEnterConfinedSpaceBg.color = UITheme.DangerSurface;
+                    if (_btnEnterConfinedSpaceText != null) _btnEnterConfinedSpaceText.color = UITheme.DangerText;
                     if (_entryDecisionFeedbackText != null)
                     {
-                        _entryDecisionFeedbackText.text = $"<b><color=#E74C3C>{loc.Get("entry_decision_unsafe_warning", "CRITICAL SAFETY VIOLATION: Atmosphere is lethal and flammable! Never enter an unsafe confined space. Correct your decision now.")}</color></b>";
+                        _entryDecisionFeedbackText.text = $"<b><color=#DC2626>{loc.Get("entry_decision_unsafe_warning", "CRITICAL SAFETY VIOLATION: Atmosphere is lethal and flammable! Never enter an unsafe confined space. Correct your decision now.")}</color></b>";
                     }
                 }
             }
             else
             {
-                if (_btnDoNotEnterBg != null) _btnDoNotEnterBg.color = new Color(0.75f, 0.22f, 0.17f, 0.98f);
-                if (_btnEnterConfinedSpaceBg != null) _btnEnterConfinedSpaceBg.color = new Color(0.35f, 0.38f, 0.42f, 0.98f);
+                if (_btnDoNotEnterBg != null) _btnDoNotEnterBg.color = UITheme.PrimaryOrange;
+                if (_btnDoNotEnterText != null) _btnDoNotEnterText.color = UITheme.TextLightOnDark;
+                if (_btnEnterConfinedSpaceBg != null) _btnEnterConfinedSpaceBg.color = UITheme.CardSecondaryBg;
+                if (_btnEnterConfinedSpaceText != null) _btnEnterConfinedSpaceText.color = UITheme.TextPrimary;
                 if (_btnEnterConfinedSpace != null) _btnEnterConfinedSpace.interactable = true;
                 if (_entryDecisionFeedbackText != null)
                 {
@@ -1603,7 +1660,7 @@ namespace IndustrialSafetyAR.UI
             rect.offsetMax = Vector2.zero;
 
             var bg = _emergencyResponseRootObj.AddComponent<Image>();
-            bg.color = new Color(0.10f, 0.12f, 0.16f, 0.98f);
+            bg.color = UITheme.CardBackground;
 
             var titleObj = new GameObject("EmergencyHeader");
             titleObj.transform.SetParent(_emergencyResponseRootObj.transform, false);
@@ -1614,9 +1671,9 @@ namespace IndustrialSafetyAR.UI
             tRect.offsetMax = Vector2.zero;
             _emergencyHeaderTitleText = titleObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _emergencyHeaderTitleText.font = font;
-            _emergencyHeaderTitleText.fontSize = 14;
+            _emergencyHeaderTitleText.fontSize = 24;
             _emergencyHeaderTitleText.alignment = TextAlignmentOptions.Center;
-            _emergencyHeaderTitleText.color = new Color(0.95f, 0.35f, 0.25f);
+            _emergencyHeaderTitleText.color = UITheme.DangerText;
 
             // Sub-panel 1: Gas Alarm (8A)
             _gasAlarmSubPanel = new GameObject("SubPanel_Alarm");
@@ -1636,20 +1693,20 @@ namespace IndustrialSafetyAR.UI
             amRect.offsetMax = Vector2.zero;
             var alarmMsg = alarmMsgObj.AddComponent<TextMeshProUGUI>();
             if (font != null) alarmMsg.font = font;
-            alarmMsg.text = "<b><color=#E74C3C>GAS ALARM SOUNDING!</color></b>\n<size=85%>Audible & visual alarms activated. Multi-gas detector threshold exceeded!</size>";
+            alarmMsg.text = "<b><color=#DC2626>GAS ALARM SOUNDING!</color></b>\n<size=85%>Audible & visual alarms activated. Multi-gas detector threshold exceeded!</size>";
             alarmMsg.alignment = TextAlignmentOptions.Center;
-            alarmMsg.fontSize = 14;
-            alarmMsg.color = Color.white;
+            alarmMsg.fontSize = 22;
+            alarmMsg.color = UITheme.TextPrimary;
 
             var ackBtnObj = new GameObject("BtnAcknowledgeAlarm");
             ackBtnObj.transform.SetParent(_gasAlarmSubPanel.transform, false);
             var abRect = ackBtnObj.AddComponent<RectTransform>();
-            abRect.anchorMin = new Vector2(0.10f, 0.08f);
-            abRect.anchorMax = new Vector2(0.90f, 0.40f);
+            abRect.anchorMin = new Vector2(0.05f, 0.08f);
+            abRect.anchorMax = new Vector2(0.95f, 0.40f);
             abRect.offsetMin = Vector2.zero;
             abRect.offsetMax = Vector2.zero;
             _btnAcknowledgeAlarmBg = ackBtnObj.AddComponent<Image>();
-            _btnAcknowledgeAlarmBg.color = new Color(0.85f, 0.25f, 0.20f, 0.98f);
+            _btnAcknowledgeAlarmBg.color = UITheme.PrimaryOrange;
             _btnAcknowledgeAlarm = ackBtnObj.AddComponent<Button>();
             _btnAcknowledgeAlarm.targetGraphic = _btnAcknowledgeAlarmBg;
             Action ackAction = () => {
@@ -1669,10 +1726,10 @@ namespace IndustrialSafetyAR.UI
             alRect.anchorMax = Vector2.one;
             _btnAcknowledgeAlarmText = ackLabelObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _btnAcknowledgeAlarmText.font = font;
-            _btnAcknowledgeAlarmText.text = "<b>ACKNOWLEDGE ALARM</b>";
+            _btnAcknowledgeAlarmText.text = "<b>ACKNOWLEDGE ALARM →</b>";
             _btnAcknowledgeAlarmText.alignment = TextAlignmentOptions.Center;
-            _btnAcknowledgeAlarmText.fontSize = 16;
-            _btnAcknowledgeAlarmText.color = Color.white;
+            _btnAcknowledgeAlarmText.fontSize = 26;
+            _btnAcknowledgeAlarmText.color = UITheme.TextLightOnDark;
 
             // Sub-panel 2: Stop Work (8B)
             _stopWorkSubPanel = new GameObject("SubPanel_StopWork");
@@ -1692,20 +1749,20 @@ namespace IndustrialSafetyAR.UI
             swmRect.offsetMax = Vector2.zero;
             var swMsg = swMsgObj.AddComponent<TextMeshProUGUI>();
             if (font != null) swMsg.font = font;
-            swMsg.text = "<b><color=#E67E22>STOP WORK ORDER ISSUED</color></b>\n<size=85%>Halt all hot work & entry. Keep all personnel outside danger perimeter!</size>";
+            swMsg.text = "<b><color=#D97706>STOP WORK ORDER ISSUED</color></b>\n<size=85%>Halt all hot work & entry. Keep all personnel outside danger perimeter!</size>";
             swMsg.alignment = TextAlignmentOptions.Center;
-            swMsg.fontSize = 14;
-            swMsg.color = Color.white;
+            swMsg.fontSize = 22;
+            swMsg.color = UITheme.TextPrimary;
 
             var swBtnObj = new GameObject("BtnAcknowledgeStopWork");
             swBtnObj.transform.SetParent(_stopWorkSubPanel.transform, false);
             var swbRect = swBtnObj.AddComponent<RectTransform>();
-            swbRect.anchorMin = new Vector2(0.10f, 0.08f);
-            swbRect.anchorMax = new Vector2(0.90f, 0.40f);
+            swbRect.anchorMin = new Vector2(0.05f, 0.08f);
+            swbRect.anchorMax = new Vector2(0.95f, 0.40f);
             swbRect.offsetMin = Vector2.zero;
             swbRect.offsetMax = Vector2.zero;
             _btnAcknowledgeStopWorkBg = swBtnObj.AddComponent<Image>();
-            _btnAcknowledgeStopWorkBg.color = new Color(0.85f, 0.45f, 0.15f, 0.98f);
+            _btnAcknowledgeStopWorkBg.color = UITheme.PrimaryOrange;
             _btnAcknowledgeStopWork = swBtnObj.AddComponent<Button>();
             _btnAcknowledgeStopWork.targetGraphic = _btnAcknowledgeStopWorkBg;
             Action swAction = () => {
@@ -1725,10 +1782,10 @@ namespace IndustrialSafetyAR.UI
             swlRect.anchorMax = Vector2.one;
             _btnAcknowledgeStopWorkText = swLabelObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _btnAcknowledgeStopWorkText.font = font;
-            _btnAcknowledgeStopWorkText.text = "<b>STOP WORK & KEEP OUT</b>";
+            _btnAcknowledgeStopWorkText.text = "<b>STOP WORK & KEEP OUT →</b>";
             _btnAcknowledgeStopWorkText.alignment = TextAlignmentOptions.Center;
-            _btnAcknowledgeStopWorkText.fontSize = 16;
-            _btnAcknowledgeStopWorkText.color = Color.white;
+            _btnAcknowledgeStopWorkText.fontSize = 26;
+            _btnAcknowledgeStopWorkText.color = UITheme.TextLightOnDark;
 
             // Sub-panel 3: Supervisor Alert (8C)
             _supervisorAlertSubPanel = new GameObject("SubPanel_SupervisorAlert");
@@ -1748,20 +1805,20 @@ namespace IndustrialSafetyAR.UI
             samRect.offsetMax = Vector2.zero;
             var saMsg = saMsgObj.AddComponent<TextMeshProUGUI>();
             if (font != null) saMsg.font = font;
-            saMsg.text = "<b><color=#3498DB>EMERGENCY NOTIFICATION</color></b>\n<size=85%>Inform outside attendant & call safety control room / emergency services.</size>";
+            saMsg.text = "<b><color=#D97706>EMERGENCY NOTIFICATION</color></b>\n<size=85%>Inform outside attendant & call safety control room / emergency services.</size>";
             saMsg.alignment = TextAlignmentOptions.Center;
-            saMsg.fontSize = 14;
-            saMsg.color = Color.white;
+            saMsg.fontSize = 22;
+            saMsg.color = UITheme.TextPrimary;
 
             var saBtnObj = new GameObject("BtnAlertSupervisor");
             saBtnObj.transform.SetParent(_supervisorAlertSubPanel.transform, false);
             var sabRect = saBtnObj.AddComponent<RectTransform>();
-            sabRect.anchorMin = new Vector2(0.10f, 0.08f);
-            sabRect.anchorMax = new Vector2(0.90f, 0.40f);
+            sabRect.anchorMin = new Vector2(0.05f, 0.08f);
+            sabRect.anchorMax = new Vector2(0.95f, 0.40f);
             sabRect.offsetMin = Vector2.zero;
             sabRect.offsetMax = Vector2.zero;
             _btnAlertSupervisorBg = saBtnObj.AddComponent<Image>();
-            _btnAlertSupervisorBg.color = new Color(0.20f, 0.50f, 0.85f, 0.98f);
+            _btnAlertSupervisorBg.color = UITheme.PrimaryOrange;
             _btnAlertSupervisor = saBtnObj.AddComponent<Button>();
             _btnAlertSupervisor.targetGraphic = _btnAlertSupervisorBg;
             Action saAction = () => {
@@ -1781,10 +1838,10 @@ namespace IndustrialSafetyAR.UI
             salRect.anchorMax = Vector2.one;
             _btnAlertSupervisorText = saLabelObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _btnAlertSupervisorText.font = font;
-            _btnAlertSupervisorText.text = "<b>ALERT SUPERVISOR & ATTENDANT</b>";
+            _btnAlertSupervisorText.text = "<b>ALERT SUPERVISOR & ATTENDANT →</b>";
             _btnAlertSupervisorText.alignment = TextAlignmentOptions.Center;
-            _btnAlertSupervisorText.fontSize = 15;
-            _btnAlertSupervisorText.color = Color.white;
+            _btnAlertSupervisorText.fontSize = 24;
+            _btnAlertSupervisorText.color = UITheme.TextLightOnDark;
 
             // Sub-panel 4: Upwind Evacuation Waypoints (8D)
             _evacuationWaypointsSubPanel = new GameObject("SubPanel_EvacuationWaypoints");
@@ -1806,18 +1863,18 @@ namespace IndustrialSafetyAR.UI
             if (font != null) _evacuationProgressText.font = font;
             _evacuationProgressText.text = "<b>EVACUATE UPWIND</b>\n<size=85%>Follow green waypoint markers in 3D AR or tap button below.</size>";
             _evacuationProgressText.alignment = TextAlignmentOptions.Center;
-            _evacuationProgressText.fontSize = 13;
-            _evacuationProgressText.color = Color.white;
+            _evacuationProgressText.fontSize = 22;
+            _evacuationProgressText.color = UITheme.TextPrimary;
 
             var wpBtnObj = new GameObject("BtnWaypointAdvance");
             wpBtnObj.transform.SetParent(_evacuationWaypointsSubPanel.transform, false);
             var wpbRect = wpBtnObj.AddComponent<RectTransform>();
-            wpbRect.anchorMin = new Vector2(0.10f, 0.08f);
-            wpbRect.anchorMax = new Vector2(0.90f, 0.40f);
+            wpbRect.anchorMin = new Vector2(0.05f, 0.08f);
+            wpbRect.anchorMax = new Vector2(0.95f, 0.40f);
             wpbRect.offsetMin = Vector2.zero;
             wpbRect.offsetMax = Vector2.zero;
             _btnWaypointAdvanceBg = wpBtnObj.AddComponent<Image>();
-            _btnWaypointAdvanceBg.color = new Color(0.15f, 0.65f, 0.35f, 0.98f);
+            _btnWaypointAdvanceBg.color = UITheme.PrimaryOrange;
             _btnWaypointAdvance = wpBtnObj.AddComponent<Button>();
             _btnWaypointAdvance.targetGraphic = _btnWaypointAdvanceBg;
             Action wpAction = () => {
@@ -1839,8 +1896,8 @@ namespace IndustrialSafetyAR.UI
             if (font != null) _btnWaypointAdvanceText.font = font;
             _btnWaypointAdvanceText.text = "<b>REACH WAYPOINT 1 →</b>";
             _btnWaypointAdvanceText.alignment = TextAlignmentOptions.Center;
-            _btnWaypointAdvanceText.fontSize = 16;
-            _btnWaypointAdvanceText.color = Color.white;
+            _btnWaypointAdvanceText.fontSize = 26;
+            _btnWaypointAdvanceText.color = UITheme.TextLightOnDark;
 
             // Sub-panel 5: Trained Rescue Confirmation (8E)
             _trainedRescueSubPanel = new GameObject("SubPanel_TrainedRescue");
@@ -1860,20 +1917,20 @@ namespace IndustrialSafetyAR.UI
             rcRect.offsetMax = Vector2.zero;
             _rescueChecklistText = rcObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _rescueChecklistText.font = font;
-            _rescueChecklistText.text = "<b><color=#F1C40F>STRICT RULE: NO IMPROVISED RESCUE</color></b>\n<size=85%>Never enter confined space without breathing equipment to attempt rescue. Wait for certified emergency rescue team!</size>";
+            _rescueChecklistText.text = "<b><color=#D97706>STRICT RULE: NO IMPROVISED RESCUE</color></b>\n<size=85%>Never enter confined space without breathing equipment to attempt rescue. Wait for certified emergency rescue team!</size>";
             _rescueChecklistText.alignment = TextAlignmentOptions.Center;
-            _rescueChecklistText.fontSize = 13;
-            _rescueChecklistText.color = Color.white;
+            _rescueChecklistText.fontSize = 22;
+            _rescueChecklistText.color = UITheme.TextPrimary;
 
             var crBtnObj = new GameObject("BtnConfirmRescue");
             crBtnObj.transform.SetParent(_trainedRescueSubPanel.transform, false);
             var crbRect = crBtnObj.AddComponent<RectTransform>();
-            crbRect.anchorMin = new Vector2(0.10f, 0.08f);
-            crbRect.anchorMax = new Vector2(0.90f, 0.40f);
+            crbRect.anchorMin = new Vector2(0.05f, 0.08f);
+            crbRect.anchorMax = new Vector2(0.95f, 0.40f);
             crbRect.offsetMin = Vector2.zero;
             crbRect.offsetMax = Vector2.zero;
             _btnConfirmRescueBg = crBtnObj.AddComponent<Image>();
-            _btnConfirmRescueBg.color = new Color(0.15f, 0.60f, 0.28f, 0.98f);
+            _btnConfirmRescueBg.color = UITheme.PrimaryOrange;
             _btnConfirmRescue = crBtnObj.AddComponent<Button>();
             _btnConfirmRescue.targetGraphic = _btnConfirmRescueBg;
             Action crAction = () => {
@@ -1893,10 +1950,10 @@ namespace IndustrialSafetyAR.UI
             crlRect.anchorMax = Vector2.one;
             _btnConfirmRescueText = crLabelObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _btnConfirmRescueText.font = font;
-            _btnConfirmRescueText.text = "<b>CONFIRM TRAINED RESCUE PROTOCOL</b>";
+            _btnConfirmRescueText.text = "<b>CONFIRM TRAINED RESCUE PROTOCOL →</b>";
             _btnConfirmRescueText.alignment = TextAlignmentOptions.Center;
-            _btnConfirmRescueText.fontSize = 15;
-            _btnConfirmRescueText.color = Color.white;
+            _btnConfirmRescueText.fontSize = 24;
+            _btnConfirmRescueText.color = UITheme.TextLightOnDark;
 
             _emergencyResponseRootObj.SetActive(false);
         }
@@ -1908,7 +1965,7 @@ namespace IndustrialSafetyAR.UI
 
             if (_emergencyHeaderTitleText != null)
             {
-                _emergencyHeaderTitleText.text = $"<b><color=#E74C3C>{loc.Get("emergency_title", "STEP 8: EMERGENCY RESPONSE & EVACUATION")}</color></b>";
+                _emergencyHeaderTitleText.text = $"<b><color=#DC2626>{loc.Get("emergency_title", "STEP 8: EMERGENCY RESPONSE & EVACUATION")}</color></b>";
             }
 
             bool alarmAck = _controller.IsGasAlarmAcknowledged;
@@ -1944,14 +2001,18 @@ namespace IndustrialSafetyAR.UI
                 if (_rescueChecklistText != null)
                 {
                     _rescueChecklistText.text = emergencyDone ?
-                        $"<b><color=#2ECC71>{loc.Get("rescue_confirmed", "TRAINED RESCUE PROTOCOL CONFIRMED ✓\nAll personnel accounted for at safe assembly point.")}</color></b>" :
-                        $"<b><color=#F1C40F>{loc.Get("rescue_rule_title", "CRITICAL RULE: NO IMPROVISED RESCUE")}</color></b>\n<size=85%>{loc.Get("rescue_rule_desc", "Never re-enter without certified rescue team & breathing apparatus.")}</size>";
+                        $"<b><color=#16A34A>{loc.Get("rescue_confirmed", "TRAINED RESCUE PROTOCOL CONFIRMED ✓\nAll personnel accounted for at safe assembly point.")}</color></b>" :
+                        $"<b><color=#D97706>{loc.Get("rescue_rule_title", "CRITICAL RULE: NO IMPROVISED RESCUE")}</color></b>\n<size=85%>{loc.Get("rescue_rule_desc", "Never re-enter without certified rescue team & breathing apparatus.")}</size>";
                 }
                 if (_btnConfirmRescue != null)
                 {
                     _btnConfirmRescue.interactable = !emergencyDone;
-                    if (_btnConfirmRescueBg != null) _btnConfirmRescueBg.color = emergencyDone ? new Color(0.15f, 0.45f, 0.22f) : new Color(0.15f, 0.60f, 0.28f);
-                    if (_btnConfirmRescueText != null) _btnConfirmRescueText.text = emergencyDone ? "COMPLETED ✓" : loc.Get("rescue_btn_confirm", "CONFIRM TRAINED RESCUE PROTOCOL");
+                    if (_btnConfirmRescueBg != null) _btnConfirmRescueBg.color = emergencyDone ? UITheme.SuccessSurface : UITheme.PrimaryOrange;
+                    if (_btnConfirmRescueText != null)
+                    {
+                        _btnConfirmRescueText.text = emergencyDone ? "COMPLETED ✓" : loc.Get("rescue_btn_confirm", "CONFIRM TRAINED RESCUE PROTOCOL");
+                        _btnConfirmRescueText.color = emergencyDone ? UITheme.SuccessText : UITheme.TextLightOnDark;
+                    }
                 }
             }
         }
@@ -1967,7 +2028,7 @@ namespace IndustrialSafetyAR.UI
             rect.offsetMax = Vector2.zero;
 
             var bg = _finalSafetyCheckRootObj.AddComponent<Image>();
-            bg.color = new Color(0.10f, 0.12f, 0.16f, 0.98f);
+            bg.color = UITheme.CardBackground;
 
             var titleObj = new GameObject("FinalHeaderTitle");
             titleObj.transform.SetParent(_finalSafetyCheckRootObj.transform, false);
@@ -1978,9 +2039,9 @@ namespace IndustrialSafetyAR.UI
             tRect.offsetMax = Vector2.zero;
             _finalHeaderTitleText = titleObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _finalHeaderTitleText.font = font;
-            _finalHeaderTitleText.fontSize = 15;
+            _finalHeaderTitleText.fontSize = 24;
             _finalHeaderTitleText.alignment = TextAlignmentOptions.Center;
-            _finalHeaderTitleText.color = new Color(0.20f, 0.80f, 0.50f);
+            _finalHeaderTitleText.color = UITheme.SuccessText;
 
             var clObj = new GameObject("FinalChecklistText");
             clObj.transform.SetParent(_finalSafetyCheckRootObj.transform, false);
@@ -1991,9 +2052,10 @@ namespace IndustrialSafetyAR.UI
             clRect.offsetMax = Vector2.zero;
             _finalChecklistText = clObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _finalChecklistText.font = font;
-            _finalChecklistText.fontSize = 11;
+            _finalChecklistText.fontSize = 20;
+            _finalChecklistText.lineSpacing = 1.15f;
             _finalChecklistText.alignment = TextAlignmentOptions.TopLeft;
-            _finalChecklistText.color = new Color(0.92f, 0.94f, 0.97f);
+            _finalChecklistText.color = UITheme.TextPrimary;
             var sbInit = new System.Text.StringBuilder();
             sbInit.AppendLine("✓ 1. Gas Hazard Identified (Methane & Toxic Plume)");
             sbInit.AppendLine("✓ 2. 3m Safety Danger Perimeter Established");
@@ -2016,20 +2078,20 @@ namespace IndustrialSafetyAR.UI
             rRect.offsetMax = Vector2.zero;
             _finalAtmosphereRuleText = ruleObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _finalAtmosphereRuleText.font = font;
-            _finalAtmosphereRuleText.fontSize = 12;
+            _finalAtmosphereRuleText.fontSize = 20;
             _finalAtmosphereRuleText.alignment = TextAlignmentOptions.Center;
-            _finalAtmosphereRuleText.color = new Color(0.95f, 0.75f, 0.20f);
-            _finalAtmosphereRuleText.text = "<b><color=#E74C3C>FINAL ATMOSPHERE STATUS: UNSAFE (LEL 18.0%, H2S 35 ppm)\nCONFINED SPACE ENTRY PROHIBITED • 10/10 PROTOCOLS VERIFIED</color></b>";
+            _finalAtmosphereRuleText.color = UITheme.DangerText;
+            _finalAtmosphereRuleText.text = "<b>FINAL ATMOSPHERE STATUS: UNSAFE (LEL 18.0%, H2S 35 ppm)\nCONFINED SPACE ENTRY PROHIBITED • 10/10 PROTOCOLS VERIFIED</b>";
 
             var completeBtnObj = new GameObject("BtnCompleteTraining");
             completeBtnObj.transform.SetParent(_finalSafetyCheckRootObj.transform, false);
             var cbRect = completeBtnObj.AddComponent<RectTransform>();
-            cbRect.anchorMin = new Vector2(0.08f, 0.03f);
-            cbRect.anchorMax = new Vector2(0.92f, 0.20f);
+            cbRect.anchorMin = new Vector2(0.05f, 0.03f);
+            cbRect.anchorMax = new Vector2(0.95f, 0.20f);
             cbRect.offsetMin = Vector2.zero;
             cbRect.offsetMax = Vector2.zero;
             _btnCompleteTrainingBg = completeBtnObj.AddComponent<Image>();
-            _btnCompleteTrainingBg.color = new Color(0.12f, 0.58f, 0.28f, 0.98f);
+            _btnCompleteTrainingBg.color = UITheme.PrimaryOrange;
             _btnCompleteTraining = completeBtnObj.AddComponent<Button>();
             _btnCompleteTraining.targetGraphic = _btnCompleteTrainingBg;
             Action compAction = () => {
@@ -2051,8 +2113,8 @@ namespace IndustrialSafetyAR.UI
             if (font != null) _btnCompleteTrainingText.font = font;
             _btnCompleteTrainingText.text = "<b>COMPLETE TRAINING & VIEW ASSESSMENT →</b>";
             _btnCompleteTrainingText.alignment = TextAlignmentOptions.Center;
-            _btnCompleteTrainingText.fontSize = 15;
-            _btnCompleteTrainingText.color = Color.white;
+            _btnCompleteTrainingText.fontSize = 24;
+            _btnCompleteTrainingText.color = UITheme.TextLightOnDark;
 
             _finalSafetyCheckRootObj.SetActive(false);
         }
@@ -2084,7 +2146,7 @@ namespace IndustrialSafetyAR.UI
 
             if (_finalAtmosphereRuleText != null)
             {
-                _finalAtmosphereRuleText.text = $"<b><color=#E74C3C>{loc.Get("final_rule_unsafe", "FINAL ATMOSPHERE STATUS: UNSAFE (LEL 18.0%, H2S 35 ppm)\nCONFINED SPACE ENTRY PROHIBITED • 10/10 PROTOCOLS VERIFIED")}</color></b>";
+                _finalAtmosphereRuleText.text = $"<b><color=#DC2626>{loc.Get("final_rule_unsafe", "FINAL ATMOSPHERE STATUS: UNSAFE (LEL 18.0%, H2S 35 ppm)\nCONFINED SPACE ENTRY PROHIBITED • 10/10 PROTOCOLS VERIFIED")}</color></b>";
             }
 
             if (_btnCompleteTrainingText != null)
@@ -2223,7 +2285,7 @@ namespace IndustrialSafetyAR.UI
             if (_stepBadgeText != null)
             {
                 string stepTitle = loc.Get($"gas_step{step}_title", nav.GetStepInfo(step)?.Title ?? $"STEP {step}");
-                _stepBadgeText.text = $"<color=#F39C12><b>STEP {step}/9</b></color> • {stepTitle.ToUpperInvariant()}";
+                _stepBadgeText.text = $"<color=#F97316><b>STEP {step}/9</b></color> • {stepTitle.ToUpperInvariant()}";
             }
 
             if (_progressText != null)
@@ -2304,15 +2366,34 @@ namespace IndustrialSafetyAR.UI
                 }
             }
 
-            // Primary Next button visibility
+            // Primary Next button visibility & Step 4 synchronization
             if (_nextButtonObj != null)
             {
-                bool canNext = nav.CanGoNext;
-                _nextButtonObj.SetActive(canNext);
-                if (canNext && _nextButtonText != null)
+                if (step == 4)
                 {
-                    string nextLabel = loc.Get($"gas_step{step}_next", nav.GetStepInfo(step)?.NextButtonLabel ?? "NEXT STEP →");
-                    _nextButtonText.text = $"<b>{nextLabel}</b>";
+                    bool isPpeValid = _controller != null && _controller.HasValidPpeSelection();
+                    _nextButtonObj.SetActive(true);
+                    if (_nextButton != null) _nextButton.interactable = isPpeValid;
+                    if (_nextButtonBg != null) _nextButtonBg.color = isPpeValid ? UITheme.PrimaryOrange : UITheme.PrimaryDisabled;
+                    if (_nextButtonText != null)
+                    {
+                        string confirmLabel = loc.Get("ppe_btn_confirm", "CONFIRM PPE SELECTION →");
+                        _nextButtonText.text = $"<b>{confirmLabel}</b>";
+                        _nextButtonText.color = isPpeValid ? UITheme.TextLightOnDark : UITheme.PrimaryDisabledText;
+                    }
+                }
+                else
+                {
+                    bool canNext = nav.CanGoNext;
+                    _nextButtonObj.SetActive(canNext);
+                    if (_nextButton != null) _nextButton.interactable = canNext;
+                    if (_nextButtonBg != null) _nextButtonBg.color = canNext ? UITheme.PrimaryOrange : UITheme.PrimaryDisabled;
+                    if (canNext && _nextButtonText != null)
+                    {
+                        string nextLabel = loc.Get($"gas_step{step}_next", nav.GetStepInfo(step)?.NextButtonLabel ?? "NEXT STEP →");
+                        _nextButtonText.text = $"<b>{nextLabel}</b>";
+                        _nextButtonText.color = UITheme.TextLightOnDark;
+                    }
                 }
             }
 
@@ -2329,6 +2410,15 @@ namespace IndustrialSafetyAR.UI
         private void OnNextButtonClicked()
         {
             var nav = Navigator;
+            if (nav.CurrentStepIndex == 4 && _controller != null)
+            {
+                if (_controller.HasValidPpeSelection())
+                {
+                    _controller.SubmitPpeSelectionAndAdvance();
+                }
+                return;
+            }
+
             if (nav.CurrentStepIndex == 9 && _controller != null && _controller.IsAssessmentCompleted)
             {
                 ShowGasAssessmentSummary();

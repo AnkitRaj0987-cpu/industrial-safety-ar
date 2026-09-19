@@ -126,6 +126,25 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
         public IReadOnlyCollection<string> SelectedItems => _selectedItems;
         public IReadOnlyCollection<string> RequiredItemIds => _palette.Values.Where(v => v.IsRequiredForScenario).Select(v => v.ItemId).ToList();
 
+        /// <summary>
+        /// Pure predicate checking if the current candidate PPE selection satisfies all requirements
+        /// and does not contain any dangerous distractors.
+        /// </summary>
+        public bool HasValidSelection(IEnumerable<string> itemIds)
+        {
+            if (itemIds == null) return false;
+            var selectionList = itemIds.Where(id => !string.IsNullOrWhiteSpace(id)).Select(id => id.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            foreach (var id in selectionList)
+            {
+                if (_palette.TryGetValue(id, out var item) && item.IsDangerousDistractor)
+                {
+                    return false;
+                }
+            }
+            var required = RequiredItemIds;
+            return !required.Any(req => !selectionList.Contains(req, StringComparer.OrdinalIgnoreCase));
+        }
+
         public bool SubmitPpeSelection(IEnumerable<string> itemIds, string moduleId, string contentVersion, ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent, out string feedback)
         {
             emittedEvent = null;

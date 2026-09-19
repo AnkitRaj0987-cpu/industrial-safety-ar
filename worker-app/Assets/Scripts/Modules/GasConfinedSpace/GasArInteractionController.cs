@@ -19,6 +19,9 @@ using IndustrialSafetyAR.Core.Events;
 using IndustrialSafetyAR.UI;
 using UnityEngine;
 using UnityEngine.EventSystems;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 namespace IndustrialSafetyAR.Modules.GasConfinedSpace
 {
@@ -118,6 +121,7 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
         public GasInteractionState State => _state;
         public GasWorkflowStage WorkflowStage => _workflow.CurrentStage;
         public GasTrainingWorkflow Workflow => _workflow;
+        public GasAtmosphericSimulator AtmosphericSimulator => _workflow.AtmosphericSimulator;
         public GasHazardMarker ActiveHazard => _activeHazard;
         public GasAttendantMarker ActiveAttendant => _activeAttendant;
         public string CurrentStepId => _workflow.CurrentStepId;
@@ -267,29 +271,62 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
 
         private void HandleInput()
         {
-            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            try
             {
-                return;
-            }
-
-            if (Input.GetMouseButtonDown(0))
-            {
-                ProcessScreenTap(Input.mousePosition);
-            }
-#if UNITY_ANDROID && !UNITY_EDITOR
-            if (Input.touchCount > 0)
-            {
-                var touch = Input.GetTouch(0);
-                if (touch.phase == TouchPhase.Began)
+#if ENABLE_INPUT_SYSTEM
+                if (Touchscreen.current != null)
                 {
-                    if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject(touch.fingerId))
+                    var primary = Touchscreen.current.primaryTouch;
+                    if (primary.press.wasPressedThisFrame)
                     {
-                        return;
+                        Vector2 pos = primary.position.ReadValue();
+                        if (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject())
+                        {
+                            ProcessScreenTap(pos);
+                        }
                     }
-                    ProcessScreenTap(touch.position);
                 }
-            }
+                else if (Mouse.current != null)
+                {
+                    if (Mouse.current.leftButton.wasPressedThisFrame)
+                    {
+                        Vector2 pos = Mouse.current.position.ReadValue();
+                        if (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject())
+                        {
+                            ProcessScreenTap(pos);
+                        }
+                    }
+                }
+#else
+                if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+                {
+                    return;
+                }
+
+                if (Input.GetMouseButtonDown(0))
+                {
+                    ProcessScreenTap(Input.mousePosition);
+                }
+#if UNITY_ANDROID && !UNITY_EDITOR
+                if (Input.touchCount > 0)
+                {
+                    var touch = Input.GetTouch(0);
+                    if (touch.phase == TouchPhase.Began)
+                    {
+                        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject(touch.fingerId))
+                        {
+                            return;
+                        }
+                        ProcessScreenTap(touch.position);
+                    }
+                }
 #endif
+#endif
+            }
+            catch (InvalidOperationException)
+            {
+                // Graceful fallback if active input handling is switching
+            }
         }
 
         /// <summary>
@@ -636,6 +673,21 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
         public bool IsPpeItemSelected(string itemId)
         {
             return _selectedPpeItems.Contains(itemId);
+        }
+
+        public bool HasValidPpeSelection()
+        {
+            return _workflow.PpeSystem.HasValidSelection(_selectedPpeItems);
+        }
+
+        public bool SubmitPpeSelectionAndAdvance()
+        {
+            if (SubmitPpeSelection())
+            {
+                AdvanceToNextStep();
+                return true;
+            }
+            return false;
         }
 
         public bool SubmitPpeSelection()
@@ -1260,9 +1312,28 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
         {
             if (_stepNavigator.CanGoBack)
             {
-                int prevStep = _stepNavigator.CurrentStepIndex - 1;
+                int currentStep = _stepNavigator.CurrentStepIndex;
+                int prevStep = currentStep - 1;
+                if (currentStep == 4 && prevStep == 3)
+                {
+                    ResetStep3TransientState();
+                }
                 _stepNavigator.SetViewStep(prevStep);
             }
+        }
+
+        /// <summary>
+        /// Resets transient Step 3 atmospheric detector state when navigating back from Step 4.
+        /// Preserves attempt history and events while requiring the worker to perform the
+        /// atmospheric test sequence again.
+        /// </summary>
+        public void ResetStep3TransientState()
+        {
+            _workflow.AtmosphericSimulator.Reset();
+            _workflow.SetStage(GasWorkflowStage.AwaitingAtmosphericTest);
+            _stepNavigator.InvalidateStep(3);
+            SetState(GasInteractionState.AwaitingAtmosphericTest);
+            SetFeedback("Atmospheric testing sequence reset: Measure Oxygen (O2), Flammable (LEL), and Toxic (H2S) in order.");
         }
 
         // =============================================================

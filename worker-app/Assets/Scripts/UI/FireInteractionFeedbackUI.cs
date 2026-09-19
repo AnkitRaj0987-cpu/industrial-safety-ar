@@ -166,9 +166,13 @@ namespace IndustrialSafetyAR.UI
             rect.offsetMax = Vector2.zero;
 
             _bannerBg = bannerObj.AddComponent<Image>();
-            _bannerBg.color = new Color(0.06f, 0.08f, 0.12f, 0.97f);
+            _bannerBg.color = UITheme.CardBackground;
 
-            // Top accent strip (Industrial Amber)
+            var bannerOutline = bannerObj.AddComponent<Outline>();
+            bannerOutline.effectColor = UITheme.BorderSubtle;
+            bannerOutline.effectDistance = new Vector2(2, -2);
+
+            // Top accent strip (Industrial Orange)
             var accentObj = new GameObject("TopAccentStrip");
             accentObj.transform.SetParent(bannerObj.transform, false);
             var accentRect = accentObj.AddComponent<RectTransform>();
@@ -177,7 +181,7 @@ namespace IndustrialSafetyAR.UI
             accentRect.offsetMin = Vector2.zero;
             accentRect.offsetMax = Vector2.zero;
             var accentImg = accentObj.AddComponent<Image>();
-            accentImg.color = new Color(0.95f, 0.60f, 0.10f, 1.0f);
+            accentImg.color = UITheme.PrimaryAction;
 
             // Back button (top-left inside header)
             _backButtonObj = new GameObject("BackButton");
@@ -189,7 +193,7 @@ namespace IndustrialSafetyAR.UI
             backRect.offsetMax = Vector2.zero;
 
             var backImg = _backButtonObj.AddComponent<Image>();
-            backImg.color = new Color(0.16f, 0.20f, 0.28f, 0.98f);
+            backImg.color = UITheme.CardSecondary;
             _backButton = _backButtonObj.AddComponent<Button>();
             _backButton.targetGraphic = backImg;
 
@@ -208,7 +212,7 @@ namespace IndustrialSafetyAR.UI
             _backButtonText.text = $"<b>{IndustrialSafetyAR.Core.LocaleService.Instance.Get("btn_back", "← BACK")}</b>";
             _backButtonText.fontSize = 17;
             _backButtonText.alignment = TextAlignmentOptions.Center;
-            _backButtonText.color = new Color(0.96f, 0.72f, 0.20f);
+            _backButtonText.color = UITheme.TextPrimary;
 
             _backButtonObj.SetActive(true);
 
@@ -224,13 +228,13 @@ namespace IndustrialSafetyAR.UI
             _headerTitleText = headerObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _headerTitleText.font = font;
             _headerTitleText.text = "FIRE & EXPLOSION RESPONSE";
-            _headerTitleText.fontSize = 18;
+            _headerTitleText.fontSize = 20;
             _headerTitleText.enableAutoSizing = true;
-            _headerTitleText.fontSizeMin = 13;
-            _headerTitleText.fontSizeMax = 20;
+            _headerTitleText.fontSizeMin = 14;
+            _headerTitleText.fontSizeMax = 22;
             _headerTitleText.fontStyle = FontStyles.Bold;
             _headerTitleText.alignment = TextAlignmentOptions.Center;
-            _headerTitleText.color = new Color(0.96f, 0.65f, 0.12f);
+            _headerTitleText.color = UITheme.TextPrimary;
 
             // Emergency Alarm Toggle Button (in header)
             _alarmButtonObj = new GameObject("AlarmButton");
@@ -242,7 +246,7 @@ namespace IndustrialSafetyAR.UI
             alarmRect.offsetMax = Vector2.zero;
 
             var alarmImg = _alarmButtonObj.AddComponent<Image>();
-            alarmImg.color = new Color(0.20f, 0.16f, 0.22f, 0.98f);
+            alarmImg.color = UITheme.CardSecondary;
             _alarmButton = _alarmButtonObj.AddComponent<Button>();
             _alarmButton.targetGraphic = alarmImg;
 
@@ -259,12 +263,12 @@ namespace IndustrialSafetyAR.UI
             _alarmButtonText = alarmLabelObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _alarmButtonText.font = font;
             _alarmButtonText.text = "<b>ALARM ON</b>";
-            _alarmButtonText.fontSize = 13;
+            _alarmButtonText.fontSize = 14;
             _alarmButtonText.enableAutoSizing = true;
-            _alarmButtonText.fontSizeMin = 10;
-            _alarmButtonText.fontSizeMax = 15;
+            _alarmButtonText.fontSizeMin = 11;
+            _alarmButtonText.fontSizeMax = 16;
             _alarmButtonText.alignment = TextAlignmentOptions.Center;
-            _alarmButtonText.color = new Color(1f, 0.5f, 0.5f);
+            _alarmButtonText.color = UITheme.Danger;
             UpdateAlarmButtonVisual();
 
             // Sound Toggle Button (top-right inside header)
@@ -277,7 +281,7 @@ namespace IndustrialSafetyAR.UI
             soundRect.offsetMax = Vector2.zero;
 
             var soundImg = _soundButtonObj.AddComponent<Image>();
-            soundImg.color = new Color(0.16f, 0.20f, 0.28f, 0.98f);
+            soundImg.color = UITheme.CardSecondary;
             _soundButton = _soundButtonObj.AddComponent<Button>();
             _soundButton.targetGraphic = soundImg;
 
@@ -294,9 +298,9 @@ namespace IndustrialSafetyAR.UI
             _soundButtonText = soundLabelObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _soundButtonText.font = font;
             _soundButtonText.text = "<b>SND</b>";
-            _soundButtonText.fontSize = 14;
+            _soundButtonText.fontSize = 15;
             _soundButtonText.alignment = TextAlignmentOptions.Center;
-            _soundButtonText.color = new Color(0.96f, 0.82f, 0.25f);
+            _soundButtonText.color = UITheme.TextPrimary;
             UpdateSoundButtonVisual();
 
             // Step Badge (e.g. STEP 3/9 • RAISE ALARM)
@@ -310,11 +314,11 @@ namespace IndustrialSafetyAR.UI
 
             _stepBadgeText = badgeObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _stepBadgeText.font = font;
-            _stepBadgeText.text = "<color=#5DADE2><b>STEP 1/9</b></color> • DETECT HAZARD";
-            _stepBadgeText.fontSize = 20;
+            _stepBadgeText.text = "<color=#EA580C><b>STEP 1/9</b></color> • DETECT HAZARD";
+            _stepBadgeText.fontSize = 22;
             _stepBadgeText.fontStyle = FontStyles.Bold;
             _stepBadgeText.alignment = TextAlignmentOptions.Center;
-            _stepBadgeText.color = new Color(0.85f, 0.90f, 0.96f);
+            _stepBadgeText.color = UITheme.TextPrimary;
 
             // Progress Indicator (e.g. ● ● ● ○ ○ ○ ○ ○ ○  3 / 9)
             var progObj = new GameObject("ProgressIndicator");
@@ -328,9 +332,9 @@ namespace IndustrialSafetyAR.UI
             _progressText = progObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _progressText.font = font;
             _progressText.text = "● ○ ○ ○ ○ ○ ○ ○ ○   1 / 9";
-            _progressText.fontSize = 17;
+            _progressText.fontSize = 18;
             _progressText.alignment = TextAlignmentOptions.Center;
-            _progressText.color = new Color(0.80f, 0.84f, 0.90f);
+            _progressText.color = UITheme.TextSecondary;
 
             // Instruction Text
             var textObj = new GameObject("PromptText");
@@ -343,12 +347,12 @@ namespace IndustrialSafetyAR.UI
 
             _promptText = textObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _promptText.font = font;
-            _promptText.fontSize = 21;
+            _promptText.fontSize = 22;
             _promptText.enableAutoSizing = true;
-            _promptText.fontSizeMin = 15;
-            _promptText.fontSizeMax = 25;
+            _promptText.fontSizeMin = 16;
+            _promptText.fontSizeMax = 28;
             _promptText.alignment = TextAlignmentOptions.Center;
-            _promptText.color = Color.white;
+            _promptText.color = UITheme.TextPrimary;
             _promptText.text = "Initializing training module...";
 
             // State Feedback Sub-banner
@@ -361,7 +365,7 @@ namespace IndustrialSafetyAR.UI
             fbBoxRect.offsetMax = Vector2.zero;
 
             _feedbackBg = feedbackBoxObj.AddComponent<Image>();
-            _feedbackBg.color = new Color(0.12f, 0.16f, 0.24f, 0.95f);
+            _feedbackBg.color = UITheme.CardSecondary;
 
             var feedbackTextObj = new GameObject("FeedbackText");
             feedbackTextObj.transform.SetParent(feedbackBoxObj.transform, false);
@@ -373,12 +377,12 @@ namespace IndustrialSafetyAR.UI
 
             _feedbackText = feedbackTextObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _feedbackText.font = font;
-            _feedbackText.fontSize = 17;
+            _feedbackText.fontSize = 18;
             _feedbackText.enableAutoSizing = true;
-            _feedbackText.fontSizeMin = 13;
-            _feedbackText.fontSizeMax = 20;
+            _feedbackText.fontSizeMin = 14;
+            _feedbackText.fontSizeMax = 22;
             _feedbackText.alignment = TextAlignmentOptions.Center;
-            _feedbackText.color = new Color(0.85f, 0.88f, 0.92f);
+            _feedbackText.color = UITheme.TextSecondary;
             _feedbackText.text = "Scanning floor surfaces...";
         }
 
@@ -418,7 +422,7 @@ namespace IndustrialSafetyAR.UI
             nextRect.offsetMax = Vector2.zero;
 
             var nextImg = _nextButtonObj.AddComponent<Image>();
-            nextImg.color = new Color(0.12f, 0.58f, 0.28f, 0.98f); // High-contrast Emerald Green
+            nextImg.color = UITheme.PrimaryAction; // Primary Orange
 
             _nextButton = _nextButtonObj.AddComponent<Button>();
             _nextButton.targetGraphic = nextImg;
@@ -435,7 +439,7 @@ namespace IndustrialSafetyAR.UI
             nextTextRect.offsetMax = new Vector2(-12, -4);
 
             _nextButtonText = nextTextObj.AddComponent<TextMeshProUGUI>();
-            var font = GetDefaultFont();
+            var font = UITheme.GetFont();
             if (font != null) _nextButtonText.font = font;
             _nextButtonText.text = "NEXT STEP →";
             _nextButtonText.alignment = TextAlignmentOptions.Center;
@@ -663,15 +667,15 @@ namespace IndustrialSafetyAR.UI
 
             if (isError)
             {
-                SetFeedback(feedback, new Color(1f, 0.45f, 0.45f), new Color(0.35f, 0.12f, 0.12f, 0.95f));
+                SetFeedback(feedback, UITheme.Danger, new Color(1f, 0.92f, 0.92f));
             }
             else if (isSuccess)
             {
-                SetFeedback(feedback, new Color(0.4f, 1f, 0.5f), new Color(0.1f, 0.28f, 0.15f, 0.95f));
+                SetFeedback(feedback, UITheme.Success, new Color(0.92f, 0.98f, 0.94f));
             }
             else
             {
-                SetFeedback(feedback, new Color(0.90f, 0.92f, 0.96f), new Color(0.12f, 0.16f, 0.24f, 0.95f));
+                SetFeedback(feedback, UITheme.TextPrimary, UITheme.CardSecondary);
             }
         }
 
@@ -680,11 +684,11 @@ namespace IndustrialSafetyAR.UI
             if (_feedbackText != null)
             {
                 _feedbackText.text = message;
-                _feedbackText.color = textColor ?? new Color(0.95f, 0.95f, 0.95f);
+                _feedbackText.color = textColor ?? UITheme.TextPrimary;
             }
             if (_feedbackBg != null)
             {
-                _feedbackBg.color = bgColor ?? new Color(0.12f, 0.16f, 0.24f, 0.95f);
+                _feedbackBg.color = bgColor ?? UITheme.CardSecondary;
             }
         }
 
@@ -769,7 +773,7 @@ namespace IndustrialSafetyAR.UI
             if (_promptText != null)
             {
                 _promptText.text = instruction;
-                _promptText.color = Color.white;
+                _promptText.color = UITheme.TextPrimary;
             }
 
             // 5. Back Button (always active during training: returns Home on Step 1, reviews completed steps on Steps 2-9)
@@ -792,12 +796,12 @@ namespace IndustrialSafetyAR.UI
             if (isCompleted)
             {
                 string successFb = Navigator.GetSuccessFeedback(step) ?? loc.Get("default_success_feedback", "✓ Action completed successfully.");
-                SetFeedback(successFb, new Color(0.4f, 1f, 0.5f), new Color(0.1f, 0.28f, 0.15f, 0.95f));
+                SetFeedback(successFb, UITheme.Success, new Color(0.92f, 0.98f, 0.94f));
             }
             else
             {
                 string actionReqFmt = loc.Get("action_required_format", "Action required for Step {0}: {1}");
-                SetFeedback(string.Format(actionReqFmt, step, stepTitle), new Color(0.90f, 0.92f, 0.96f), new Color(0.12f, 0.16f, 0.24f, 0.95f));
+                SetFeedback(string.Format(actionReqFmt, step, stepTitle), UITheme.TextPrimary, UITheme.CardSecondary);
             }
 
             // 8. Action Options

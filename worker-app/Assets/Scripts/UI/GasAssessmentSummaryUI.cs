@@ -233,8 +233,8 @@ namespace IndustrialSafetyAR.UI
             if (_badgeBackground != null)
             {
                 _badgeBackground.color = _currentViewModel.Passed
-                    ? new Color(0.12f, 0.55f, 0.28f, 0.96f) // Vibrant Green
-                    : new Color(0.70f, 0.18f, 0.18f, 0.96f); // Crimson Red
+                    ? UITheme.Success
+                    : UITheme.Danger;
             }
 
             if (_scoreBadgeText != null)
@@ -258,7 +258,7 @@ namespace IndustrialSafetyAR.UI
 
                 if (_currentViewModel.Penalties != null && _currentViewModel.Penalties.Count > 0)
                 {
-                    sb.AppendLine($"\n<color=#FF7043><b>{loc.Get("assessment_deductions_label", "Deductions & Identified Risks:")}</b></color>");
+                    sb.AppendLine($"\n<color=#DC2626><b>{loc.Get("assessment_deductions_label", "Deductions & Identified Risks:")}</b></color>");
                     foreach (var pen in _currentViewModel.Penalties)
                     {
                         sb.AppendLine($"• {pen}");
@@ -280,8 +280,8 @@ namespace IndustrialSafetyAR.UI
                     {
                         string mark = step.IsSatisfied ? (step.PenaltyDeducted > 0 ? "[!]" : "[OK]") : "[X]";
                         string colorTag = step.IsSatisfied
-                            ? (step.PenaltyDeducted > 0 ? "<color=#FFB74D>" : "<color=#81C784>")
-                            : "<color=#E57373>";
+                            ? (step.PenaltyDeducted > 0 ? "<color=#B45309>" : "<color=#15803D>")
+                            : "<color=#B91C1C>";
 
                         sb.AppendLine($"{colorTag}{mark} {step.Title}</color> : <b>{step.NetScore:0.00} / {step.MaxPoints:0} pts</b> ({step.StatusText})");
                     }
@@ -294,7 +294,7 @@ namespace IndustrialSafetyAR.UI
             {
                 string syncReady = loc.Get("assessment_sync_ready", "Prepared for Outbox Sync");
                 _syncStatusText.text = _currentViewModel.SyncPrepared
-                    ? $"<color=#81C784>● {syncReady} (Attempt: {_currentViewModel.ClientAttemptId?.Substring(0, Math.Min(8, _currentViewModel.ClientAttemptId.Length))}...)</color>"
+                    ? $"<color=#15803D>● {syncReady} (Attempt: {_currentViewModel.ClientAttemptId?.Substring(0, Math.Min(8, _currentViewModel.ClientAttemptId.Length))}...)</color>"
                     : loc.Get("assessment_sync_pending", "Offline session stored locally. Ready for sync confirmation.");
             }
 
@@ -331,7 +331,7 @@ namespace IndustrialSafetyAR.UI
                 canvasObj.AddComponent<GraphicRaycaster>();
             }
 
-            var font = GasInteractionFeedbackUI.GetDefaultFont();
+            var font = UITheme.GetFont();
 
             // Backdrop
             _modalRoot = new GameObject("GasAssessmentSummaryModal");
@@ -343,9 +343,9 @@ namespace IndustrialSafetyAR.UI
             rootRect.offsetMax = Vector2.zero;
 
             var bgImg = _modalRoot.AddComponent<Image>();
-            bgImg.color = new Color(0.04f, 0.07f, 0.12f, 0.96f);
+            bgImg.color = new Color(0.05f, 0.08f, 0.15f, 0.80f);
 
-            // Dialog Panel
+            // Dialog Panel (Light card surface)
             var panelObj = new GameObject("CardPanel");
             panelObj.transform.SetParent(_modalRoot.transform, false);
             var panelRect = panelObj.AddComponent<RectTransform>();
@@ -355,7 +355,11 @@ namespace IndustrialSafetyAR.UI
             panelRect.offsetMax = Vector2.zero;
 
             var panelImg = panelObj.AddComponent<Image>();
-            panelImg.color = new Color(0.09f, 0.13f, 0.20f, 0.98f);
+            panelImg.color = UITheme.CardBackground;
+
+            var outline = panelObj.AddComponent<Outline>();
+            outline.effectColor = UITheme.BorderSubtle;
+            outline.effectDistance = new Vector2(2, -2);
 
             // Title
             var titleObj = new GameObject("SummaryTitle");
@@ -369,20 +373,21 @@ namespace IndustrialSafetyAR.UI
             _titleText = titleObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _titleText.font = font;
             _titleText.alignment = TextAlignmentOptions.Center;
-            _titleText.fontSize = 24;
-            _titleText.color = Color.white;
+            _titleText.fontSize = 28;
+            _titleText.fontStyle = FontStyles.Bold;
+            _titleText.color = UITheme.TextPrimary;
 
             // Score Badge
             var badgeObj = new GameObject("ScoreBadge");
             badgeObj.transform.SetParent(panelObj.transform, false);
             var badgeRect = badgeObj.AddComponent<RectTransform>();
-            badgeRect.anchorMin = new Vector2(0.12f, 0.73f);
-            badgeRect.anchorMax = new Vector2(0.88f, 0.87f);
+            badgeRect.anchorMin = new Vector2(0.08f, 0.74f);
+            badgeRect.anchorMax = new Vector2(0.92f, 0.87f);
             badgeRect.offsetMin = Vector2.zero;
             badgeRect.offsetMax = Vector2.zero;
 
             _badgeBackground = badgeObj.AddComponent<Image>();
-            _badgeBackground.color = new Color(0.12f, 0.55f, 0.28f, 0.96f);
+            _badgeBackground.color = UITheme.Success;
 
             var scoreTextObj = new GameObject("ScoreText");
             scoreTextObj.transform.SetParent(badgeObj.transform, false);
@@ -395,35 +400,39 @@ namespace IndustrialSafetyAR.UI
             _scoreBadgeText = scoreTextObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _scoreBadgeText.font = font;
             _scoreBadgeText.alignment = TextAlignmentOptions.Center;
-            _scoreBadgeText.fontSize = 22;
+            _scoreBadgeText.fontSize = 24;
             _scoreBadgeText.color = Color.white;
 
             // Meta info (duration, worker ID)
             var metaObj = new GameObject("MetaText");
             metaObj.transform.SetParent(panelObj.transform, false);
             var metaRect = metaObj.AddComponent<RectTransform>();
-            metaRect.anchorMin = new Vector2(0.05f, 0.67f);
-            metaRect.anchorMax = new Vector2(0.95f, 0.72f);
+            metaRect.anchorMin = new Vector2(0.05f, 0.68f);
+            metaRect.anchorMax = new Vector2(0.95f, 0.73f);
             metaRect.offsetMin = Vector2.zero;
             metaRect.offsetMax = Vector2.zero;
 
             _metaText = metaObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _metaText.font = font;
             _metaText.alignment = TextAlignmentOptions.Center;
-            _metaText.fontSize = 15;
-            _metaText.color = new Color(0.70f, 0.78f, 0.88f);
+            _metaText.fontSize = 18;
+            _metaText.color = UITheme.TextSecondary;
 
             // Scrollable Content Area for Feedback & Breakdown
             var scrollAreaObj = new GameObject("ScrollArea");
             scrollAreaObj.transform.SetParent(panelObj.transform, false);
             var saRect = scrollAreaObj.AddComponent<RectTransform>();
             saRect.anchorMin = new Vector2(0.05f, 0.28f);
-            saRect.anchorMax = new Vector2(0.95f, 0.66f);
+            saRect.anchorMax = new Vector2(0.95f, 0.67f);
             saRect.offsetMin = Vector2.zero;
             saRect.offsetMax = Vector2.zero;
 
             var saImg = scrollAreaObj.AddComponent<Image>();
-            saImg.color = new Color(0.06f, 0.09f, 0.14f, 0.85f);
+            saImg.color = UITheme.CardSecondary;
+
+            var saOutline = scrollAreaObj.AddComponent<Outline>();
+            saOutline.effectColor = UITheme.BorderSubtle;
+            saOutline.effectDistance = new Vector2(1, -1);
 
             // Safety Feedback Text
             var feedbackObj = new GameObject("SafetyFeedbackText");
@@ -437,8 +446,8 @@ namespace IndustrialSafetyAR.UI
             _safetyFeedbackText = feedbackObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _safetyFeedbackText.font = font;
             _safetyFeedbackText.alignment = TextAlignmentOptions.TopLeft;
-            _safetyFeedbackText.fontSize = 15;
-            _safetyFeedbackText.color = new Color(0.90f, 0.93f, 0.96f);
+            _safetyFeedbackText.fontSize = 18;
+            _safetyFeedbackText.color = UITheme.TextPrimary;
 
             // Step Breakdown Container (initially hidden, toggled via Review Performance)
             _breakdownContainer = new GameObject("BreakdownContainer");
@@ -452,8 +461,8 @@ namespace IndustrialSafetyAR.UI
             _breakdownText = _breakdownContainer.AddComponent<TextMeshProUGUI>();
             if (font != null) _breakdownText.font = font;
             _breakdownText.alignment = TextAlignmentOptions.TopLeft;
-            _breakdownText.fontSize = 14;
-            _breakdownText.color = new Color(0.90f, 0.93f, 0.96f);
+            _breakdownText.fontSize = 17;
+            _breakdownText.color = UITheme.TextPrimary;
             _breakdownContainer.SetActive(false);
 
             // Sync Status
@@ -468,8 +477,8 @@ namespace IndustrialSafetyAR.UI
             _syncStatusText = syncObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _syncStatusText.font = font;
             _syncStatusText.alignment = TextAlignmentOptions.Center;
-            _syncStatusText.fontSize = 14;
-            _syncStatusText.color = new Color(0.55f, 0.65f, 0.78f);
+            _syncStatusText.fontSize = 16;
+            _syncStatusText.color = UITheme.TextSecondary;
 
             // Action Buttons Container (Bottom Row)
             var btnContainerObj = new GameObject("ButtonsContainer");
@@ -486,22 +495,22 @@ namespace IndustrialSafetyAR.UI
             var revTap = revBtnObj.AddComponent<TapGatedButton>();
             revTap.Initialize(ToggleBreakdownView);
 
-            // Button 2: Finish & Prepare Sync
+            // Button 2: Finish & Prepare Sync (Primary Orange)
             var finBtnObj = CreateButton(btnContainerObj, "FinishSyncButton", new Vector2(0.52f, 0.52f), new Vector2(1.0f, 0.98f),
-                new Color(0.12f, 0.55f, 0.35f), font, out _finishButtonText);
+                UITheme.PrimaryAction, font, out _finishButtonText);
             _finishButton = finBtnObj.GetComponent<Button>();
             var finTap = finBtnObj.AddComponent<TapGatedButton>();
             finTap.Initialize(OnFinishSyncClicked);
 
-            // Button 3: Retake Training
+            // Button 3: Retake Training (Amber)
             var retakeBtnObj = CreateButton(btnContainerObj, "RetakeButton", new Vector2(0.0f, 0.02f), new Vector2(0.48f, 0.48f),
-                new Color(0.65f, 0.40f, 0.12f), font, out _retakeButtonText);
+                new Color(0.85f, 0.45f, 0.15f), font, out _retakeButtonText);
             var retakeTap = retakeBtnObj.AddComponent<TapGatedButton>();
             retakeTap.Initialize(OnRetakeClicked);
 
-            // Button 4: Return to Home
+            // Button 4: Return to Home (Slate)
             var homeBtnObj = CreateButton(btnContainerObj, "ReturnHomeButton", new Vector2(0.52f, 0.02f), new Vector2(1.0f, 0.48f),
-                new Color(0.25f, 0.28f, 0.35f), font, out _returnHomeButtonText);
+                new Color(0.25f, 0.30f, 0.38f), font, out _returnHomeButtonText);
             var homeTap = homeBtnObj.AddComponent<TapGatedButton>();
             homeTap.Initialize(OnReturnHomeClicked);
         }
@@ -532,7 +541,7 @@ namespace IndustrialSafetyAR.UI
             label = textObj.AddComponent<TextMeshProUGUI>();
             if (font != null) label.font = font;
             label.alignment = TextAlignmentOptions.Center;
-            label.fontSize = 15;
+            label.fontSize = 17;
             label.fontStyle = FontStyles.Bold;
             label.color = Color.white;
             return btnObj;

@@ -338,23 +338,42 @@ namespace IndustrialSafetyAR.UI
             }
 
             // Explicitly hide Fire Training UI canvas
-            var fireUI = FindAnyObjectByType<FireInteractionFeedbackUI>(FindObjectsInactive.Include);
-            if (fireUI != null)
+            var fireUIs = FindObjectsByType<FireInteractionFeedbackUI>(FindObjectsInactive.Include);
+            if (fireUIs != null)
             {
-                fireUI.HideTrainingUI();
+                foreach (var fui in fireUIs)
+                {
+                    if (fui != null) fui.HideTrainingUI();
+                }
+            }
+
+            // Explicitly hide Gas Training UI canvas
+            var gasUIs = FindObjectsByType<GasInteractionFeedbackUI>(FindObjectsInactive.Include);
+            if (gasUIs != null)
+            {
+                foreach (var gui in gasUIs)
+                {
+                    if (gui != null) gui.HideTrainingUI();
+                }
             }
 
             // Explicitly hide Fire Assessment Summary dialog
-            var summaryUI = FindAnyObjectByType<FireAssessmentSummaryUI>(FindObjectsInactive.Include);
-            if (summaryUI != null)
+            var summaryUIs = FindObjectsByType<FireAssessmentSummaryUI>(FindObjectsInactive.Include);
+            if (summaryUIs != null)
             {
-                summaryUI.HideSummary();
+                foreach (var sui in summaryUIs)
+                {
+                    if (sui != null) sui.HideSummary();
+                }
             }
 
-            var gasSummaryUI = FindAnyObjectByType<GasAssessmentSummaryUI>(FindObjectsInactive.Include);
-            if (gasSummaryUI != null)
+            var gasSummaryUIs = FindObjectsByType<GasAssessmentSummaryUI>(FindObjectsInactive.Include);
+            if (gasSummaryUIs != null)
             {
-                gasSummaryUI.HideSummary();
+                foreach (var gsui in gasSummaryUIs)
+                {
+                    if (gsui != null) gsui.HideSummary();
+                }
             }
 
             // Stop any active emergency siren or transient audio
@@ -529,13 +548,22 @@ namespace IndustrialSafetyAR.UI
 
         private void UpdateNavHighlight()
         {
-            Color activeCol = new Color(0.12f, 0.53f, 0.90f, 0.98f); // Safety Blue
-            Color inactiveCol = new Color(0.10f, 0.14f, 0.22f, 0.70f);
+            Color activeBg = UITheme.PrimaryOrangeSurface;
+            Color activeText = UITheme.PrimaryOrange;
+            Color inactiveBg = UITheme.CardSecondaryBg;
+            Color inactiveText = UITheme.TextSecondary;
 
-            if (_navHomeBg != null) _navHomeBg.color = _currentState == WorkerAppScreenState.Home ? activeCol : inactiveCol;
-            if (_navArBg != null) _navArBg.color = _currentState == WorkerAppScreenState.AR ? activeCol : inactiveCol;
-            if (_navCertBg != null) _navCertBg.color = _currentState == WorkerAppScreenState.Certificates ? activeCol : inactiveCol;
-            if (_navProfBg != null) _navProfBg.color = _currentState == WorkerAppScreenState.Profile ? activeCol : inactiveCol;
+            if (_navHomeBg != null) _navHomeBg.color = _currentState == WorkerAppScreenState.Home ? activeBg : inactiveBg;
+            if (_navHomeText != null) _navHomeText.color = _currentState == WorkerAppScreenState.Home ? activeText : inactiveText;
+
+            if (_navArBg != null) _navArBg.color = _currentState == WorkerAppScreenState.AR ? activeBg : inactiveBg;
+            if (_navArText != null) _navArText.color = _currentState == WorkerAppScreenState.AR ? activeText : inactiveText;
+
+            if (_navCertBg != null) _navCertBg.color = _currentState == WorkerAppScreenState.Certificates ? activeBg : inactiveBg;
+            if (_navCertText != null) _navCertText.color = _currentState == WorkerAppScreenState.Certificates ? activeText : inactiveText;
+
+            if (_navProfBg != null) _navProfBg.color = _currentState == WorkerAppScreenState.Profile ? activeBg : inactiveBg;
+            if (_navProfText != null) _navProfText.color = _currentState == WorkerAppScreenState.Profile ? activeText : inactiveText;
         }
 
         /// <summary>
@@ -559,6 +587,12 @@ namespace IndustrialSafetyAR.UI
         /// </summary>
         public void CloseSettings()
         {
+            EnsureUIHierarchy();
+            if (_settingsRoot != null)
+            {
+                _settingsRoot.SetActive(false);
+            }
+
             switch (_previousNavState)
             {
                 case WorkerAppScreenState.AR:
@@ -570,6 +604,7 @@ namespace IndustrialSafetyAR.UI
                 case WorkerAppScreenState.Profile:
                     ShowProfile();
                     break;
+                case WorkerAppScreenState.Home:
                 default:
                     ShowHome();
                     break;
@@ -592,12 +627,25 @@ namespace IndustrialSafetyAR.UI
                 ARModeController.Instance.EnableAR();
             }
 
-            // Activate Fire AR Interaction UI and ensure canvas is visible
-            var fireUI = FindAnyObjectByType<FireInteractionFeedbackUI>(FindObjectsInactive.Include);
-            if (fireUI != null)
+            // Activate Fire Interaction UI and ensure canvas is visible
+            var fireUIs = FindObjectsByType<FireInteractionFeedbackUI>(FindObjectsInactive.Include);
+            if (fireUIs == null || fireUIs.Length == 0)
             {
-                fireUI.gameObject.SetActive(true);
-                fireUI.ShowTrainingUI();
+                var uiObj = new GameObject("FireInteractionFeedbackUI");
+                var createdUI = uiObj.AddComponent<FireInteractionFeedbackUI>();
+                createdUI.gameObject.SetActive(true);
+                createdUI.ShowTrainingUI();
+            }
+            else
+            {
+                foreach (var fui in fireUIs)
+                {
+                    if (fui != null)
+                    {
+                        fui.gameObject.SetActive(true);
+                        fui.ShowTrainingUI();
+                    }
+                }
             }
 
             var fireCtrl = FindAnyObjectByType<FireArInteractionController>(FindObjectsInactive.Include);
@@ -630,16 +678,26 @@ namespace IndustrialSafetyAR.UI
             }
 
             // Activate Gas AR Interaction UI and ensure canvas is visible
-            var gasUI = FindAnyObjectByType<GasInteractionFeedbackUI>(FindObjectsInactive.Include);
-            if (gasUI == null)
+            var gasUIs = FindObjectsByType<GasInteractionFeedbackUI>(FindObjectsInactive.Include);
+            GasInteractionFeedbackUI primaryGasUI = null;
+            if (gasUIs == null || gasUIs.Length == 0)
             {
                 var uiObj = new GameObject("GasInteractionFeedbackUI");
-                gasUI = uiObj.AddComponent<GasInteractionFeedbackUI>();
+                primaryGasUI = uiObj.AddComponent<GasInteractionFeedbackUI>();
+                primaryGasUI.gameObject.SetActive(true);
+                primaryGasUI.ShowTrainingUI();
             }
-            if (gasUI != null)
+            else
             {
-                gasUI.gameObject.SetActive(true);
-                gasUI.ShowTrainingUI();
+                foreach (var gui in gasUIs)
+                {
+                    if (gui != null)
+                    {
+                        gui.gameObject.SetActive(true);
+                        gui.ShowTrainingUI();
+                        if (primaryGasUI == null) primaryGasUI = gui;
+                    }
+                }
             }
 
             var gasCtrl = FindAnyObjectByType<GasArInteractionController>(FindObjectsInactive.Include);
@@ -652,9 +710,9 @@ namespace IndustrialSafetyAR.UI
             {
                 gasCtrl.gameObject.SetActive(true);
                 gasCtrl.enabled = true;
-                if (gasUI != null)
+                if (primaryGasUI != null)
                 {
-                    gasUI.Controller = gasCtrl;
+                    primaryGasUI.Controller = gasCtrl;
                 }
             }
 
@@ -687,14 +745,16 @@ namespace IndustrialSafetyAR.UI
                 string offlineText = loc.Get("status_offline", "OFFLINE");
                 string savedLocally = loc.Get("status_saved_locally", "SAVED LOCALLY");
                 _offlineBadgeText.text = $"● {offlineText} • {savedLocally}";
-                if (_offlineBadgeBg != null) _offlineBadgeBg.color = new Color(0.11f, 0.42f, 0.18f, 0.94f); // Forest Green
+                _offlineBadgeText.color = UITheme.SuccessText;
+                if (_offlineBadgeBg != null) _offlineBadgeBg.color = UITheme.SuccessSurface;
             }
             else
             {
                 string onlineText = loc.Get("status_online", "ONLINE");
                 string syncReady = loc.Get("status_sync_ready", "SYNC READY");
                 _offlineBadgeText.text = $"● {onlineText} • {syncReady}";
-                if (_offlineBadgeBg != null) _offlineBadgeBg.color = new Color(0.10f, 0.35f, 0.65f, 0.94f); // Calming Blue
+                _offlineBadgeText.color = UITheme.PrimaryOrange;
+                if (_offlineBadgeBg != null) _offlineBadgeBg.color = UITheme.PrimaryOrangeSurface;
             }
         }
 
@@ -703,21 +763,33 @@ namespace IndustrialSafetyAR.UI
             var loc = LocaleService.Instance;
             bool isArActive = ARModeController.Instance != null && ARModeController.Instance.IsARActive;
 
-            if (_arTitleText != null) _arTitleText.text = $"<b>{loc.Get("ar_screen_title", "AR SAFETY TRAINING")}</b>";
-            if (_arSubtitleText != null) _arSubtitleText.text = loc.Get("ar_screen_subtitle", "Interactive Industrial Safety Training");
-            if (_arDescText != null) _arDescText.text = loc.Get("ar_screen_desc", "Use your phone camera to enter an interactive safety scenario.");
+            if (_arTitleText != null)
+            {
+                _arTitleText.text = $"<b>{loc.Get("ar_screen_title", "AR SAFETY TRAINING")}</b>";
+                _arTitleText.color = UITheme.TextPrimary;
+            }
+            if (_arSubtitleText != null)
+            {
+                _arSubtitleText.text = loc.Get("ar_screen_subtitle", "Interactive Industrial Safety Training");
+                _arSubtitleText.color = UITheme.TextSecondary;
+            }
+            if (_arDescText != null)
+            {
+                _arDescText.text = loc.Get("ar_screen_desc", "Use your phone camera to enter an interactive safety scenario.");
+                _arDescText.color = UITheme.TextPrimary;
+            }
 
             if (_arStatusText != null)
             {
                 _arStatusText.text = isArActive
                     ? $"● {loc.Get("ar_camera_active", "AR Camera is active. Look for floor surfaces.")}"
                     : $"○ {loc.Get("ar_camera_inactive", "Camera is currently inactive.")}";
-                _arStatusText.color = isArActive ? new Color(0.40f, 0.85f, 0.50f) : new Color(0.70f, 0.78f, 0.88f);
+                _arStatusText.color = isArActive ? UITheme.SuccessText : UITheme.TextSecondary;
             }
 
             if (_arStatusBg != null)
             {
-                _arStatusBg.color = isArActive ? new Color(0.10f, 0.32f, 0.18f, 0.94f) : new Color(0.12f, 0.16f, 0.24f, 0.94f);
+                _arStatusBg.color = isArActive ? UITheme.SuccessSurface : UITheme.CardSecondaryBg;
             }
 
             if (_arToggleButtonText != null)
@@ -725,13 +797,14 @@ namespace IndustrialSafetyAR.UI
                 _arToggleButtonText.text = isArActive
                     ? $"<b>{loc.Get("btn_exit_ar", "EXIT AR")}</b>"
                     : $"<b>{loc.Get("btn_enable_ar", "ENABLE AR CAMERA")}</b>";
+                _arToggleButtonText.color = UITheme.TextLightOnDark;
             }
 
             if (_arToggleBtnBg != null)
             {
                 _arToggleBtnBg.color = isArActive
-                    ? new Color(0.75f, 0.20f, 0.18f, 0.96f) // Crimson / danger
-                    : new Color(0.12f, 0.53f, 0.90f, 0.98f); // Safety Blue
+                    ? UITheme.DangerText // Crimson / exit
+                    : UITheme.PrimaryOrange; // Primary action
             }
 
             if (_arStartFireShortcutBtn != null)
@@ -742,6 +815,7 @@ namespace IndustrialSafetyAR.UI
             if (_arStartFireShortcutBtnText != null)
             {
                 _arStartFireShortcutBtnText.text = $"<b>{loc.Get("btn_start_training", "START TRAINING →")}</b>";
+                _arStartFireShortcutBtnText.color = UITheme.TextLightOnDark;
             }
 
             if (_navArText != null) _navArText.text = $"<b>{loc.Get("nav_ar", "AR")}</b>";
@@ -755,24 +829,52 @@ namespace IndustrialSafetyAR.UI
             var loc = LocaleService.Instance;
 
             // Top Header
-            if (_titleText != null) _titleText.text = $"<b>{loc.Get("app_title", "Industrial Safety AR")}</b>";
-            if (_welcomeBackText != null) _welcomeBackText.text = $"{loc.Get("welcome_back", "Welcome back")}, <color=#90CAF9><b>{_workerName}</b></color>";
-            if (_subtitleText != null) _subtitleText.text = $"● {loc.Get("safety_training", "Safety Training")} • {loc.Get("app_subtitle", "Vocational Training Simulator • Jharkhand Industry")}";
+            if (_titleText != null)
+            {
+                _titleText.text = $"<b>{loc.Get("app_title", "Industrial Safety AR")}</b>";
+                _titleText.color = UITheme.TextPrimary;
+            }
+            if (_welcomeBackText != null)
+            {
+                _welcomeBackText.text = $"{loc.Get("welcome_back", "Welcome back")}, <color=#F97316><b>{_workerName}</b></color>";
+                _welcomeBackText.color = UITheme.TextSecondary;
+            }
+            if (_subtitleText != null)
+            {
+                _subtitleText.text = $"● {loc.Get("safety_training", "Safety Training")} • {loc.Get("app_subtitle", "Vocational Training Simulator • Jharkhand Industry")}";
+                _subtitleText.color = UITheme.TextMuted;
+            }
 
             // Profile Card (in Home view)
-            if (_profileHeaderLabelText != null) _profileHeaderLabelText.text = $"<color=#90CAF9><b>● {loc.Get("worker_profile", "WORKER PROFILE")}</b></color>";
-            if (_profileNameText != null) _profileNameText.text = $"<b>{_workerName}</b>";
-            if (_profileIdText != null) _profileIdText.text = $"{loc.Get("worker_id_label", "Worker ID")}: <color=#90CAF9>{_workerId}</color>  |  {loc.Get("worker_division", "Division: Mining & Material Handling")}";
+            if (_profileHeaderLabelText != null)
+            {
+                _profileHeaderLabelText.text = $"<color=#F97316><b>● {loc.Get("worker_profile", "WORKER PROFILE")}</b></color>";
+            }
+            if (_profileNameText != null)
+            {
+                _profileNameText.text = $"<b>{_workerName}</b>";
+                _profileNameText.color = UITheme.TextPrimary;
+            }
+            if (_profileIdText != null)
+            {
+                _profileIdText.text = $"{loc.Get("worker_id_label", "Worker ID")}: <color=#F97316>{_workerId}</color>  |  {loc.Get("worker_division", "Division: Mining & Material Handling")}";
+                _profileIdText.color = UITheme.TextSecondary;
+            }
 
             // Modules Section Header
-            if (_modulesHeaderText != null) _modulesHeaderText.text = $"<b>{loc.Get("modules_header", "AVAILABLE MODULES")}</b>";
+            if (_modulesHeaderText != null)
+            {
+                _modulesHeaderText.text = $"<b>{loc.Get("modules_header", "AVAILABLE MODULES")}</b>";
+                _modulesHeaderText.color = UITheme.TextPrimary;
+            }
 
             // Determine Fire Module Status based on actual state
             string fireStatusKey = "status_available";
             string fireStatusDefault = "AVAILABLE";
             string fireBtnKey = "btn_start_training";
             string fireBtnDefault = "START TRAINING →";
-            Color fireBadgeColor = new Color(0.12f, 0.55f, 0.28f, 0.96f);
+            Color fireBadgeCol = UITheme.SuccessSurface;
+            Color fireTextCol = UITheme.SuccessText;
 
             var fireCtrl = FindAnyObjectByType<FireArInteractionController>(FindObjectsInactive.Include);
             if (fireCtrl != null)
@@ -783,7 +885,8 @@ namespace IndustrialSafetyAR.UI
                     fireStatusDefault = "COMPLETED";
                     fireBtnKey = "btn_retake";
                     fireBtnDefault = "RETAKE TRAINING →";
-                    fireBadgeColor = new Color(0.15f, 0.60f, 0.32f, 0.96f);
+                    fireBadgeCol = UITheme.SuccessSurface;
+                    fireTextCol = UITheme.SuccessText;
                 }
                 else if (fireCtrl.StepNavigator != null && fireCtrl.StepNavigator.CurrentStepIndex > 0)
                 {
@@ -791,62 +894,184 @@ namespace IndustrialSafetyAR.UI
                     fireStatusDefault = "IN PROGRESS";
                     fireBtnKey = "btn_continue_training";
                     fireBtnDefault = "CONTINUE TRAINING →";
-                    fireBadgeColor = new Color(0.18f, 0.42f, 0.72f, 0.96f);
+                    fireBadgeCol = UITheme.PrimaryOrangeSurface;
+                    fireTextCol = UITheme.PrimaryOrange;
                 }
             }
 
             // Fire Card
-            if (_fireTitleText != null) _fireTitleText.text = $"<b>{loc.Get("module_fire_title", "Fire & Explosion Response")}</b>";
-            if (_fireArBadgeText != null) _fireArBadgeText.text = $"<b>{loc.Get("badge_ar", "AR")}</b>";
-            if (_fireDescText != null) _fireDescText.text = loc.Get("module_fire_desc", "9-step industrial conveyor fire response: hazard detection, classification, P.A.S.S. extinguisher procedure, and emergency evacuation.");
-            if (_fireStatusText != null) _fireStatusText.text = $"● {loc.Get(fireStatusKey, fireStatusDefault)}";
-            if (_fireStatusBg != null) _fireStatusBg.color = fireBadgeColor;
-            if (_fireOfflineTagText != null) _fireOfflineTagText.text = $"● {loc.Get("available_offline", "Available Offline")}";
-            if (_fireStartButtonText != null) _fireStartButtonText.text = $"<b>{loc.Get(fireBtnKey, fireBtnDefault)}</b>";
+            if (_fireTitleText != null)
+            {
+                _fireTitleText.text = $"<b>{loc.Get("module_fire_title", "Fire & Explosion Response")}</b>";
+                _fireTitleText.color = UITheme.TextPrimary;
+            }
+            if (_fireArBadgeText != null)
+            {
+                _fireArBadgeText.text = $"<b>{loc.Get("badge_ar", "AR")}</b>";
+                _fireArBadgeText.color = UITheme.TextLightOnDark;
+            }
+            if (_fireDescText != null)
+            {
+                _fireDescText.text = loc.Get("module_fire_desc", "9-step industrial conveyor fire response: hazard detection, classification, P.A.S.S. extinguisher procedure, and emergency evacuation.");
+                _fireDescText.color = UITheme.TextSecondary;
+            }
+            if (_fireStatusText != null)
+            {
+                _fireStatusText.text = $"● {loc.Get(fireStatusKey, fireStatusDefault)}";
+                _fireStatusText.color = fireTextCol;
+            }
+            if (_fireStatusBg != null) _fireStatusBg.color = fireBadgeCol;
+            if (_fireOfflineTagText != null)
+            {
+                _fireOfflineTagText.text = $"● {loc.Get("available_offline", "Available Offline")}";
+                _fireOfflineTagText.color = UITheme.SuccessText;
+            }
+            if (_fireStartButtonText != null)
+            {
+                _fireStartButtonText.text = $"<b>{loc.Get(fireBtnKey, fireBtnDefault)}</b>";
+                _fireStartButtonText.color = UITheme.TextLightOnDark;
+            }
 
             // Gas Card
-            if (_gasTitleText != null) _gasTitleText.text = $"<b>{loc.Get("module_gas_title", "Gas Leak & Confined Space Safety")}</b>";
-            if (_gasArBadgeText != null) _gasArBadgeText.text = $"<b>{loc.Get("badge_ar", "AR")}</b>";
-            if (_gasDescText != null) _gasDescText.text = loc.Get("module_gas_desc", "Atmospheric monitoring, multi-gas detector calibration, forced air ventilation, and confined space entry rescue protocols.");
-            if (_gasStatusText != null) _gasStatusText.text = $"● {loc.Get("status_available", "AVAILABLE")}";
-            if (_gasStartButtonText != null) _gasStartButtonText.text = $"<b>{loc.Get("btn_start_training", "START TRAINING →")}</b>";
+            if (_gasTitleText != null)
+            {
+                _gasTitleText.text = $"<b>{loc.Get("module_gas_title", "Gas Leak & Confined Space Safety")}</b>";
+                _gasTitleText.color = UITheme.TextPrimary;
+            }
+            if (_gasArBadgeText != null)
+            {
+                _gasArBadgeText.text = $"<b>{loc.Get("badge_ar", "AR")}</b>";
+                _gasArBadgeText.color = UITheme.TextLightOnDark;
+            }
+            if (_gasDescText != null)
+            {
+                _gasDescText.text = loc.Get("module_gas_desc", "Atmospheric monitoring, multi-gas detector calibration, forced air ventilation, and confined space entry rescue protocols.");
+                _gasDescText.color = UITheme.TextSecondary;
+            }
+            if (_gasStatusText != null)
+            {
+                _gasStatusText.text = $"● {loc.Get("status_available", "AVAILABLE")}";
+                _gasStatusText.color = UITheme.SuccessText;
+            }
+            if (_gasStartButtonText != null)
+            {
+                _gasStartButtonText.text = $"<b>{loc.Get("btn_start_training", "START TRAINING →")}</b>";
+                _gasStartButtonText.color = UITheme.TextLightOnDark;
+            }
 
             // Home Prominent Settings Button
-            if (_homeSettingsButtonText != null) _homeSettingsButtonText.text = $"<b>{loc.Get("settings_title", "APPLICATION SETTINGS")}</b>";
+            if (_homeSettingsButtonText != null)
+            {
+                _homeSettingsButtonText.text = $"<b>{loc.Get("settings_title", "APPLICATION SETTINGS")}</b>";
+                _homeSettingsButtonText.color = UITheme.TextPrimary;
+            }
 
             // AR Screen
             UpdateArScreenUI();
 
             // Certificates View
-            if (_certTitleText != null) _certTitleText.text = $"<b>{loc.Get("certificates_title", "Certificates")}</b>";
+            if (_certTitleText != null)
+            {
+                _certTitleText.text = $"<b>{loc.Get("certificates_title", "Certificates")}</b>";
+                _certTitleText.color = UITheme.TextPrimary;
+            }
             if (_certIconText != null) _certIconText.text = "";
-            if (_certDescText != null) _certDescText.text = loc.Get("certificates_empty_desc", "Training certificates will appear here after successful training and synchronization.");
-            if (_certSubText != null) _certSubText.text = loc.Get("certificates_empty_sub", "No official certificates issued yet.");
+            if (_certDescText != null)
+            {
+                _certDescText.text = loc.Get("certificates_empty_desc", "Training certificates will appear here after successful training and synchronization.");
+                _certDescText.color = UITheme.TextSecondary;
+            }
+            if (_certSubText != null)
+            {
+                _certSubText.text = loc.Get("certificates_empty_sub", "No official certificates issued yet.");
+                _certSubText.color = UITheme.TextMuted;
+            }
 
             // Profile View
-            if (_profileViewTitleText != null) _profileViewTitleText.text = $"<b>{loc.Get("worker_profile", "WORKER PROFILE")}</b>";
-            if (_pvNameLabel != null) _pvNameLabel.text = loc.Get("worker_name_label", "Worker Name");
-            if (_pvNameVal != null) _pvNameVal.text = $"<b>{_workerName}</b>";
-            if (_pvIdLabel != null) _pvIdLabel.text = loc.Get("worker_id_label", "Worker ID");
-            if (_pvIdVal != null) _pvIdVal.text = $"<color=#90CAF9>{_workerId}</color>";
-            if (_pvDivLabel != null) _pvDivLabel.text = loc.Get("worker_division", "Division: Mining & Material Handling");
-            if (_pvLangLabel != null) _pvLangLabel.text = loc.Get("preferred_language_label", "Preferred Language");
-            if (_pvLangVal != null) _pvLangVal.text = $"<b>{loc.CurrentLanguageDisplayName}</b>";
-            if (_pvSettingsBtnText != null) _pvSettingsBtnText.text = $"<b>{loc.Get("settings_title", "APPLICATION SETTINGS")}</b>";
+            if (_profileViewTitleText != null)
+            {
+                _profileViewTitleText.text = $"<b>{loc.Get("worker_profile", "WORKER PROFILE")}</b>";
+                _profileViewTitleText.color = UITheme.TextPrimary;
+            }
+            if (_pvNameLabel != null)
+            {
+                _pvNameLabel.text = loc.Get("worker_name_label", "Worker Name");
+                _pvNameLabel.color = UITheme.TextSecondary;
+            }
+            if (_pvNameVal != null)
+            {
+                _pvNameVal.text = $"<b>{_workerName}</b>";
+                _pvNameVal.color = UITheme.TextPrimary;
+            }
+            if (_pvIdLabel != null)
+            {
+                _pvIdLabel.text = loc.Get("worker_id_label", "Worker ID");
+                _pvIdLabel.color = UITheme.TextSecondary;
+            }
+            if (_pvIdVal != null)
+            {
+                _pvIdVal.text = $"<color=#F97316>{_workerId}</color>";
+                _pvIdVal.color = UITheme.PrimaryOrange;
+            }
+            if (_pvDivLabel != null)
+            {
+                _pvDivLabel.text = loc.Get("worker_division", "Division: Mining & Material Handling");
+                _pvDivLabel.color = UITheme.TextPrimary;
+            }
+            if (_pvLangLabel != null)
+            {
+                _pvLangLabel.text = loc.Get("preferred_language_label", "Preferred Language");
+                _pvLangLabel.color = UITheme.TextSecondary;
+            }
+            if (_pvLangVal != null)
+            {
+                _pvLangVal.text = $"<b>{loc.CurrentLanguageDisplayName}</b>";
+                _pvLangVal.color = UITheme.PrimaryOrange;
+            }
+            if (_pvSettingsBtnText != null)
+            {
+                _pvSettingsBtnText.text = $"<b>{loc.Get("settings_title", "APPLICATION SETTINGS")}</b>";
+                _pvSettingsBtnText.color = UITheme.TextPrimary;
+            }
 
             // Bottom Navigation Bar
             if (_navHomeText != null) _navHomeText.text = $"<b>{loc.Get("nav_home", "HOME")}</b>";
             if (_navArText != null) _navArText.text = $"<b>{loc.Get("nav_ar", "AR")}</b>";
             if (_navCertText != null) _navCertText.text = $"<b>{loc.Get("nav_certificates", "CERTIFICATES")}</b>";
             if (_navProfText != null) _navProfText.text = $"<b>{loc.Get("nav_profile", "PROFILE")}</b>";
+            UpdateNavHighlight();
 
             // Settings View
-            if (_settingsTitleText != null) _settingsTitleText.text = $"<b>{loc.Get("settings_title", "APPLICATION SETTINGS")}</b>";
-            if (_soundToggleLabel != null) _soundToggleLabel.text = loc.Get("sound_effects", "Sound Effects");
-            if (_alarmToggleLabel != null) _alarmToggleLabel.text = loc.Get("emergency_alarm", "Emergency Alarm Siren");
-            if (_volumeLabel != null) _volumeLabel.text = loc.Get("effects_volume", "Effects Volume");
-            if (_languageHeader != null) _languageHeader.text = loc.Get("language_header", "Language / भाषा / ᱯᱟᱹᱨᱥᱤ");
-            if (_settingsCloseButtonText != null) _settingsCloseButtonText.text = $"<b>{loc.Get("btn_close", "CLOSE [X]")}</b>";
+            if (_settingsTitleText != null)
+            {
+                _settingsTitleText.text = $"<b>{loc.Get("settings_title", "APPLICATION SETTINGS")}</b>";
+                _settingsTitleText.color = UITheme.TextPrimary;
+            }
+            if (_soundToggleLabel != null)
+            {
+                _soundToggleLabel.text = loc.Get("sound_effects", "Sound Effects");
+                _soundToggleLabel.color = UITheme.TextPrimary;
+            }
+            if (_alarmToggleLabel != null)
+            {
+                _alarmToggleLabel.text = loc.Get("emergency_alarm", "Emergency Alarm Siren");
+                _alarmToggleLabel.color = UITheme.TextPrimary;
+            }
+            if (_volumeLabel != null)
+            {
+                _volumeLabel.text = loc.Get("effects_volume", "Effects Volume");
+                _volumeLabel.color = UITheme.TextPrimary;
+            }
+            if (_languageHeader != null)
+            {
+                _languageHeader.text = loc.Get("language_header", "Language / भाषा / ᱯᱟᱹᱨᱥᱤ");
+                _languageHeader.color = UITheme.TextPrimary;
+            }
+            if (_settingsCloseButtonText != null)
+            {
+                _settingsCloseButtonText.text = $"<b>{loc.Get("btn_close", "CLOSE [X]")}</b>";
+                _settingsCloseButtonText.color = UITheme.TextLightOnDark;
+            }
 
             UpdateSettingsControls();
         }
@@ -931,9 +1156,9 @@ namespace IndustrialSafetyAR.UI
             homeRect.offsetMin = Vector2.zero;
             homeRect.offsetMax = Vector2.zero;
 
-            // Full dark industrial background
+            // Full light background
             var homeBg = _homeRoot.AddComponent<Image>();
-            homeBg.color = new Color(0.043f, 0.059f, 0.090f, 0.98f); // Deep charcoal/navy
+            homeBg.color = UITheme.ScreenBackground;
 
             // -------------------------------------------------------------
             // Top Header Bar (y: 0.89 to 0.99)
@@ -957,9 +1182,9 @@ namespace IndustrialSafetyAR.UI
 
             _titleText = titleObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _titleText.font = defaultFont;
-            _titleText.fontSize = 24;
+            _titleText.fontSize = 30;
             _titleText.alignment = TextAlignmentOptions.Left;
-            _titleText.color = Color.white;
+            _titleText.color = UITheme.TextPrimary;
 
             // Welcome back line
             var welcomeObj = new GameObject("WelcomeBack");
@@ -972,9 +1197,9 @@ namespace IndustrialSafetyAR.UI
 
             _welcomeBackText = welcomeObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _welcomeBackText.font = defaultFont;
-            _welcomeBackText.fontSize = 15;
+            _welcomeBackText.fontSize = 22;
             _welcomeBackText.alignment = TextAlignmentOptions.Left;
-            _welcomeBackText.color = new Color(0.85f, 0.90f, 0.98f);
+            _welcomeBackText.color = UITheme.TextSecondary;
 
             // Subtitle / Safety Training tag
             var subObj = new GameObject("AppSubtitle");
@@ -987,9 +1212,9 @@ namespace IndustrialSafetyAR.UI
 
             _subtitleText = subObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _subtitleText.font = defaultFont;
-            _subtitleText.fontSize = 12;
+            _subtitleText.fontSize = 18;
             _subtitleText.alignment = TextAlignmentOptions.Left;
-            _subtitleText.color = new Color(0.68f, 0.75f, 0.85f);
+            _subtitleText.color = UITheme.TextMuted;
 
             // Header Settings Button (touch target >= 44dp)
             var headerSettingsBtnObj = new GameObject("HeaderSettingsButton");
@@ -1001,7 +1226,7 @@ namespace IndustrialSafetyAR.UI
             hsBtnRect.offsetMax = Vector2.zero;
 
             var hsBtnImg = headerSettingsBtnObj.AddComponent<Image>();
-            hsBtnImg.color = new Color(0.14f, 0.20f, 0.30f, 0.96f);
+            hsBtnImg.color = UITheme.CardSecondaryBg;
             _headerSettingsButton = headerSettingsBtnObj.AddComponent<Button>();
             var hsTapGated = headerSettingsBtnObj.AddComponent<TapGatedButton>();
             hsTapGated.Initialize(() => OpenSettings());
@@ -1015,9 +1240,9 @@ namespace IndustrialSafetyAR.UI
             var hsBtnText = hsBtnTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) hsBtnText.font = defaultFont;
             hsBtnText.text = "<b>SETTINGS</b>";
-            hsBtnText.fontSize = 13;
+            hsBtnText.fontSize = 18;
             hsBtnText.alignment = TextAlignmentOptions.Center;
-            hsBtnText.color = Color.white;
+            hsBtnText.color = UITheme.TextPrimary;
 
             // -------------------------------------------------------------
             // Main Content Area (y: 0.12 to 0.88)
@@ -1051,7 +1276,7 @@ namespace IndustrialSafetyAR.UI
             pcRect.offsetMax = Vector2.zero;
 
             var pcBg = profileCardObj.AddComponent<Image>();
-            pcBg.color = new Color(0.08f, 0.11f, 0.17f, 0.96f);
+            pcBg.color = UITheme.CardBackground;
 
             var pHeaderObj = new GameObject("ProfileHeader");
             pHeaderObj.transform.SetParent(profileCardObj.transform, false);
@@ -1063,8 +1288,8 @@ namespace IndustrialSafetyAR.UI
 
             _profileHeaderLabelText = pHeaderObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _profileHeaderLabelText.font = defaultFont;
-            _profileHeaderLabelText.text = "<color=#90CAF9><b>● WORKER PROFILE</b></color>";
-            _profileHeaderLabelText.fontSize = 12;
+            _profileHeaderLabelText.text = "<color=#F97316><b>● WORKER PROFILE</b></color>";
+            _profileHeaderLabelText.fontSize = 18;
             _profileHeaderLabelText.alignment = TextAlignmentOptions.Left;
 
             var pNameObj = new GameObject("ProfileName");
@@ -1078,9 +1303,9 @@ namespace IndustrialSafetyAR.UI
             _profileNameText = pNameObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _profileNameText.font = defaultFont;
             _profileNameText.text = $"<b>{_workerName}</b>";
-            _profileNameText.fontSize = 18;
+            _profileNameText.fontSize = 26;
             _profileNameText.alignment = TextAlignmentOptions.Left;
-            _profileNameText.color = Color.white;
+            _profileNameText.color = UITheme.TextPrimary;
 
             var pIdObj = new GameObject("ProfileIdAndDivision");
             pIdObj.transform.SetParent(profileCardObj.transform, false);
@@ -1092,10 +1317,10 @@ namespace IndustrialSafetyAR.UI
 
             _profileIdText = pIdObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _profileIdText.font = defaultFont;
-            _profileIdText.text = $"Worker ID: <color=#90CAF9>{_workerId}</color>  |  Division: Mining & Material Handling";
-            _profileIdText.fontSize = 12;
+            _profileIdText.text = $"Worker ID: <color=#F97316>{_workerId}</color>  |  Division: Mining & Material Handling";
+            _profileIdText.fontSize = 20;
             _profileIdText.alignment = TextAlignmentOptions.Left;
-            _profileIdText.color = new Color(0.75f, 0.82f, 0.90f);
+            _profileIdText.color = UITheme.TextSecondary;
 
             // Section Header: Modules (y: 0.77 to 0.82 of container)
             var mHeaderObj = new GameObject("ModulesHeader");
@@ -1109,9 +1334,9 @@ namespace IndustrialSafetyAR.UI
             _modulesHeaderText = mHeaderObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _modulesHeaderText.font = defaultFont;
             _modulesHeaderText.text = "<b>AVAILABLE MODULES</b>";
-            _modulesHeaderText.fontSize = 16;
+            _modulesHeaderText.fontSize = 24;
             _modulesHeaderText.alignment = TextAlignmentOptions.Left;
-            _modulesHeaderText.color = new Color(0.85f, 0.90f, 0.96f);
+            _modulesHeaderText.color = UITheme.TextPrimary;
 
             // Module Card 1: Fire & Explosion Response (y: 0.44 to 0.75 of container)
             var fireCardObj = new GameObject("ModuleCard_Fire");
@@ -1123,7 +1348,7 @@ namespace IndustrialSafetyAR.UI
             fcRect.offsetMax = Vector2.zero;
 
             var fcBg = fireCardObj.AddComponent<Image>();
-            fcBg.color = new Color(0.08f, 0.12f, 0.18f, 0.96f);
+            fcBg.color = UITheme.CardBackground;
 
             // Fire AR Badge
             var fireArBadgeObj = new GameObject("FireArBadge");
@@ -1135,7 +1360,7 @@ namespace IndustrialSafetyAR.UI
             fabRect.offsetMax = Vector2.zero;
 
             var fabBg = fireArBadgeObj.AddComponent<Image>();
-            fabBg.color = new Color(0.12f, 0.45f, 0.80f, 0.95f); // Safety Blue Pill
+            fabBg.color = UITheme.PrimaryOrange;
 
             var fabTextObj = new GameObject("Text");
             fabTextObj.transform.SetParent(fireArBadgeObj.transform, false);
@@ -1146,9 +1371,9 @@ namespace IndustrialSafetyAR.UI
             _fireArBadgeText = fabTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _fireArBadgeText.font = defaultFont;
             _fireArBadgeText.text = "<b>AR</b>";
-            _fireArBadgeText.fontSize = 11;
+            _fireArBadgeText.fontSize = 16;
             _fireArBadgeText.alignment = TextAlignmentOptions.Center;
-            _fireArBadgeText.color = Color.white;
+            _fireArBadgeText.color = UITheme.TextLightOnDark;
 
             // Fire Title
             var fireTitleObj = new GameObject("FireTitle");
@@ -1162,9 +1387,9 @@ namespace IndustrialSafetyAR.UI
             _fireTitleText = fireTitleObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _fireTitleText.font = defaultFont;
             _fireTitleText.text = "<b>Fire & Explosion Response</b>";
-            _fireTitleText.fontSize = 16;
+            _fireTitleText.fontSize = 24;
             _fireTitleText.alignment = TextAlignmentOptions.Left;
-            _fireTitleText.color = Color.white;
+            _fireTitleText.color = UITheme.TextPrimary;
 
             // Fire Status Badge
             var fireStatusObj = new GameObject("FireStatusBadge");
@@ -1176,7 +1401,7 @@ namespace IndustrialSafetyAR.UI
             fsbRect.offsetMax = Vector2.zero;
 
             _fireStatusBg = fireStatusObj.AddComponent<Image>();
-            _fireStatusBg.color = new Color(0.12f, 0.55f, 0.28f, 0.96f);
+            _fireStatusBg.color = UITheme.SuccessSurface;
 
             var fsbTextObj = new GameObject("Text");
             fsbTextObj.transform.SetParent(fireStatusObj.transform, false);
@@ -1187,9 +1412,9 @@ namespace IndustrialSafetyAR.UI
             _fireStatusText = fsbTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _fireStatusText.font = defaultFont;
             _fireStatusText.text = "● AVAILABLE";
-            _fireStatusText.fontSize = 12;
+            _fireStatusText.fontSize = 18;
             _fireStatusText.alignment = TextAlignmentOptions.Center;
-            _fireStatusText.color = Color.white;
+            _fireStatusText.color = UITheme.SuccessText;
 
             // Fire Description
             var fireDescObj = new GameObject("FireDescription");
@@ -1203,9 +1428,9 @@ namespace IndustrialSafetyAR.UI
             _fireDescText = fireDescObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _fireDescText.font = defaultFont;
             _fireDescText.text = "9-step industrial conveyor fire response: hazard detection, classification, P.A.S.S. extinguisher procedure, and emergency evacuation.";
-            _fireDescText.fontSize = 13;
+            _fireDescText.fontSize = 20;
             _fireDescText.alignment = TextAlignmentOptions.Left;
-            _fireDescText.color = new Color(0.78f, 0.84f, 0.92f);
+            _fireDescText.color = UITheme.TextSecondary;
 
             // Fire Available Offline tag
             var fireOfflineTagObj = new GameObject("FireOfflineTag");
@@ -1219,9 +1444,9 @@ namespace IndustrialSafetyAR.UI
             _fireOfflineTagText = fireOfflineTagObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _fireOfflineTagText.font = defaultFont;
             _fireOfflineTagText.text = "● Available Offline";
-            _fireOfflineTagText.fontSize = 12;
+            _fireOfflineTagText.fontSize = 18;
             _fireOfflineTagText.alignment = TextAlignmentOptions.Left;
-            _fireOfflineTagText.color = new Color(0.40f, 0.80f, 0.50f);
+            _fireOfflineTagText.color = UITheme.SuccessText;
 
             // Fire Start Button (touch target >= 48dp)
             var fireBtnObj = new GameObject("StartFireButton");
@@ -1233,7 +1458,7 @@ namespace IndustrialSafetyAR.UI
             fbRect.offsetMax = Vector2.zero;
 
             var fbImg = fireBtnObj.AddComponent<Image>();
-            fbImg.color = new Color(0.12f, 0.53f, 0.90f, 0.98f); // Safety Blue Action
+            fbImg.color = UITheme.PrimaryOrange;
             _fireStartButton = fireBtnObj.AddComponent<Button>();
             var fireTapGated = fireBtnObj.AddComponent<TapGatedButton>();
             fireTapGated.Initialize(() => StartFireTraining());
@@ -1247,9 +1472,9 @@ namespace IndustrialSafetyAR.UI
             _fireStartButtonText = fbTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _fireStartButtonText.font = defaultFont;
             _fireStartButtonText.text = "<b>START TRAINING →</b>";
-            _fireStartButtonText.fontSize = 16;
+            _fireStartButtonText.fontSize = 24;
             _fireStartButtonText.alignment = TextAlignmentOptions.Center;
-            _fireStartButtonText.color = Color.white;
+            _fireStartButtonText.color = UITheme.TextLightOnDark;
 
             // Module Card 2: Gas Leak & Confined Space (y: 0.16 to 0.42 of container)
             var gasCardObj = new GameObject("ModuleCard_Gas");
@@ -1261,7 +1486,7 @@ namespace IndustrialSafetyAR.UI
             gcRect.offsetMax = Vector2.zero;
 
             var gcBg = gasCardObj.AddComponent<Image>();
-            gcBg.color = new Color(0.06f, 0.09f, 0.14f, 0.90f);
+            gcBg.color = UITheme.CardBackground;
 
             // Gas AR Badge
             var gasArBadgeObj = new GameObject("GasArBadge");
@@ -1273,7 +1498,7 @@ namespace IndustrialSafetyAR.UI
             gabRect.offsetMax = Vector2.zero;
 
             var gabBg = gasArBadgeObj.AddComponent<Image>();
-            gabBg.color = new Color(0.24f, 0.28f, 0.36f, 0.80f);
+            gabBg.color = UITheme.PrimaryOrange;
 
             var gabTextObj = new GameObject("Text");
             gabTextObj.transform.SetParent(gasArBadgeObj.transform, false);
@@ -1284,9 +1509,9 @@ namespace IndustrialSafetyAR.UI
             _gasArBadgeText = gabTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _gasArBadgeText.font = defaultFont;
             _gasArBadgeText.text = "<b>AR</b>";
-            _gasArBadgeText.fontSize = 11;
+            _gasArBadgeText.fontSize = 16;
             _gasArBadgeText.alignment = TextAlignmentOptions.Center;
-            _gasArBadgeText.color = new Color(0.7f, 0.7f, 0.7f);
+            _gasArBadgeText.color = UITheme.TextLightOnDark;
 
             // Gas Title
             var gasTitleObj = new GameObject("GasTitle");
@@ -1300,9 +1525,9 @@ namespace IndustrialSafetyAR.UI
             _gasTitleText = gasTitleObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _gasTitleText.font = defaultFont;
             _gasTitleText.text = "<b>Gas Leak & Confined Space Safety</b>";
-            _gasTitleText.fontSize = 16;
+            _gasTitleText.fontSize = 24;
             _gasTitleText.alignment = TextAlignmentOptions.Left;
-            _gasTitleText.color = new Color(0.65f, 0.70f, 0.78f);
+            _gasTitleText.color = UITheme.TextPrimary;
 
             // Gas Status Badge
             var gasStatusObj = new GameObject("GasStatusBadge");
@@ -1314,7 +1539,7 @@ namespace IndustrialSafetyAR.UI
             gsbRect.offsetMax = Vector2.zero;
 
             var gsbBg = gasStatusObj.AddComponent<Image>();
-            gsbBg.color = new Color(0.40f, 0.28f, 0.12f, 0.96f);
+            gsbBg.color = UITheme.SuccessSurface;
 
             var gsbTextObj = new GameObject("Text");
             gsbTextObj.transform.SetParent(gasStatusObj.transform, false);
@@ -1324,10 +1549,10 @@ namespace IndustrialSafetyAR.UI
 
             _gasStatusText = gsbTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _gasStatusText.font = defaultFont;
-            _gasStatusText.text = "○ COMING SOON";
-            _gasStatusText.fontSize = 12;
+            _gasStatusText.text = "● AVAILABLE";
+            _gasStatusText.fontSize = 18;
             _gasStatusText.alignment = TextAlignmentOptions.Center;
-            _gasStatusText.color = new Color(1f, 0.9f, 0.8f);
+            _gasStatusText.color = UITheme.SuccessText;
 
             // Gas Description
             var gasDescObj = new GameObject("GasDescription");
@@ -1341,9 +1566,9 @@ namespace IndustrialSafetyAR.UI
             _gasDescText = gasDescObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _gasDescText.font = defaultFont;
             _gasDescText.text = "Atmospheric monitoring, multi-gas detector calibration, forced air ventilation, and confined space entry rescue protocols.";
-            _gasDescText.fontSize = 13;
+            _gasDescText.fontSize = 20;
             _gasDescText.alignment = TextAlignmentOptions.Left;
-            _gasDescText.color = new Color(0.55f, 0.60f, 0.68f);
+            _gasDescText.color = UITheme.TextSecondary;
 
             // Gas Button (Active)
             var gasBtnObj = new GameObject("GasStartButton");
@@ -1355,7 +1580,7 @@ namespace IndustrialSafetyAR.UI
             gbRect.offsetMax = Vector2.zero;
 
             var gbImg = gasBtnObj.AddComponent<Image>();
-            gbImg.color = new Color(0.85f, 0.52f, 0.10f, 0.98f);
+            gbImg.color = UITheme.PrimaryOrange;
             _gasStartButton = gasBtnObj.AddComponent<Button>();
             _gasStartButton.targetGraphic = gbImg;
             _gasStartButton.interactable = true;
@@ -1371,9 +1596,9 @@ namespace IndustrialSafetyAR.UI
             _gasStartButtonText = gbTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _gasStartButtonText.font = defaultFont;
             _gasStartButtonText.text = "<b>START TRAINING →</b>";
-            _gasStartButtonText.fontSize = 15;
+            _gasStartButtonText.fontSize = 24;
             _gasStartButtonText.alignment = TextAlignmentOptions.Center;
-            _gasStartButtonText.color = Color.white;
+            _gasStartButtonText.color = UITheme.TextLightOnDark;
 
             // Prominent Settings Button in Home view (y: 0.02 to 0.12 of container)
             var prominentSettingsBtnObj = new GameObject("ProminentSettingsButton");
@@ -1385,7 +1610,7 @@ namespace IndustrialSafetyAR.UI
             psbRect.offsetMax = Vector2.zero;
 
             var psbImg = prominentSettingsBtnObj.AddComponent<Image>();
-            psbImg.color = new Color(0.14f, 0.20f, 0.30f, 0.98f);
+            psbImg.color = UITheme.CardSecondaryBg;
             _homeSettingsButton = prominentSettingsBtnObj.AddComponent<Button>();
             var psbTapGated = prominentSettingsBtnObj.AddComponent<TapGatedButton>();
             psbTapGated.Initialize(() => OpenSettings());
@@ -1399,9 +1624,9 @@ namespace IndustrialSafetyAR.UI
             _homeSettingsButtonText = psbTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _homeSettingsButtonText.font = defaultFont;
             _homeSettingsButtonText.text = "<b>APPLICATION SETTINGS</b>";
-            _homeSettingsButtonText.fontSize = 15;
+            _homeSettingsButtonText.fontSize = 20;
             _homeSettingsButtonText.alignment = TextAlignmentOptions.Center;
-            _homeSettingsButtonText.color = Color.white;
+            _homeSettingsButtonText.color = UITheme.TextPrimary;
 
             // =============================================================
             // TAB 2: AR CONTENT ROOT (Controlled AR Entry & Camera Toggle)
@@ -1423,7 +1648,7 @@ namespace IndustrialSafetyAR.UI
             arCardRect.offsetMax = Vector2.zero;
 
             var arCardBg = arCardObj.AddComponent<Image>();
-            arCardBg.color = new Color(0.08f, 0.12f, 0.18f, 0.96f);
+            arCardBg.color = UITheme.CardBackground;
 
             // AR Screen Title
             var arTitleObj = new GameObject("ArTitle");
@@ -1437,9 +1662,9 @@ namespace IndustrialSafetyAR.UI
             _arTitleText = arTitleObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _arTitleText.font = defaultFont;
             _arTitleText.text = "<b>AR SAFETY TRAINING</b>";
-            _arTitleText.fontSize = 22;
+            _arTitleText.fontSize = 28;
             _arTitleText.alignment = TextAlignmentOptions.Center;
-            _arTitleText.color = Color.white;
+            _arTitleText.color = UITheme.TextPrimary;
 
             // AR Screen Subtitle
             var arSubObj = new GameObject("ArSubtitle");
@@ -1453,9 +1678,9 @@ namespace IndustrialSafetyAR.UI
             _arSubtitleText = arSubObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _arSubtitleText.font = defaultFont;
             _arSubtitleText.text = "Interactive Industrial Safety Training";
-            _arSubtitleText.fontSize = 13;
+            _arSubtitleText.fontSize = 20;
             _arSubtitleText.alignment = TextAlignmentOptions.Center;
-            _arSubtitleText.color = new Color(0.65f, 0.75f, 0.88f);
+            _arSubtitleText.color = UITheme.TextSecondary;
 
             // AR Description Body
             var arDescObj = new GameObject("ArDesc");
@@ -1469,9 +1694,9 @@ namespace IndustrialSafetyAR.UI
             _arDescText = arDescObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _arDescText.font = defaultFont;
             _arDescText.text = "Use your phone camera to enter an interactive safety scenario.";
-            _arDescText.fontSize = 15;
+            _arDescText.fontSize = 22;
             _arDescText.alignment = TextAlignmentOptions.Center;
-            _arDescText.color = new Color(0.85f, 0.90f, 0.96f);
+            _arDescText.color = UITheme.TextPrimary;
 
             // AR Camera Status Indicator
             var arStatusBoxObj = new GameObject("ArStatusBox");
@@ -1483,7 +1708,7 @@ namespace IndustrialSafetyAR.UI
             asbRect.offsetMax = Vector2.zero;
 
             _arStatusBg = arStatusBoxObj.AddComponent<Image>();
-            _arStatusBg.color = new Color(0.12f, 0.16f, 0.24f, 0.94f);
+            _arStatusBg.color = UITheme.CardSecondaryBg;
 
             var arStatusTextObj = new GameObject("Text");
             arStatusTextObj.transform.SetParent(arStatusBoxObj.transform, false);
@@ -1494,9 +1719,9 @@ namespace IndustrialSafetyAR.UI
             _arStatusText = arStatusTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _arStatusText.font = defaultFont;
             _arStatusText.text = "○ Camera is currently inactive.";
-            _arStatusText.fontSize = 13;
+            _arStatusText.fontSize = 20;
             _arStatusText.alignment = TextAlignmentOptions.Center;
-            _arStatusText.color = new Color(0.70f, 0.78f, 0.88f);
+            _arStatusText.color = UITheme.TextSecondary;
 
             // Primary Toggle Button (ENABLE AR CAMERA / EXIT AR)
             var arToggleBtnObj = new GameObject("ArToggleButton");
@@ -1508,7 +1733,7 @@ namespace IndustrialSafetyAR.UI
             atbRect.offsetMax = Vector2.zero;
 
             _arToggleBtnBg = arToggleBtnObj.AddComponent<Image>();
-            _arToggleBtnBg.color = new Color(0.12f, 0.53f, 0.90f, 0.98f);
+            _arToggleBtnBg.color = UITheme.PrimaryOrange;
             _arToggleButton = arToggleBtnObj.AddComponent<Button>();
             var atbTap = arToggleBtnObj.AddComponent<TapGatedButton>();
             atbTap.Initialize(() => ToggleARCamera());
@@ -1522,9 +1747,9 @@ namespace IndustrialSafetyAR.UI
             _arToggleButtonText = atbTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _arToggleButtonText.font = defaultFont;
             _arToggleButtonText.text = "<b>ENABLE AR CAMERA</b>";
-            _arToggleButtonText.fontSize = 16;
+            _arToggleButtonText.fontSize = 24;
             _arToggleButtonText.alignment = TextAlignmentOptions.Center;
-            _arToggleButtonText.color = Color.white;
+            _arToggleButtonText.color = UITheme.TextLightOnDark;
 
             // Fire Shortcut button (visible when AR camera is active)
             var arFireBtnObj = new GameObject("ArStartFireShortcut");
@@ -1536,7 +1761,7 @@ namespace IndustrialSafetyAR.UI
             afbRect.offsetMax = Vector2.zero;
 
             var afbImg = arFireBtnObj.AddComponent<Image>();
-            afbImg.color = new Color(0.12f, 0.55f, 0.28f, 0.96f);
+            afbImg.color = UITheme.SuccessSurface;
             _arStartFireShortcutBtn = arFireBtnObj.AddComponent<Button>();
             var afbTap = arFireBtnObj.AddComponent<TapGatedButton>();
             afbTap.Initialize(() => StartFireTraining());
@@ -1550,9 +1775,9 @@ namespace IndustrialSafetyAR.UI
             _arStartFireShortcutBtnText = afbTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _arStartFireShortcutBtnText.font = defaultFont;
             _arStartFireShortcutBtnText.text = "<b>START TRAINING →</b>";
-            _arStartFireShortcutBtnText.fontSize = 15;
+            _arStartFireShortcutBtnText.fontSize = 24;
             _arStartFireShortcutBtnText.alignment = TextAlignmentOptions.Center;
-            _arStartFireShortcutBtnText.color = Color.white;
+            _arStartFireShortcutBtnText.color = UITheme.SuccessText;
             arFireBtnObj.SetActive(false);
 
             _arContentRoot.SetActive(false);
@@ -1577,7 +1802,7 @@ namespace IndustrialSafetyAR.UI
             ccardRect.offsetMax = Vector2.zero;
 
             var ccardBg = certCardObj.AddComponent<Image>();
-            ccardBg.color = new Color(0.08f, 0.12f, 0.18f, 0.96f);
+            ccardBg.color = UITheme.CardBackground;
 
             var certTitleObj = new GameObject("CertTitle");
             certTitleObj.transform.SetParent(certCardObj.transform, false);
@@ -1590,9 +1815,9 @@ namespace IndustrialSafetyAR.UI
             _certTitleText = certTitleObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _certTitleText.font = defaultFont;
             _certTitleText.text = "<b>Certificates</b>";
-            _certTitleText.fontSize = 22;
+            _certTitleText.fontSize = 28;
             _certTitleText.alignment = TextAlignmentOptions.Center;
-            _certTitleText.color = Color.white;
+            _certTitleText.color = UITheme.TextPrimary;
 
             var certIconObj = new GameObject("CertIcon");
             certIconObj.transform.SetParent(certCardObj.transform, false);
@@ -1619,9 +1844,9 @@ namespace IndustrialSafetyAR.UI
             _certDescText = certDescObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _certDescText.font = defaultFont;
             _certDescText.text = "Training certificates will appear here after successful training and synchronization.";
-            _certDescText.fontSize = 15;
+            _certDescText.fontSize = 22;
             _certDescText.alignment = TextAlignmentOptions.Center;
-            _certDescText.color = new Color(0.80f, 0.86f, 0.94f);
+            _certDescText.color = UITheme.TextSecondary;
 
             var certSubObj = new GameObject("CertSub");
             certSubObj.transform.SetParent(certCardObj.transform, false);
@@ -1634,9 +1859,9 @@ namespace IndustrialSafetyAR.UI
             _certSubText = certSubObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _certSubText.font = defaultFont;
             _certSubText.text = "No official certificates issued yet.";
-            _certSubText.fontSize = 13;
+            _certSubText.fontSize = 20;
             _certSubText.alignment = TextAlignmentOptions.Center;
-            _certSubText.color = new Color(0.55f, 0.62f, 0.72f);
+            _certSubText.color = UITheme.TextMuted;
 
             _certificatesContentRoot.SetActive(false);
 
@@ -1660,7 +1885,7 @@ namespace IndustrialSafetyAR.UI
             pdcRect.offsetMax = Vector2.zero;
 
             var pdcBg = pCardObj.AddComponent<Image>();
-            pdcBg.color = new Color(0.08f, 0.12f, 0.18f, 0.96f);
+            pdcBg.color = UITheme.CardBackground;
 
             var pvtObj = new GameObject("ProfileTitle");
             pvtObj.transform.SetParent(pCardObj.transform, false);
@@ -1673,9 +1898,9 @@ namespace IndustrialSafetyAR.UI
             _profileViewTitleText = pvtObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _profileViewTitleText.font = defaultFont;
             _profileViewTitleText.text = "<b>WORKER PROFILE</b>";
-            _profileViewTitleText.fontSize = 22;
+            _profileViewTitleText.fontSize = 28;
             _profileViewTitleText.alignment = TextAlignmentOptions.Center;
-            _profileViewTitleText.color = Color.white;
+            _profileViewTitleText.color = UITheme.TextPrimary;
 
             // Name Field
             var pvNameObj = new GameObject("NameField");
@@ -1689,8 +1914,8 @@ namespace IndustrialSafetyAR.UI
             _pvNameLabel = pvNameObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _pvNameLabel.font = defaultFont;
             _pvNameLabel.text = "Worker Name";
-            _pvNameLabel.fontSize = 13;
-            _pvNameLabel.color = new Color(0.65f, 0.75f, 0.88f);
+            _pvNameLabel.fontSize = 18;
+            _pvNameLabel.color = UITheme.TextSecondary;
 
             var pvNameValObj = new GameObject("Val");
             pvNameValObj.transform.SetParent(pvNameObj.transform, false);
@@ -1703,8 +1928,8 @@ namespace IndustrialSafetyAR.UI
             _pvNameVal = pvNameValObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _pvNameVal.font = defaultFont;
             _pvNameVal.text = $"<b>{_workerName}</b>";
-            _pvNameVal.fontSize = 16;
-            _pvNameVal.color = Color.white;
+            _pvNameVal.fontSize = 24;
+            _pvNameVal.color = UITheme.TextPrimary;
 
             // Worker ID Field
             var pvIdObj = new GameObject("IdField");
@@ -1718,8 +1943,8 @@ namespace IndustrialSafetyAR.UI
             _pvIdLabel = pvIdObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _pvIdLabel.font = defaultFont;
             _pvIdLabel.text = "Worker ID";
-            _pvIdLabel.fontSize = 13;
-            _pvIdLabel.color = new Color(0.65f, 0.75f, 0.88f);
+            _pvIdLabel.fontSize = 18;
+            _pvIdLabel.color = UITheme.TextSecondary;
 
             var pvIdValObj = new GameObject("Val");
             pvIdValObj.transform.SetParent(pvIdObj.transform, false);
@@ -1731,8 +1956,8 @@ namespace IndustrialSafetyAR.UI
 
             _pvIdVal = pvIdValObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _pvIdVal.font = defaultFont;
-            _pvIdVal.text = $"<color=#90CAF9>{_workerId}</color>";
-            _pvIdVal.fontSize = 14;
+            _pvIdVal.text = $"<color=#F97316>{_workerId}</color>";
+            _pvIdVal.fontSize = 22;
 
             // Division Field
             var pvDivObj = new GameObject("DivField");
@@ -1746,8 +1971,8 @@ namespace IndustrialSafetyAR.UI
             _pvDivLabel = pvDivObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _pvDivLabel.font = defaultFont;
             _pvDivLabel.text = "Division: Mining & Material Handling";
-            _pvDivLabel.fontSize = 14;
-            _pvDivLabel.color = new Color(0.85f, 0.90f, 0.96f);
+            _pvDivLabel.fontSize = 20;
+            _pvDivLabel.color = UITheme.TextPrimary;
 
             // Preferred Language Field
             var pvLangObj = new GameObject("LangField");
@@ -1761,8 +1986,8 @@ namespace IndustrialSafetyAR.UI
             _pvLangLabel = pvLangObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _pvLangLabel.font = defaultFont;
             _pvLangLabel.text = "Preferred Language";
-            _pvLangLabel.fontSize = 13;
-            _pvLangLabel.color = new Color(0.65f, 0.75f, 0.88f);
+            _pvLangLabel.fontSize = 18;
+            _pvLangLabel.color = UITheme.TextSecondary;
 
             var pvLangValObj = new GameObject("Val");
             pvLangValObj.transform.SetParent(pvLangObj.transform, false);
@@ -1775,8 +2000,8 @@ namespace IndustrialSafetyAR.UI
             _pvLangVal = pvLangValObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _pvLangVal.font = defaultFont;
             _pvLangVal.text = "<b>English</b>";
-            _pvLangVal.fontSize = 15;
-            _pvLangVal.color = new Color(0.4f, 0.9f, 1f);
+            _pvLangVal.fontSize = 22;
+            _pvLangVal.color = UITheme.PrimaryOrange;
 
             // Profile Settings button
             var pvSetBtnObj = new GameObject("ProfileSettingsBtn");
@@ -1788,7 +2013,7 @@ namespace IndustrialSafetyAR.UI
             pvsRect.offsetMax = Vector2.zero;
 
             var pvsImg = pvSetBtnObj.AddComponent<Image>();
-            pvsImg.color = new Color(0.14f, 0.20f, 0.30f, 0.98f);
+            pvsImg.color = UITheme.CardSecondaryBg;
             _pvSettingsBtn = pvSetBtnObj.AddComponent<Button>();
             var pvsTap = pvSetBtnObj.AddComponent<TapGatedButton>();
             pvsTap.Initialize(() => OpenSettings());
@@ -1802,9 +2027,9 @@ namespace IndustrialSafetyAR.UI
             _pvSettingsBtnText = pvsTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _pvSettingsBtnText.font = defaultFont;
             _pvSettingsBtnText.text = "<b>APPLICATION SETTINGS</b>";
-            _pvSettingsBtnText.fontSize = 15;
+            _pvSettingsBtnText.fontSize = 20;
             _pvSettingsBtnText.alignment = TextAlignmentOptions.Center;
-            _pvSettingsBtnText.color = Color.white;
+            _pvSettingsBtnText.color = UITheme.TextPrimary;
 
             _profileContentRoot.SetActive(false);
 
@@ -1820,7 +2045,7 @@ namespace IndustrialSafetyAR.UI
             obRect.offsetMax = Vector2.zero;
 
             _offlineBadgeBg = offlineBarObj.AddComponent<Image>();
-            _offlineBadgeBg.color = new Color(0.11f, 0.42f, 0.18f, 0.94f);
+            _offlineBadgeBg.color = UITheme.SuccessSurface;
 
             var obTextObj = new GameObject("OfflineBadgeText");
             obTextObj.transform.SetParent(offlineBarObj.transform, false);
@@ -1833,9 +2058,9 @@ namespace IndustrialSafetyAR.UI
             _offlineBadgeText = obTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _offlineBadgeText.font = defaultFont;
             _offlineBadgeText.text = "● OFFLINE • SAVED LOCALLY";
-            _offlineBadgeText.fontSize = 12;
+            _offlineBadgeText.fontSize = 18;
             _offlineBadgeText.alignment = TextAlignmentOptions.Center;
-            _offlineBadgeText.color = Color.white;
+            _offlineBadgeText.color = UITheme.SuccessText;
 
             // -------------------------------------------------------------
             // Bottom Navigation Bar (4 TABS: HOME, AR, CERTIFICATES, PROFILE)
@@ -1849,7 +2074,7 @@ namespace IndustrialSafetyAR.UI
             bnbRect.offsetMax = Vector2.zero;
 
             var bnbBg = _bottomNavBar.AddComponent<Image>();
-            bnbBg.color = new Color(0.06f, 0.08f, 0.12f, 0.98f);
+            bnbBg.color = UITheme.CardBackground;
 
             // Tab 1: HOME (0.02 to 0.245)
             var navHomeObj = new GameObject("NavTab_Home");
@@ -1861,7 +2086,7 @@ namespace IndustrialSafetyAR.UI
             nhRect.offsetMax = Vector2.zero;
 
             _navHomeBg = navHomeObj.AddComponent<Image>();
-            _navHomeBg.color = new Color(0.12f, 0.53f, 0.90f, 0.98f);
+            _navHomeBg.color = UITheme.PrimaryOrangeSurface;
             _navHomeBtn = navHomeObj.AddComponent<Button>();
             var nhTap = navHomeObj.AddComponent<TapGatedButton>();
             nhTap.Initialize(() => ShowHome());
@@ -1875,9 +2100,9 @@ namespace IndustrialSafetyAR.UI
             _navHomeText = nhTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _navHomeText.font = defaultFont;
             _navHomeText.text = "<b>HOME</b>";
-            _navHomeText.fontSize = 12;
+            _navHomeText.fontSize = 18;
             _navHomeText.alignment = TextAlignmentOptions.Center;
-            _navHomeText.color = Color.white;
+            _navHomeText.color = UITheme.PrimaryOrange;
 
             // Tab 2: AR (0.265 to 0.490)
             var navArObj = new GameObject("NavTab_AR");
@@ -1889,7 +2114,7 @@ namespace IndustrialSafetyAR.UI
             naRect.offsetMax = Vector2.zero;
 
             _navArBg = navArObj.AddComponent<Image>();
-            _navArBg.color = new Color(0.10f, 0.14f, 0.22f, 0.70f);
+            _navArBg.color = UITheme.CardSecondaryBg;
             _navArBtn = navArObj.AddComponent<Button>();
             var naTap = navArObj.AddComponent<TapGatedButton>();
             naTap.Initialize(() => ShowAR());
@@ -1903,9 +2128,9 @@ namespace IndustrialSafetyAR.UI
             _navArText = naTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _navArText.font = defaultFont;
             _navArText.text = "<b>AR</b>";
-            _navArText.fontSize = 12;
+            _navArText.fontSize = 18;
             _navArText.alignment = TextAlignmentOptions.Center;
-            _navArText.color = Color.white;
+            _navArText.color = UITheme.TextSecondary;
 
             // Tab 3: CERTIFICATES (0.510 to 0.735)
             var navCertObj = new GameObject("NavTab_Certificates");
@@ -1917,7 +2142,7 @@ namespace IndustrialSafetyAR.UI
             ncRect.offsetMax = Vector2.zero;
 
             _navCertBg = navCertObj.AddComponent<Image>();
-            _navCertBg.color = new Color(0.10f, 0.14f, 0.22f, 0.70f);
+            _navCertBg.color = UITheme.CardSecondaryBg;
             _navCertBtn = navCertObj.AddComponent<Button>();
             var ncTap = navCertObj.AddComponent<TapGatedButton>();
             ncTap.Initialize(() => ShowCertificates());
@@ -1931,9 +2156,9 @@ namespace IndustrialSafetyAR.UI
             _navCertText = ncTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _navCertText.font = defaultFont;
             _navCertText.text = "<b>CERTIFICATES</b>";
-            _navCertText.fontSize = 11;
+            _navCertText.fontSize = 17;
             _navCertText.alignment = TextAlignmentOptions.Center;
-            _navCertText.color = Color.white;
+            _navCertText.color = UITheme.TextSecondary;
 
             // Tab 4: PROFILE (0.755 to 0.980)
             var navProfObj = new GameObject("NavTab_Profile");
@@ -1945,7 +2170,7 @@ namespace IndustrialSafetyAR.UI
             npRect.offsetMax = Vector2.zero;
 
             _navProfBg = navProfObj.AddComponent<Image>();
-            _navProfBg.color = new Color(0.10f, 0.14f, 0.22f, 0.70f);
+            _navProfBg.color = UITheme.CardSecondaryBg;
             _navProfBtn = navProfObj.AddComponent<Button>();
             var npTap = navProfObj.AddComponent<TapGatedButton>();
             npTap.Initialize(() => ShowProfile());
@@ -1959,9 +2184,9 @@ namespace IndustrialSafetyAR.UI
             _navProfText = npTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _navProfText.font = defaultFont;
             _navProfText.text = "<b>PROFILE</b>";
-            _navProfText.fontSize = 12;
+            _navProfText.fontSize = 18;
             _navProfText.alignment = TextAlignmentOptions.Center;
-            _navProfText.color = Color.white;
+            _navProfText.color = UITheme.TextSecondary;
 
             // =============================================================
             // 3. SETTINGS PANEL MODAL OVERLAY (Full-Screen Raycast Blocker)
@@ -1976,7 +2201,7 @@ namespace IndustrialSafetyAR.UI
             spRect.offsetMax = Vector2.zero;
 
             var spBackdropImg = _settingsRoot.AddComponent<Image>();
-            spBackdropImg.color = new Color(0.02f, 0.04f, 0.07f, 0.88f);
+            spBackdropImg.color = new Color(0.05f, 0.08f, 0.12f, 0.75f);
             spBackdropImg.raycastTarget = true;
 
             var settingsCardObj = new GameObject("SettingsCard");
@@ -1988,7 +2213,7 @@ namespace IndustrialSafetyAR.UI
             scRect.offsetMax = Vector2.zero;
 
             var scBg = settingsCardObj.AddComponent<Image>();
-            scBg.color = new Color(0.08f, 0.11f, 0.16f, 0.98f);
+            scBg.color = UITheme.CardBackground;
 
             // Settings Title
             var stObj = new GameObject("SettingsTitle");
@@ -2002,9 +2227,9 @@ namespace IndustrialSafetyAR.UI
             _settingsTitleText = stObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _settingsTitleText.font = defaultFont;
             _settingsTitleText.text = "<b>APPLICATION SETTINGS</b>";
-            _settingsTitleText.fontSize = 20;
+            _settingsTitleText.fontSize = 26;
             _settingsTitleText.alignment = TextAlignmentOptions.Center;
-            _settingsTitleText.color = Color.white;
+            _settingsTitleText.color = UITheme.TextPrimary;
 
             // Top-right Quick Close [X] Icon
             var topCloseObj = new GameObject("TopCloseButton");
@@ -2016,7 +2241,7 @@ namespace IndustrialSafetyAR.UI
             tcRect.offsetMax = Vector2.zero;
 
             var tcImg = topCloseObj.AddComponent<Image>();
-            tcImg.color = new Color(0.24f, 0.18f, 0.22f, 0.95f);
+            tcImg.color = UITheme.CardSecondaryBg;
             var tcBtn = topCloseObj.AddComponent<Button>();
             var tcTap = topCloseObj.AddComponent<TapGatedButton>();
             tcTap.Initialize(() => CloseSettings());
@@ -2029,9 +2254,9 @@ namespace IndustrialSafetyAR.UI
             var tcTmp = tcTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) tcTmp.font = defaultFont;
             tcTmp.text = "<b>X</b>";
-            tcTmp.fontSize = 18;
+            tcTmp.fontSize = 20;
             tcTmp.alignment = TextAlignmentOptions.Center;
-            tcTmp.color = new Color(0.95f, 0.70f, 0.70f);
+            tcTmp.color = UITheme.TextSecondary;
 
             // Sound Effects Row
             var seObj = new GameObject("SoundEffectsRow");
@@ -2053,9 +2278,9 @@ namespace IndustrialSafetyAR.UI
             _soundToggleLabel = seLabelObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _soundToggleLabel.font = defaultFont;
             _soundToggleLabel.text = "Sound Effects";
-            _soundToggleLabel.fontSize = 16;
+            _soundToggleLabel.fontSize = 22;
             _soundToggleLabel.alignment = TextAlignmentOptions.Left;
-            _soundToggleLabel.color = Color.white;
+            _soundToggleLabel.color = UITheme.TextPrimary;
 
             var seBtnObj = new GameObject("SoundToggleButton");
             seBtnObj.transform.SetParent(seObj.transform, false);
@@ -2066,7 +2291,7 @@ namespace IndustrialSafetyAR.UI
             sebRect.offsetMax = Vector2.zero;
 
             var sebImg = seBtnObj.AddComponent<Image>();
-            sebImg.color = new Color(0.14f, 0.20f, 0.30f);
+            sebImg.color = UITheme.CardSecondaryBg;
             _soundToggleButton = seBtnObj.AddComponent<Button>();
             var seTapGated = seBtnObj.AddComponent<TapGatedButton>();
             seTapGated.Initialize(() =>
@@ -2085,9 +2310,9 @@ namespace IndustrialSafetyAR.UI
             _soundToggleButtonText = sebTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _soundToggleButtonText.font = defaultFont;
             _soundToggleButtonText.text = "<b>ON</b>";
-            _soundToggleButtonText.fontSize = 15;
+            _soundToggleButtonText.fontSize = 20;
             _soundToggleButtonText.alignment = TextAlignmentOptions.Center;
-            _soundToggleButtonText.color = Color.white;
+            _soundToggleButtonText.color = UITheme.TextPrimary;
 
             // Emergency Alarm Row
             var eaObj = new GameObject("AlarmRow");
@@ -2109,9 +2334,9 @@ namespace IndustrialSafetyAR.UI
             _alarmToggleLabel = eaLabelObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _alarmToggleLabel.font = defaultFont;
             _alarmToggleLabel.text = "Emergency Alarm Siren";
-            _alarmToggleLabel.fontSize = 16;
+            _alarmToggleLabel.fontSize = 22;
             _alarmToggleLabel.alignment = TextAlignmentOptions.Left;
-            _alarmToggleLabel.color = Color.white;
+            _alarmToggleLabel.color = UITheme.TextPrimary;
 
             var eaBtnObj = new GameObject("AlarmToggleButton");
             eaBtnObj.transform.SetParent(eaObj.transform, false);
@@ -2122,7 +2347,7 @@ namespace IndustrialSafetyAR.UI
             eabRect.offsetMax = Vector2.zero;
 
             var eabImg = eaBtnObj.AddComponent<Image>();
-            eabImg.color = new Color(0.14f, 0.20f, 0.30f);
+            eabImg.color = UITheme.CardSecondaryBg;
             _alarmToggleButton = eaBtnObj.AddComponent<Button>();
             var eaTapGated = eaBtnObj.AddComponent<TapGatedButton>();
             eaTapGated.Initialize(() =>
@@ -2141,9 +2366,9 @@ namespace IndustrialSafetyAR.UI
             _alarmToggleButtonText = eabTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _alarmToggleButtonText.font = defaultFont;
             _alarmToggleButtonText.text = "<b>ON</b>";
-            _alarmToggleButtonText.fontSize = 15;
+            _alarmToggleButtonText.fontSize = 20;
             _alarmToggleButtonText.alignment = TextAlignmentOptions.Center;
-            _alarmToggleButtonText.color = Color.white;
+            _alarmToggleButtonText.color = UITheme.TextPrimary;
 
             // Volume Section
             var volObj = new GameObject("VolumeRow");
@@ -2165,9 +2390,9 @@ namespace IndustrialSafetyAR.UI
             _volumeLabel = vlObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _volumeLabel.font = defaultFont;
             _volumeLabel.text = "Effects Volume";
-            _volumeLabel.fontSize = 15;
+            _volumeLabel.fontSize = 22;
             _volumeLabel.alignment = TextAlignmentOptions.Left;
-            _volumeLabel.color = Color.white;
+            _volumeLabel.color = UITheme.TextPrimary;
 
             var vvObj = new GameObject("ValueText");
             vvObj.transform.SetParent(volObj.transform, false);
@@ -2180,9 +2405,9 @@ namespace IndustrialSafetyAR.UI
             _volumeValueText = vvObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _volumeValueText.font = defaultFont;
             _volumeValueText.text = "100%";
-            _volumeValueText.fontSize = 15;
+            _volumeValueText.fontSize = 20;
             _volumeValueText.alignment = TextAlignmentOptions.Right;
-            _volumeValueText.color = new Color(0.4f, 0.9f, 1f);
+            _volumeValueText.color = UITheme.PrimaryOrange;
 
             // Volume Step - Button
             var vmBtnObj = new GameObject("VolMinusBtn");
@@ -2193,7 +2418,7 @@ namespace IndustrialSafetyAR.UI
             vmbRect.offsetMin = Vector2.zero;
             vmbRect.offsetMax = Vector2.zero;
 
-            vmBtnObj.AddComponent<Image>().color = new Color(0.14f, 0.20f, 0.30f);
+            vmBtnObj.AddComponent<Image>().color = UITheme.CardSecondaryBg;
             var vmBtn = vmBtnObj.AddComponent<Button>();
             var vmTap = vmBtnObj.AddComponent<TapGatedButton>();
             vmTap.Initialize(() =>
@@ -2211,9 +2436,9 @@ namespace IndustrialSafetyAR.UI
             var vmtTmp = vmtObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) vmtTmp.font = defaultFont;
             vmtTmp.text = "<b>- 10%</b>";
-            vmtTmp.fontSize = 13;
+            vmtTmp.fontSize = 20;
             vmtTmp.alignment = TextAlignmentOptions.Center;
-            vmtTmp.color = Color.white;
+            vmtTmp.color = UITheme.TextPrimary;
 
             // Volume Step + Button
             var vpBtnObj = new GameObject("VolPlusBtn");
@@ -2224,7 +2449,7 @@ namespace IndustrialSafetyAR.UI
             vpbRect.offsetMin = Vector2.zero;
             vpbRect.offsetMax = Vector2.zero;
 
-            vpBtnObj.AddComponent<Image>().color = new Color(0.14f, 0.20f, 0.30f);
+            vpBtnObj.AddComponent<Image>().color = UITheme.CardSecondaryBg;
             var vpBtn = vpBtnObj.AddComponent<Button>();
             var vpTap = vpBtnObj.AddComponent<TapGatedButton>();
             vpTap.Initialize(() =>
@@ -2242,9 +2467,9 @@ namespace IndustrialSafetyAR.UI
             var vptTmp = vptObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) vptTmp.font = defaultFont;
             vptTmp.text = "<b>+ 10%</b>";
-            vptTmp.fontSize = 13;
+            vptTmp.fontSize = 20;
             vptTmp.alignment = TextAlignmentOptions.Center;
-            vptTmp.color = Color.white;
+            vptTmp.color = UITheme.TextPrimary;
 
             // Language Selection Section
             var langHeaderObj = new GameObject("LanguageHeader");
@@ -2258,9 +2483,9 @@ namespace IndustrialSafetyAR.UI
             _languageHeader = langHeaderObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _languageHeader.font = defaultFont;
             _languageHeader.text = "Language / भाषा / ᱯᱟᱹᱨᱥᱤ";
-            _languageHeader.fontSize = 16;
+            _languageHeader.fontSize = 22;
             _languageHeader.alignment = TextAlignmentOptions.Left;
-            _languageHeader.color = Color.white;
+            _languageHeader.color = UITheme.TextPrimary;
 
             // Language Option 1: English
             var lEnObj = new GameObject("LangBtn_English");
@@ -2270,7 +2495,7 @@ namespace IndustrialSafetyAR.UI
             lenRect.anchorMax = new Vector2(0.33f, 0.36f);
             lenRect.offsetMin = Vector2.zero;
             lenRect.offsetMax = Vector2.zero;
-            lEnObj.AddComponent<Image>().color = new Color(0.14f, 0.20f, 0.30f);
+            lEnObj.AddComponent<Image>().color = UITheme.CardSecondaryBg;
             _btnLangEnglish = lEnObj.AddComponent<Button>();
             var enTap = lEnObj.AddComponent<TapGatedButton>();
             enTap.Initialize(() => LocaleService.Instance.SetLanguage(LocaleService.LangEnglish));
@@ -2283,9 +2508,9 @@ namespace IndustrialSafetyAR.UI
             _btnLangEnglishText = lenTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _btnLangEnglishText.font = defaultFont;
             _btnLangEnglishText.text = "<b>English</b>";
-            _btnLangEnglishText.fontSize = 15;
+            _btnLangEnglishText.fontSize = 20;
             _btnLangEnglishText.alignment = TextAlignmentOptions.Center;
-            _btnLangEnglishText.color = Color.white;
+            _btnLangEnglishText.color = UITheme.TextPrimary;
 
             // Language Option 2: Hindi
             var lHiObj = new GameObject("LangBtn_Hindi");
@@ -2295,7 +2520,7 @@ namespace IndustrialSafetyAR.UI
             lhiRect.anchorMax = new Vector2(0.63f, 0.36f);
             lhiRect.offsetMin = Vector2.zero;
             lhiRect.offsetMax = Vector2.zero;
-            lHiObj.AddComponent<Image>().color = new Color(0.14f, 0.20f, 0.30f);
+            lHiObj.AddComponent<Image>().color = UITheme.CardSecondaryBg;
             _btnLangHindi = lHiObj.AddComponent<Button>();
             var hiTap = lHiObj.AddComponent<TapGatedButton>();
             hiTap.Initialize(() => LocaleService.Instance.SetLanguage(LocaleService.LangHindi));
@@ -2308,9 +2533,9 @@ namespace IndustrialSafetyAR.UI
             _btnLangHindiText = lhiTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _btnLangHindiText.font = defaultFont;
             _btnLangHindiText.text = "<b>हिन्दी</b>";
-            _btnLangHindiText.fontSize = 15;
+            _btnLangHindiText.fontSize = 20;
             _btnLangHindiText.alignment = TextAlignmentOptions.Center;
-            _btnLangHindiText.color = Color.white;
+            _btnLangHindiText.color = UITheme.TextPrimary;
 
             // Language Option 3: Santali
             var lSatObj = new GameObject("LangBtn_Santali");
@@ -2320,7 +2545,7 @@ namespace IndustrialSafetyAR.UI
             lsatRect.anchorMax = new Vector2(0.94f, 0.36f);
             lsatRect.offsetMin = Vector2.zero;
             lsatRect.offsetMax = Vector2.zero;
-            lSatObj.AddComponent<Image>().color = new Color(0.14f, 0.20f, 0.30f);
+            lSatObj.AddComponent<Image>().color = UITheme.CardSecondaryBg;
             _btnLangSantali = lSatObj.AddComponent<Button>();
             var satTap = lSatObj.AddComponent<TapGatedButton>();
             satTap.Initialize(() => LocaleService.Instance.SetLanguage(LocaleService.LangSantali));
@@ -2333,9 +2558,9 @@ namespace IndustrialSafetyAR.UI
             _btnLangSantaliText = lsatTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _btnLangSantaliText.font = defaultFont;
             _btnLangSantaliText.text = "<b>ᱥᱟᱱᱛᱟᱲᱤ</b>";
-            _btnLangSantaliText.fontSize = 15;
+            _btnLangSantaliText.fontSize = 20;
             _btnLangSantaliText.alignment = TextAlignmentOptions.Center;
-            _btnLangSantaliText.color = Color.white;
+            _btnLangSantaliText.color = UITheme.TextPrimary;
 
             // Bottom Primary Close Settings Button
             var closeBtnObj = new GameObject("CloseSettingsButton");
@@ -2347,7 +2572,7 @@ namespace IndustrialSafetyAR.UI
             cbRect.offsetMax = Vector2.zero;
 
             var cbImg = closeBtnObj.AddComponent<Image>();
-            cbImg.color = new Color(0.20f, 0.28f, 0.42f, 0.98f);
+            cbImg.color = UITheme.PrimaryOrange;
             _settingsCloseButton = closeBtnObj.AddComponent<Button>();
             var cbTap = closeBtnObj.AddComponent<TapGatedButton>();
             cbTap.Initialize(() => CloseSettings());
@@ -2361,9 +2586,9 @@ namespace IndustrialSafetyAR.UI
             _settingsCloseButtonText = cbTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _settingsCloseButtonText.font = defaultFont;
             _settingsCloseButtonText.text = "<b>CLOSE [X]</b>";
-            _settingsCloseButtonText.fontSize = 16;
+            _settingsCloseButtonText.fontSize = 24;
             _settingsCloseButtonText.alignment = TextAlignmentOptions.Center;
-            _settingsCloseButtonText.color = Color.white;
+            _settingsCloseButtonText.color = UITheme.TextLightOnDark;
 
             // Initial State: Show Home
             _settingsRoot.SetActive(false);

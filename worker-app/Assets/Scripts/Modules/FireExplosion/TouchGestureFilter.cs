@@ -98,15 +98,21 @@ namespace IndustrialSafetyAR.Modules.FireExplosion
             if (EventSystem.current == null) return false;
 
             // 1. Check legacy/input system pointer ID if active
-            if (EventSystem.current.IsPointerOverGameObject()) return true;
-
-            for (int i = 0; i < Input.touchCount; i++)
+            try
             {
-                if (EventSystem.current.IsPointerOverGameObject(Input.GetTouch(i).fingerId))
+                if (EventSystem.current.IsPointerOverGameObject()) return true;
+
+#if !ENABLE_INPUT_SYSTEM
+                for (int i = 0; i < Input.touchCount; i++)
                 {
-                    return true;
+                    if (EventSystem.current.IsPointerOverGameObject(Input.GetTouch(i).fingerId))
+                    {
+                        return true;
+                    }
                 }
+#endif
             }
+            catch (InvalidOperationException) {}
 
             // 2. Full graphic raycast on the coordinate
             var eventData = new PointerEventData(EventSystem.current)
