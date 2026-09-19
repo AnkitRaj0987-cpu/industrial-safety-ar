@@ -277,6 +277,14 @@ namespace IndustrialSafetyAR.UI
         }
 
         /// <summary>
+        /// Explicitly triggers the completion flow for this training scenario.
+        /// </summary>
+        public void CompleteTraining()
+        {
+            OnCompleteTrainingRequested?.Invoke();
+        }
+
+        /// <summary>
         /// Navigates backwards exactly one completed step in controlled review mode.
         /// Preserves all completed states and canonical assessment results; never emits duplicate scoring events.
         /// </summary>

@@ -351,6 +351,12 @@ namespace IndustrialSafetyAR.UI
                 summaryUI.HideSummary();
             }
 
+            var gasSummaryUI = FindAnyObjectByType<GasAssessmentSummaryUI>(FindObjectsInactive.Include);
+            if (gasSummaryUI != null)
+            {
+                gasSummaryUI.HideSummary();
+            }
+
             // Stop any active emergency siren or transient audio
             if (FireAudioService.Instance != null)
             {
@@ -404,6 +410,9 @@ namespace IndustrialSafetyAR.UI
 
             var summaryUI = FindAnyObjectByType<FireAssessmentSummaryUI>(FindObjectsInactive.Include);
             if (summaryUI != null) summaryUI.HideSummary();
+
+            var gasSummaryUI = FindAnyObjectByType<GasAssessmentSummaryUI>(FindObjectsInactive.Include);
+            if (gasSummaryUI != null) gasSummaryUI.HideSummary();
 
             if (FireAudioService.Instance != null)
             {
@@ -463,6 +472,9 @@ namespace IndustrialSafetyAR.UI
             var summaryUI = FindAnyObjectByType<FireAssessmentSummaryUI>(FindObjectsInactive.Include);
             if (summaryUI != null) summaryUI.HideSummary();
 
+            var gasSummaryUI = FindAnyObjectByType<GasAssessmentSummaryUI>(FindObjectsInactive.Include);
+            if (gasSummaryUI != null) gasSummaryUI.HideSummary();
+
             if (FireAudioService.Instance != null)
             {
                 FireAudioService.Instance.StopEmergencyAlarm();
@@ -501,6 +513,9 @@ namespace IndustrialSafetyAR.UI
 
             var summaryUI = FindAnyObjectByType<FireAssessmentSummaryUI>(FindObjectsInactive.Include);
             if (summaryUI != null) summaryUI.HideSummary();
+
+            var gasSummaryUI = FindAnyObjectByType<GasAssessmentSummaryUI>(FindObjectsInactive.Include);
+            if (gasSummaryUI != null) gasSummaryUI.HideSummary();
 
             if (FireAudioService.Instance != null)
             {

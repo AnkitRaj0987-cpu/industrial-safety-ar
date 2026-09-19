@@ -110,6 +110,44 @@ namespace IndustrialSafetyAR.Tests
             if (!RunTest("75_Phase2_LocalizationKeys_ExistAcrossAllLocales", Test_75_Phase2_LocalizationKeys_ExistAcrossAllLocales, logMessages)) allPassed = false;
             if (!RunTest("76_Step4_Distractor_PenaltyScoringDeduction", Test_76_Step4_Distractor_PenaltyScoringDeduction, logMessages)) allPassed = false;
             if (!RunTest("77_GasArInteractionController_RaycastTap_AttendantMarker", Test_77_GasArInteractionController_RaycastTap_AttendantMarker, logMessages)) allPassed = false;
+            if (!RunTest("78_Step7_EntryDecision_UIHierarchyAndWarning", Test_78_Step7_EntryDecision_UIHierarchyAndWarning, logMessages)) allPassed = false;
+            if (!RunTest("79_Step7_EntryDecision_InitialState_AwaitingDecision", Test_79_Step7_EntryDecision_InitialState_AwaitingDecision, logMessages)) allPassed = false;
+            if (!RunTest("80_Step7_EntryDecision_DoNotEnter_EmitsSafeEntryDecision", Test_80_Step7_EntryDecision_DoNotEnter_EmitsSafeEntryDecision, logMessages)) allPassed = false;
+            if (!RunTest("81_Step7_EntryDecision_EnterAttempt_EmitsUnsafeEntryAttempt", Test_81_Step7_EntryDecision_EnterAttempt_EmitsUnsafeEntryAttempt, logMessages)) allPassed = false;
+            if (!RunTest("82_Step7_EntryDecision_EnterAttempt_AppliesSeverePenaltyInRubric", Test_82_Step7_EntryDecision_EnterAttempt_AppliesSeverePenaltyInRubric, logMessages)) allPassed = false;
+            if (!RunTest("83_Step7_EntryDecision_EnterAttempt_AllowsRecoveryWithDoNotEnter", Test_83_Step7_EntryDecision_EnterAttempt_AllowsRecoveryWithDoNotEnter, logMessages)) allPassed = false;
+            if (!RunTest("84_Step7_EntryDecision_CanGoNext_GatedUntilValidDecision", Test_84_Step7_EntryDecision_CanGoNext_GatedUntilValidDecision, logMessages)) allPassed = false;
+            if (!RunTest("85_Step7_EntryDecision_UIButtons_ClickActions", Test_85_Step7_EntryDecision_UIButtons_ClickActions, logMessages)) allPassed = false;
+            if (!RunTest("86_Step8_EmergencyResponse_UIHierarchy", Test_86_Step8_EmergencyResponse_UIHierarchy, logMessages)) allPassed = false;
+            if (!RunTest("87_Step8_EmergencyResponse_InitialState_GasAlarmSounding", Test_87_Step8_EmergencyResponse_InitialState_GasAlarmSounding, logMessages)) allPassed = false;
+            if (!RunTest("88_Step8_EmergencyResponse_AcknowledgeAlarm_EmitsEvent", Test_88_Step8_EmergencyResponse_AcknowledgeAlarm_EmitsEvent, logMessages)) allPassed = false;
+            if (!RunTest("89_Step8_EmergencyResponse_StopWork_AdvancesToSupervisorAlert", Test_89_Step8_EmergencyResponse_StopWork_AdvancesToSupervisorAlert, logMessages)) allPassed = false;
+            if (!RunTest("90_Step8_EmergencyResponse_SupervisorAlert_EmitsEmergencyResponseStarted", Test_90_Step8_EmergencyResponse_SupervisorAlert_EmitsEmergencyResponseStarted, logMessages)) allPassed = false;
+            if (!RunTest("91_Step8_EmergencyResponse_WindIndicator_SpawnAndDirection", Test_91_Step8_EmergencyResponse_WindIndicator_SpawnAndDirection, logMessages)) allPassed = false;
+            if (!RunTest("92_Step8_EmergencyResponse_EvacuationMarkers_SpawnCountAndPositions", Test_92_Step8_EmergencyResponse_EvacuationMarkers_SpawnCountAndPositions, logMessages)) allPassed = false;
+            if (!RunTest("93_Step8_EmergencyResponse_StrictWaypointSequence_SkippingRejected", Test_93_Step8_EmergencyResponse_StrictWaypointSequence_SkippingRejected, logMessages)) allPassed = false;
+            if (!RunTest("94_Step8_EmergencyResponse_Waypoint1_Traversed", Test_94_Step8_EmergencyResponse_Waypoint1_Traversed, logMessages)) allPassed = false;
+            if (!RunTest("95_Step8_EmergencyResponse_Waypoint2_Traversed", Test_95_Step8_EmergencyResponse_Waypoint2_Traversed, logMessages)) allPassed = false;
+            if (!RunTest("96_Step8_EmergencyResponse_Waypoint3_SafeMusterAreaReached", Test_96_Step8_EmergencyResponse_Waypoint3_SafeMusterAreaReached, logMessages)) allPassed = false;
+            if (!RunTest("97_Step8_EmergencyResponse_DualTap_ButtonAndRaycast", Test_97_Step8_EmergencyResponse_DualTap_ButtonAndRaycast, logMessages)) allPassed = false;
+            if (!RunTest("98_Step8_EmergencyResponse_StrictRule_NoImprovisedRescue", Test_98_Step8_EmergencyResponse_StrictRule_NoImprovisedRescue, logMessages)) allPassed = false;
+            if (!RunTest("99_Step8_EmergencyResponse_ConfirmTrainedRescue_EmitsCompletedEvent", Test_99_Step8_EmergencyResponse_ConfirmTrainedRescue_EmitsCompletedEvent, logMessages)) allPassed = false;
+            if (!RunTest("100_Step8_EmergencyResponse_CanGoNext_Gating", Test_100_Step8_EmergencyResponse_CanGoNext_Gating, logMessages)) allPassed = false;
+            if (!RunTest("101_Step9_FinalSafetyCheck_UIHierarchy", Test_101_Step9_FinalSafetyCheck_UIHierarchy, logMessages)) allPassed = false;
+            if (!RunTest("102_Step9_FinalSafetyCheck_InitialState", Test_102_Step9_FinalSafetyCheck_InitialState, logMessages)) allPassed = false;
+            if (!RunTest("103_Step9_FinalSafetyCheck_TenComplianceItems_Listed", Test_103_Step9_FinalSafetyCheck_TenComplianceItems_Listed, logMessages)) allPassed = false;
+            if (!RunTest("104_Step9_FinalSafetyCheck_AtmosphereRule_EnforcesUnsafeDoNotEnter", Test_104_Step9_FinalSafetyCheck_AtmosphereRule_EnforcesUnsafeDoNotEnter, logMessages)) allPassed = false;
+            if (!RunTest("105_Step9_FinalSafetyCheck_CompleteGasTraining_EmitsEvent", Test_105_Step9_FinalSafetyCheck_CompleteGasTraining_EmitsEvent, logMessages)) allPassed = false;
+            if (!RunTest("106_Step9_AssessmentEngine_PerfectRun_Scores100", Test_106_Step9_AssessmentEngine_PerfectRun_Scores100, logMessages)) allPassed = false;
+            if (!RunTest("107_Step9_AssessmentEngine_UnsafeEntryAttempt_Deduction", Test_107_Step9_AssessmentEngine_UnsafeEntryAttempt_Deduction, logMessages)) allPassed = false;
+            if (!RunTest("108_Step9_AssessmentEngine_UnsafeZoneAndEntryAttempt_AccumulatedPenalties", Test_108_Step9_AssessmentEngine_UnsafeZoneAndEntryAttempt_AccumulatedPenalties, logMessages)) allPassed = false;
+            if (!RunTest("109_Step9_GasAssessmentSummaryUI_DisplaysCorrectViewModel", Test_109_Step9_GasAssessmentSummaryUI_DisplaysCorrectViewModel, logMessages)) allPassed = false;
+            if (!RunTest("110_Step9_GasAssessmentSummaryUI_BreakdownToggle", Test_110_Step9_GasAssessmentSummaryUI_BreakdownToggle, logMessages)) allPassed = false;
+            if (!RunTest("111_Step9_OutboxFinalization_GeneratesAttemptFinalizedEvent", Test_111_Step9_OutboxFinalization_GeneratesAttemptFinalizedEvent, logMessages)) allPassed = false;
+            if (!RunTest("112_Step9_Retake_ResetsScenarioWithNewAttemptId", Test_112_Step9_Retake_ResetsScenarioWithNewAttemptId, logMessages)) allPassed = false;
+            if (!RunTest("113_Localization_Phase3_Keys_EnHiSat", Test_113_Localization_Phase3_Keys_EnHiSat, logMessages)) allPassed = false;
+            if (!RunTest("114_OlChiki_Santali_Phase3_ValidUnicode", Test_114_OlChiki_Santali_Phase3_ValidUnicode, logMessages)) allPassed = false;
+            if (!RunTest("115_FullEndToEnd_Scenario_HomeToCompletion", Test_115_FullEndToEnd_Scenario_HomeToCompletion, logMessages)) allPassed = false;
 
             return allPassed;
         }
@@ -2134,6 +2172,1098 @@ namespace IndustrialSafetyAR.Tests
             finally
             {
                 UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        private static void SetupArSteps1To6(GasArInteractionController ctrl)
+        {
+            SetupArSteps1To5(ctrl);
+            ctrl.AssignAttendant();
+            ctrl.CheckCommunication();
+            ctrl.AdvanceToNextStep();
+        }
+
+        private static void SetupArSteps1To7(GasArInteractionController ctrl)
+        {
+            SetupArSteps1To6(ctrl);
+            ctrl.SubmitEntryDecision(false);
+            ctrl.AdvanceToNextStep();
+        }
+
+        private static void SetupArSteps1To8(GasArInteractionController ctrl)
+        {
+            SetupArSteps1To7(ctrl);
+            ctrl.AcknowledgeGasAlarm();
+            ctrl.AcknowledgeStopWork();
+            ctrl.AlertEmergencySupervisor();
+            ctrl.ProcessEvacuationWaypointTap(1);
+            ctrl.ProcessEvacuationWaypointTap(2);
+            ctrl.ProcessEvacuationWaypointTap(3);
+            ctrl.ConfirmTrainedRescueResponse();
+            ctrl.AdvanceToNextStep();
+        }
+
+        public static void Test_78_Step7_EntryDecision_UIHierarchyAndWarning()
+        {
+            var go = new GameObject("Test_GasAr_78");
+            try
+            {
+                var ui = go.AddComponent<GasInteractionFeedbackUI>();
+                ui.ShowTrainingUI();
+                ui.Navigator.SetViewStep(7);
+                ui.RefreshUI();
+
+                if (ui.EntryDecisionRootObj == null) throw new Exception("EntryDecisionRootObj should not be null.");
+                if (ui.BtnDoNotEnter == null) throw new Exception("BtnDoNotEnter should not be null.");
+                if (ui.BtnEnterConfinedSpace == null) throw new Exception("BtnEnterConfinedSpace should not be null.");
+                if (ui.EntryDecisionFeedbackText == null) throw new Exception("EntryDecisionFeedbackText should not be null.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_79_Step7_EntryDecision_InitialState_AwaitingDecision()
+        {
+            var go = new GameObject("Test_GasAr_79");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To6(ctrl);
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 7) throw new Exception($"Expected step 7, got {ctrl.StepNavigator.CurrentStepIndex}");
+                if (ctrl.State != GasInteractionState.AwaitingEntryDecision) throw new Exception($"Expected AwaitingEntryDecision, got {ctrl.State}");
+                if (ctrl.StepNavigator.CanGoNext) throw new Exception("CanGoNext must be false prior to entry decision.");
+                if (ctrl.IsEntryDecisionMade) throw new Exception("IsEntryDecisionMade should initially be false.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_80_Step7_EntryDecision_DoNotEnter_EmitsSafeEntryDecision()
+        {
+            var go = new GameObject("Test_GasAr_80");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To6(ctrl);
+
+                TrainingEvent decisionEvt = null;
+                ctrl.OnSafeEntryDecision += evt => decisionEvt = evt;
+
+                bool result = ctrl.SubmitEntryDecision(false);
+                if (!result) throw new Exception("SubmitEntryDecision(false) should succeed.");
+                if (decisionEvt == null) throw new Exception("OnSafeEntryDecision was not fired.");
+                if (decisionEvt.EventType != "safe_entry_decision") throw new Exception($"Expected safe_entry_decision, got {decisionEvt.EventType}");
+                if (decisionEvt.Outcome != "success") throw new Exception($"Expected outcome success, got {decisionEvt.Outcome}");
+                if (!ctrl.IsEntryDecisionMade) throw new Exception("IsEntryDecisionMade should be true.");
+                if (ctrl.EntryDecisionResult != "do_not_enter") throw new Exception($"Expected do_not_enter, got {ctrl.EntryDecisionResult}");
+                if (!ctrl.StepNavigator.IsStepCompleted(7)) throw new Exception("Step 7 should be marked completed.");
+                if (!ctrl.StepNavigator.CanGoNext) throw new Exception("CanGoNext should be true after safe entry decision.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_81_Step7_EntryDecision_EnterAttempt_EmitsUnsafeEntryAttempt()
+        {
+            var go = new GameObject("Test_GasAr_81");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To6(ctrl);
+
+                TrainingEvent unsafeEvt = null;
+                ctrl.OnUnsafeEntryAttempt += evt => unsafeEvt = evt;
+
+                bool result = ctrl.SubmitEntryDecision(true);
+                if (result) throw new Exception("SubmitEntryDecision(true) into unsafe atmosphere should return false.");
+                if (unsafeEvt == null) throw new Exception("OnUnsafeEntryAttempt was not fired.");
+                if (unsafeEvt.EventType != "unsafe_entry_attempt") throw new Exception($"Expected unsafe_entry_attempt, got {unsafeEvt.EventType}");
+                if (unsafeEvt.Outcome != "failure") throw new Exception($"Expected outcome failure, got {unsafeEvt.Outcome}");
+                if (ctrl.StepNavigator.CanGoNext) throw new Exception("CanGoNext must be false after unsafe entry attempt.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_82_Step7_EntryDecision_EnterAttempt_AppliesSeverePenaltyInRubric()
+        {
+            var go = new GameObject("Test_GasAr_82");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To6(ctrl);
+
+                ctrl.SubmitEntryDecision(true);
+
+                var rubric = RubricLoader.LoadGasConfinedSpaceRubric();
+                var result = LocalAssessmentEngine.Evaluate(new List<TrainingEvent>(bus.DispatchedEvents), rubric);
+
+                var eval = result.GetRuleResult("rule_entry_decision");
+                if (eval == null) throw new Exception("RuleEvaluation for rule_entry_decision not found.");
+                if (eval.IsSatisfied) throw new Exception("rule_entry_decision should not pass when unsafe entry attempted.");
+                if (eval.PenaltyDeducted != 15.00f) throw new Exception($"Expected 15.00 penalty on rule_entry_decision, got {eval.PenaltyDeducted}");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_83_Step7_EntryDecision_EnterAttempt_AllowsRecoveryWithDoNotEnter()
+        {
+            var go = new GameObject("Test_GasAr_83");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To6(ctrl);
+
+                // 1. First make incorrect decision
+                ctrl.SubmitEntryDecision(true);
+                if (ctrl.StepNavigator.CanGoNext) throw new Exception("CanGoNext should be false after incorrect decision.");
+
+                // 2. Correct by choosing DO NOT ENTER
+                bool recovery = ctrl.SubmitEntryDecision(false);
+                if (!recovery) throw new Exception("Recovery with SubmitEntryDecision(false) should succeed.");
+                if (!ctrl.StepNavigator.IsStepCompleted(7)) throw new Exception("Step 7 should be completed after recovery.");
+                if (!ctrl.StepNavigator.CanGoNext) throw new Exception("CanGoNext should be true after recovery.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_84_Step7_EntryDecision_CanGoNext_GatedUntilValidDecision()
+        {
+            var go = new GameObject("Test_GasAr_84");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To6(ctrl);
+
+                ctrl.AdvanceToNextStep();
+                if (ctrl.StepNavigator.CurrentStepIndex != 7) throw new Exception("Should not advance past step 7 before decision.");
+
+                ctrl.SubmitEntryDecision(false);
+                ctrl.AdvanceToNextStep();
+                if (ctrl.StepNavigator.CurrentStepIndex != 8) throw new Exception($"Expected step 8, got {ctrl.StepNavigator.CurrentStepIndex}");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_85_Step7_EntryDecision_UIButtons_ClickActions()
+        {
+            var go = new GameObject("Test_GasAr_85");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var ui = go.AddComponent<GasInteractionFeedbackUI>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                ui.Controller = ctrl;
+                ui.ShowTrainingUI();
+                SetupArSteps1To6(ctrl);
+                ui.RefreshUI();
+
+                // Test clicking Enter (incorrect)
+                ui.BtnEnterConfinedSpace.onClick.Invoke();
+                if (string.IsNullOrEmpty(ui.EntryDecisionFeedbackText.text)) throw new Exception("Feedback text was not updated after enter click.");
+
+                // Test clicking Do Not Enter (correct)
+                ui.BtnDoNotEnter.onClick.Invoke();
+                if (!ctrl.IsEntryDecisionMade) throw new Exception("IsEntryDecisionMade should be true after UI button click.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_86_Step8_EmergencyResponse_UIHierarchy()
+        {
+            var go = new GameObject("Test_GasAr_86");
+            try
+            {
+                var ui = go.AddComponent<GasInteractionFeedbackUI>();
+                ui.ShowTrainingUI();
+                ui.Navigator.SetViewStep(8);
+                ui.RefreshUI();
+
+                if (ui.EmergencyResponseRootObj == null) throw new Exception("EmergencyResponseRootObj is null.");
+                if (ui.BtnAcknowledgeAlarm == null) throw new Exception("BtnAcknowledgeAlarm is null.");
+                if (ui.BtnAcknowledgeStopWork == null) throw new Exception("BtnAcknowledgeStopWork is null.");
+                if (ui.BtnAlertSupervisor == null) throw new Exception("BtnAlertSupervisor is null.");
+                if (ui.BtnWaypointAdvance == null) throw new Exception("BtnWaypointAdvance is null.");
+                if (ui.BtnConfirmRescue == null) throw new Exception("BtnConfirmRescue is null.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_87_Step8_EmergencyResponse_InitialState_GasAlarmSounding()
+        {
+            var go = new GameObject("Test_GasAr_87");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To7(ctrl);
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 8) throw new Exception($"Expected step 8, got {ctrl.StepNavigator.CurrentStepIndex}");
+                if (ctrl.State != GasInteractionState.GasAlarmSounding) throw new Exception($"Expected GasAlarmSounding, got {ctrl.State}");
+                if (ctrl.StepNavigator.CanGoNext) throw new Exception("CanGoNext must be false at step 8 start.");
+                if (ctrl.EvacuationMarkers.Count != 3) throw new Exception($"Expected 3 evacuation markers, got {ctrl.EvacuationMarkers.Count}");
+                if (ctrl.WindIndicator == null) throw new Exception("WindIndicator should be spawned.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_88_Step8_EmergencyResponse_AcknowledgeAlarm_EmitsEvent()
+        {
+            var go = new GameObject("Test_GasAr_88");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To7(ctrl);
+
+                TrainingEvent alarmEvt = null;
+                ctrl.OnGasAlarmAcknowledged += evt => alarmEvt = evt;
+
+                bool result = ctrl.AcknowledgeGasAlarm();
+                if (!result) throw new Exception("AcknowledgeGasAlarm failed.");
+                if (alarmEvt == null) throw new Exception("OnGasAlarmAcknowledged was not fired.");
+                if (alarmEvt.EventType != "gas_alarm_acknowledged") throw new Exception($"Expected gas_alarm_acknowledged, got {alarmEvt.EventType}");
+                if (!ctrl.IsGasAlarmAcknowledged) throw new Exception("IsGasAlarmAcknowledged should be true.");
+                if (ctrl.State != GasInteractionState.AwaitingStopWorkAcknowledgment) throw new Exception($"Expected AwaitingStopWorkAcknowledgment, got {ctrl.State}");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_89_Step8_EmergencyResponse_StopWork_AdvancesToSupervisorAlert()
+        {
+            var go = new GameObject("Test_GasAr_89");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To7(ctrl);
+
+                ctrl.AcknowledgeGasAlarm();
+                bool swResult = ctrl.AcknowledgeStopWork();
+                if (!swResult) throw new Exception("AcknowledgeStopWork failed.");
+                if (!ctrl.IsStopWorkAcknowledged) throw new Exception("IsStopWorkAcknowledged should be true.");
+                if (ctrl.State != GasInteractionState.AwaitingSupervisorAlert) throw new Exception($"Expected AwaitingSupervisorAlert, got {ctrl.State}");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_90_Step8_EmergencyResponse_SupervisorAlert_EmitsEmergencyResponseStarted()
+        {
+            var go = new GameObject("Test_GasAr_90");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To7(ctrl);
+
+                ctrl.AcknowledgeGasAlarm();
+                ctrl.AcknowledgeStopWork();
+
+                TrainingEvent alertEvt = null;
+                ctrl.OnEmergencyResponseStarted += evt => alertEvt = evt;
+
+                bool alertResult = ctrl.AlertEmergencySupervisor();
+                if (!alertResult) throw new Exception("AlertEmergencySupervisor failed.");
+                if (alertEvt == null) throw new Exception("OnEmergencyResponseStarted not fired.");
+                if (alertEvt.EventType != "emergency_response_started") throw new Exception($"Expected emergency_response_started, got {alertEvt.EventType}");
+                if (!ctrl.IsSupervisorAlerted) throw new Exception("IsSupervisorAlerted should be true.");
+                if (ctrl.State != GasInteractionState.EvacuatingWaypoints) throw new Exception($"Expected EvacuatingWaypoints, got {ctrl.State}");
+                if (!ctrl.EvacuationMarkers[0].IsActive) throw new Exception("First evacuation marker should be active.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_91_Step8_EmergencyResponse_WindIndicator_SpawnAndDirection()
+        {
+            var go = new GameObject("Test_GasAr_91");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To7(ctrl);
+
+                if (ctrl.WindIndicator == null) throw new Exception("WindIndicator is null.");
+                if (!ctrl.WindIndicator.DirectionText.Contains("UPWIND")) throw new Exception($"Expected UPWIND in direction text, got {ctrl.WindIndicator.DirectionText}");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_92_Step8_EmergencyResponse_EvacuationMarkers_SpawnCountAndPositions()
+        {
+            var go = new GameObject("Test_GasAr_92");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To7(ctrl);
+
+                if (ctrl.EvacuationMarkers.Count != 3) throw new Exception($"Expected 3 markers, got {ctrl.EvacuationMarkers.Count}");
+                for (int i = 0; i < 3; i++)
+                {
+                    if (ctrl.EvacuationMarkers[i].WaypointIndex != (i + 1))
+                        throw new Exception($"Marker {i} has index {ctrl.EvacuationMarkers[i].WaypointIndex}, expected {i + 1}");
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_93_Step8_EmergencyResponse_StrictWaypointSequence_SkippingRejected()
+        {
+            var go = new GameObject("Test_GasAr_93");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To7(ctrl);
+                ctrl.AcknowledgeGasAlarm();
+                ctrl.AcknowledgeStopWork();
+                ctrl.AlertEmergencySupervisor();
+
+                // Trying to skip to waypoint 2 or 3 must fail
+                bool tap2 = ctrl.ProcessEvacuationWaypointTap(2);
+                if (tap2) throw new Exception("Tapping Waypoint 2 before Waypoint 1 should return false.");
+
+                bool tap3 = ctrl.ProcessEvacuationWaypointTap(3);
+                if (tap3) throw new Exception("Tapping Waypoint 3 before Waypoint 1 should return false.");
+
+                if (ctrl.CurrentWaypointIndex != 1) throw new Exception($"CurrentWaypointIndex should remain 1, got {ctrl.CurrentWaypointIndex}");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_94_Step8_EmergencyResponse_Waypoint1_Traversed()
+        {
+            var go = new GameObject("Test_GasAr_94");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To7(ctrl);
+                ctrl.AcknowledgeGasAlarm();
+                ctrl.AcknowledgeStopWork();
+                ctrl.AlertEmergencySupervisor();
+
+                bool tap1 = ctrl.ProcessEvacuationWaypointTap(1);
+                if (!tap1) throw new Exception("ProcessEvacuationWaypointTap(1) failed.");
+                if (!ctrl.EvacuationMarkers[0].IsTraversed) throw new Exception("Marker 1 should be marked traversed.");
+                if (ctrl.CurrentWaypointIndex != 2) throw new Exception($"CurrentWaypointIndex should be 2, got {ctrl.CurrentWaypointIndex}");
+                if (!ctrl.EvacuationMarkers[1].IsActive) throw new Exception("Marker 2 should now be active.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_95_Step8_EmergencyResponse_Waypoint2_Traversed()
+        {
+            var go = new GameObject("Test_GasAr_95");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To7(ctrl);
+                ctrl.AcknowledgeGasAlarm();
+                ctrl.AcknowledgeStopWork();
+                ctrl.AlertEmergencySupervisor();
+                ctrl.ProcessEvacuationWaypointTap(1);
+
+                bool tap2 = ctrl.ProcessEvacuationWaypointTap(2);
+                if (!tap2) throw new Exception("ProcessEvacuationWaypointTap(2) failed.");
+                if (!ctrl.EvacuationMarkers[1].IsTraversed) throw new Exception("Marker 2 should be marked traversed.");
+                if (ctrl.CurrentWaypointIndex != 3) throw new Exception($"CurrentWaypointIndex should be 3, got {ctrl.CurrentWaypointIndex}");
+                if (!ctrl.EvacuationMarkers[2].IsActive) throw new Exception("Marker 3 should now be active.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_96_Step8_EmergencyResponse_Waypoint3_SafeMusterAreaReached()
+        {
+            var go = new GameObject("Test_GasAr_96");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To7(ctrl);
+                ctrl.AcknowledgeGasAlarm();
+                ctrl.AcknowledgeStopWork();
+                ctrl.AlertEmergencySupervisor();
+                ctrl.ProcessEvacuationWaypointTap(1);
+                ctrl.ProcessEvacuationWaypointTap(2);
+
+                TrainingEvent safeEvt = null;
+                ctrl.OnSafeAreaReached += evt => safeEvt = evt;
+
+                bool tap3 = ctrl.ProcessEvacuationWaypointTap(3);
+                if (!tap3) throw new Exception("ProcessEvacuationWaypointTap(3) failed.");
+                if (safeEvt == null) throw new Exception("OnSafeAreaReached event was not fired.");
+                if (safeEvt.EventType != "safe_area_reached") throw new Exception($"Expected safe_area_reached, got {safeEvt.EventType}");
+                if (!ctrl.IsSafeAreaReached) throw new Exception("IsSafeAreaReached should be true.");
+                if (ctrl.State != GasInteractionState.SafeAreaReached) throw new Exception($"Expected SafeAreaReached, got {ctrl.State}");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_97_Step8_EmergencyResponse_DualTap_ButtonAndRaycast()
+        {
+            var go = new GameObject("Test_GasAr_97");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To7(ctrl);
+                ctrl.AcknowledgeGasAlarm();
+                ctrl.AcknowledgeStopWork();
+                ctrl.AlertEmergencySupervisor();
+
+                // Direct tap on marker 1
+                ctrl.EvacuationMarkers[0].OnTap();
+                if (ctrl.CurrentWaypointIndex != 2) throw new Exception("Marker OnTap did not advance waypoint.");
+
+                // Tap via controller method (representing UI button click)
+                ctrl.ProcessEvacuationWaypointTap(2);
+                if (ctrl.CurrentWaypointIndex != 3) throw new Exception("Controller tap did not advance waypoint 2.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_98_Step8_EmergencyResponse_StrictRule_NoImprovisedRescue()
+        {
+            var go = new GameObject("Test_GasAr_98");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To7(ctrl);
+                ctrl.AcknowledgeGasAlarm();
+                ctrl.AcknowledgeStopWork();
+                ctrl.AlertEmergencySupervisor();
+
+                // Confirming rescue before safe area is reached must fail
+                bool prematureRescue = ctrl.ConfirmTrainedRescueResponse();
+                if (prematureRescue) throw new Exception("ConfirmTrainedRescueResponse should fail before reaching safe area.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_99_Step8_EmergencyResponse_ConfirmTrainedRescue_EmitsCompletedEvent()
+        {
+            var go = new GameObject("Test_GasAr_99");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To7(ctrl);
+                ctrl.AcknowledgeGasAlarm();
+                ctrl.AcknowledgeStopWork();
+                ctrl.AlertEmergencySupervisor();
+                ctrl.ProcessEvacuationWaypointTap(1);
+                ctrl.ProcessEvacuationWaypointTap(2);
+                ctrl.ProcessEvacuationWaypointTap(3);
+
+                TrainingEvent rescueEvt = null;
+                ctrl.OnEmergencyProcedureCompleted += evt => rescueEvt = evt;
+
+                bool confirmed = ctrl.ConfirmTrainedRescueResponse();
+                if (!confirmed) throw new Exception("ConfirmTrainedRescueResponse failed.");
+                if (rescueEvt == null) throw new Exception("OnEmergencyProcedureCompleted event was not fired.");
+                if (rescueEvt.EventType != "emergency_procedure_completed") throw new Exception($"Expected emergency_procedure_completed, got {rescueEvt.EventType}");
+                if (!ctrl.IsEmergencyProcedureCompleted) throw new Exception("IsEmergencyProcedureCompleted should be true.");
+                if (!ctrl.StepNavigator.IsStepCompleted(8)) throw new Exception("Step 8 should be completed.");
+                if (!ctrl.StepNavigator.CanGoNext) throw new Exception("CanGoNext should be true after confirming trained rescue.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_100_Step8_EmergencyResponse_CanGoNext_Gating()
+        {
+            var go = new GameObject("Test_GasAr_100");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To7(ctrl);
+
+                ctrl.AdvanceToNextStep();
+                if (ctrl.StepNavigator.CurrentStepIndex != 8) throw new Exception("Should not advance past step 8 before completion.");
+
+                ctrl.AcknowledgeGasAlarm();
+                ctrl.AdvanceToNextStep();
+                if (ctrl.StepNavigator.CurrentStepIndex != 8) throw new Exception("Should not advance before all sub-phases complete.");
+
+                ctrl.AcknowledgeStopWork();
+                ctrl.AlertEmergencySupervisor();
+                ctrl.ProcessEvacuationWaypointTap(1);
+                ctrl.ProcessEvacuationWaypointTap(2);
+                ctrl.ProcessEvacuationWaypointTap(3);
+                ctrl.ConfirmTrainedRescueResponse();
+
+                ctrl.AdvanceToNextStep();
+                if (ctrl.StepNavigator.CurrentStepIndex != 9) throw new Exception($"Expected step 9, got {ctrl.StepNavigator.CurrentStepIndex}");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_101_Step9_FinalSafetyCheck_UIHierarchy()
+        {
+            var go = new GameObject("Test_GasAr_101");
+            try
+            {
+                var ui = go.AddComponent<GasInteractionFeedbackUI>();
+                ui.ShowTrainingUI();
+                ui.Navigator.SetViewStep(9);
+                ui.RefreshUI();
+
+                if (ui.FinalSafetyCheckRootObj == null) throw new Exception("FinalSafetyCheckRootObj is null.");
+                if (ui.BtnCompleteTraining == null) throw new Exception("BtnCompleteTraining is null.");
+                if (ui.FinalChecklistText == null) throw new Exception("FinalChecklistText is null.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_102_Step9_FinalSafetyCheck_InitialState()
+        {
+            var go = new GameObject("Test_GasAr_102");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To8(ctrl);
+
+                if (ctrl.StepNavigator.CurrentStepIndex != 9) throw new Exception($"Expected step 9, got {ctrl.StepNavigator.CurrentStepIndex}");
+                if (ctrl.State != GasInteractionState.AwaitingFinalSafetyCheck) throw new Exception($"Expected AwaitingFinalSafetyCheck, got {ctrl.State}");
+                if (ctrl.IsAssessmentCompleted) throw new Exception("Assessment should not be completed prior to final step submission.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_103_Step9_FinalSafetyCheck_TenComplianceItems_Listed()
+        {
+            var go = new GameObject("Test_GasAr_103");
+            try
+            {
+                var ui = go.AddComponent<GasInteractionFeedbackUI>();
+                ui.ShowTrainingUI();
+                ui.Navigator.SetViewStep(9);
+                ui.RefreshUI();
+
+                string text = ui.FinalChecklistText.text;
+                if (!text.Contains("Hazard")) throw new Exception("Missing Hazard item in checklist.");
+                if (!text.Contains("Perimeter")) throw new Exception("Missing Perimeter item in checklist.");
+                if (!text.Contains("Testing")) throw new Exception("Missing Testing item in checklist.");
+                if (!text.Contains("PPE")) throw new Exception("Missing PPE item in checklist.");
+                if (!text.Contains("Attendant")) throw new Exception("Missing Attendant item in checklist.");
+                if (!text.Contains("Decision")) throw new Exception("Missing Decision item in checklist.");
+                if (!text.Contains("Alarm")) throw new Exception("Missing Alarm item in checklist.");
+                if (!text.Contains("Evacuation")) throw new Exception("Missing Evacuation item in checklist.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_104_Step9_FinalSafetyCheck_AtmosphereRule_EnforcesUnsafeDoNotEnter()
+        {
+            var go = new GameObject("Test_GasAr_104");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To8(ctrl);
+
+                if (ctrl.Workflow.AtmosphericSimulator.OverallAtmosphereSafe)
+                {
+                    throw new Exception("Atmosphere simulator must evaluate to UNSAFE for this scenario.");
+                }
+                if (ctrl.EntryDecisionResult != "do_not_enter")
+                {
+                    throw new Exception("EntryDecisionResult must be do_not_enter.");
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_105_Step9_FinalSafetyCheck_CompleteGasTraining_EmitsEvent()
+        {
+            var go = new GameObject("Test_GasAr_105");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To8(ctrl);
+
+                TrainingEvent completeEvt = null;
+                ctrl.OnGasTrainingCompleted += evt => completeEvt = evt;
+
+                bool finished = ctrl.CompleteGasTraining();
+                if (!finished) throw new Exception("CompleteGasTraining failed.");
+                if (completeEvt == null) throw new Exception("OnGasTrainingCompleted not fired.");
+                if (completeEvt.EventType != "gas_training_completed") throw new Exception($"Expected gas_training_completed, got {completeEvt.EventType}");
+                if (ctrl.State != GasInteractionState.TrainingCompleted) throw new Exception($"Expected TrainingCompleted, got {ctrl.State}");
+                if (!ctrl.IsAssessmentCompleted) throw new Exception("IsAssessmentCompleted should be true.");
+                if (ctrl.LatestAssessment == null) throw new Exception("LatestAssessment should not be null.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_106_Step9_AssessmentEngine_PerfectRun_Scores100()
+        {
+            var go = new GameObject("Test_GasAr_106");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To8(ctrl);
+                ctrl.CompleteGasTraining();
+
+                var assessment = ctrl.LatestAssessment;
+                if (assessment.ClientScore != 100.00f) throw new Exception($"Expected score 100.00, got {assessment.ClientScore}");
+                if (!assessment.Passed) throw new Exception("Perfect run should pass.");
+                if (assessment.TotalPenalties != 0.00f) throw new Exception($"Expected 0 penalties, got {assessment.TotalPenalties}");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_107_Step9_AssessmentEngine_UnsafeEntryAttempt_Deduction()
+        {
+            var go = new GameObject("Test_GasAr_107");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                SetupArSteps1To6(ctrl);
+
+                // Make unsafe entry attempt, then correct
+                ctrl.SubmitEntryDecision(true);
+                ctrl.SubmitEntryDecision(false);
+                ctrl.AdvanceToNextStep();
+
+                // Complete step 8 & 9
+                ctrl.AcknowledgeGasAlarm();
+                ctrl.AcknowledgeStopWork();
+                ctrl.AlertEmergencySupervisor();
+                ctrl.ProcessEvacuationWaypointTap(1);
+                ctrl.ProcessEvacuationWaypointTap(2);
+                ctrl.ProcessEvacuationWaypointTap(3);
+                ctrl.ConfirmTrainedRescueResponse();
+                ctrl.AdvanceToNextStep();
+                ctrl.CompleteGasTraining();
+
+                var assessment = ctrl.LatestAssessment;
+                if (assessment.TotalPenalties != 15.00f) throw new Exception($"Expected 15.00 penalties, got {assessment.TotalPenalties}");
+                if (assessment.ClientScore != 85.00f) throw new Exception($"Expected score 85.00, got {assessment.ClientScore}");
+                if (!assessment.Passed) throw new Exception("85 score should pass (pass threshold is 70%).");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_108_Step9_AssessmentEngine_UnsafeZoneAndEntryAttempt_AccumulatedPenalties()
+        {
+            var go = new GameObject("Test_GasAr_108");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+
+                // Step 1
+                ctrl.SpawnHazardMarker(Vector3.zero, Quaternion.identity);
+                ctrl.ProcessHazardTap();
+                ctrl.AdvanceToNextStep();
+
+                // Step 2: Unsafe zone entry (-10) then correct
+                ctrl.ProcessUnsafeZoneTap();
+                ctrl.ProcessDangerZonePerimeterTap();
+                ctrl.AdvanceToNextStep();
+
+                // Step 3
+                ctrl.TestSensor(GasSensorType.Oxygen, out _);
+                ctrl.TestSensor(GasSensorType.Flammable, out _);
+                ctrl.TestSensor(GasSensorType.Toxic, out _);
+                ctrl.AdvanceToNextStep();
+
+                // Step 4
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHelmet);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHarness);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemGloves);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemBoots);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemScba);
+                ctrl.SubmitPpeSelection();
+                ctrl.AdvanceToNextStep();
+
+                // Step 5
+                ctrl.VerifyScbaSeal();
+                ctrl.VerifyHarnessFit();
+                ctrl.CheckCylinderPressure();
+                ctrl.AdvanceToNextStep();
+
+                // Step 6
+                ctrl.AssignAttendant();
+                ctrl.CheckCommunication();
+                ctrl.AdvanceToNextStep();
+
+                // Step 7: Unsafe entry attempt (-15) then correct
+                ctrl.SubmitEntryDecision(true);
+                ctrl.SubmitEntryDecision(false);
+                ctrl.AdvanceToNextStep();
+
+                // Step 8 & 9
+                ctrl.AcknowledgeGasAlarm();
+                ctrl.AcknowledgeStopWork();
+                ctrl.AlertEmergencySupervisor();
+                ctrl.ProcessEvacuationWaypointTap(1);
+                ctrl.ProcessEvacuationWaypointTap(2);
+                ctrl.ProcessEvacuationWaypointTap(3);
+                ctrl.ConfirmTrainedRescueResponse();
+                ctrl.AdvanceToNextStep();
+                ctrl.CompleteGasTraining();
+
+                var assessment = ctrl.LatestAssessment;
+                if (assessment.TotalPenalties != 20.00f) throw new Exception($"Expected 20.00 total penalties, got {assessment.TotalPenalties}");
+                if (assessment.ClientScore != 80.00f) throw new Exception($"Expected score 80.00, got {assessment.ClientScore}");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_109_Step9_GasAssessmentSummaryUI_DisplaysCorrectViewModel()
+        {
+            var go = new GameObject("Test_GasAr_109");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var summaryUI = go.AddComponent<GasAssessmentSummaryUI>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                summaryUI.Controller = ctrl;
+
+                SetupArSteps1To8(ctrl);
+                ctrl.CompleteGasTraining();
+                summaryUI.ShowSummary(AssessmentSummaryViewModel.Build(ctrl.LatestAttempt, ctrl.LatestAssessment));
+
+                if (!summaryUI.IsSummaryVisible) throw new Exception("Summary modal should be visible.");
+                if (summaryUI.CurrentViewModel.ClientScore != 100.00f) throw new Exception($"Expected ViewModel score 100.00, got {summaryUI.CurrentViewModel.ClientScore}");
+                if (!summaryUI.CurrentViewModel.Passed) throw new Exception("ViewModel should be passed.");
+                if (summaryUI.CurrentViewModel.StepSummaries.Count != 9) throw new Exception($"Expected 9 step summaries, got {summaryUI.CurrentViewModel.StepSummaries.Count}");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_110_Step9_GasAssessmentSummaryUI_BreakdownToggle()
+        {
+            var go = new GameObject("Test_GasAr_110");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var summaryUI = go.AddComponent<GasAssessmentSummaryUI>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+                summaryUI.Controller = ctrl;
+
+                SetupArSteps1To8(ctrl);
+                ctrl.CompleteGasTraining();
+                summaryUI.ShowSummary(AssessmentSummaryViewModel.Build(ctrl.LatestAttempt, ctrl.LatestAssessment));
+
+                summaryUI.HideSummary();
+                if (summaryUI.IsSummaryVisible) throw new Exception("HideSummary should hide modal.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_111_Step9_OutboxFinalization_GeneratesAttemptFinalizedEvent()
+        {
+            var go = new GameObject("Test_GasAr_111");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+
+                SetupArSteps1To8(ctrl);
+                ctrl.CompleteGasTraining();
+
+                bool finalized = ctrl.FinalizeAttemptForOutbox(out var attempt);
+                if (!finalized) throw new Exception("FinalizeAttemptForOutbox failed.");
+                if (attempt == null) throw new Exception("Attempt is null.");
+                if (attempt.Status != TrainingAttempt.StatusCompleted) throw new Exception($"Expected status completed, got {attempt.Status}");
+
+                var outboxEvt = new List<TrainingEvent>(bus.DispatchedEvents).Find(e => e.EventType == "attempt_finalized");
+                if (outboxEvt == null) throw new Exception("attempt_finalized event not found in event bus.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_112_Step9_Retake_ResetsScenarioWithNewAttemptId()
+        {
+            var go = new GameObject("Test_GasAr_112");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                var bus = new TrainingEventBus();
+                ctrl.SetEventDispatcher(bus);
+
+                // Run 1
+                SetupArSteps1To8(ctrl);
+                ctrl.CompleteGasTraining();
+                string attempt1Id = ctrl.LatestAttempt.ClientAttemptId;
+
+                // Reset / Retake
+                ctrl.ResetScenario();
+                if (ctrl.StepNavigator.CurrentStepIndex != 1) throw new Exception("Reset did not reset navigator to step 1.");
+                if (ctrl.EvacuationMarkers.Count != 0) throw new Exception("Reset did not clear evacuation markers.");
+                if (ctrl.WindIndicator != null) throw new Exception("Reset did not destroy wind indicator.");
+
+                // Run 2
+                SetupArSteps1To8(ctrl);
+                ctrl.CompleteGasTraining();
+                string attempt2Id = ctrl.LatestAttempt.ClientAttemptId;
+
+                if (attempt1Id == attempt2Id) throw new Exception("Retake must generate a brand new ClientAttemptId.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_113_Localization_Phase3_Keys_EnHiSat()
+        {
+            var loc = LocaleService.Instance;
+            string[] phase3Keys = new[]
+            {
+                "gas_step7_title",
+                "gas_step7_prompt",
+                "gas_step8_title",
+                "gas_step8_prompt",
+                "gas_step9_title",
+                "gas_step9_prompt",
+                "entry_decision_header",
+                "entry_decision_prompt",
+                "btn_do_not_enter",
+                "btn_enter_confined_space",
+                "entry_decision_safe_success",
+                "emergency_title",
+                "alarm_title",
+                "btn_ack_alarm",
+                "stop_work_title",
+                "btn_ack_stop_work",
+                "supervisor_alert_title",
+                "btn_alert_supervisor",
+                "evac_title",
+                "evac_wind_dir",
+                "rescue_rule_title",
+                "rescue_btn_confirm",
+                "final_check_title",
+                "final_rule_unsafe",
+                "btn_complete_training",
+                "btn_view_summary"
+            };
+
+            foreach (var lang in new[] { "en", "hi", "sat" })
+            {
+                loc.SetLanguage(lang);
+                foreach (var key in phase3Keys)
+                {
+                    string val = loc.Get(key);
+                    if (string.IsNullOrEmpty(val))
+                    {
+                        throw new Exception($"Missing key '{key}' for locale '{lang}'");
+                    }
+                }
+            }
+
+            loc.SetLanguage("en");
+        }
+
+        public static void Test_114_OlChiki_Santali_Phase3_ValidUnicode()
+        {
+            var loc = LocaleService.Instance;
+            loc.SetLanguage("sat");
+
+            string val = loc.Get("btn_do_not_enter");
+            if (string.IsNullOrEmpty(val)) throw new Exception("Santali btn_do_not_enter is empty.");
+
+            bool hasOlChiki = false;
+            foreach (char c in val)
+            {
+                if (c >= 0x1C50 && c <= 0x1C7F)
+                {
+                    hasOlChiki = true;
+                    break;
+                }
+            }
+
+            if (!hasOlChiki) throw new Exception($"Santali text '{val}' does not contain expected Ol Chiki characters.");
+            loc.SetLanguage("en");
+        }
+
+        public static void Test_115_FullEndToEnd_Scenario_HomeToCompletion()
+        {
+            var homeObj = new GameObject("Test_Home_115");
+            var arObj = new GameObject("Test_Ar_115");
+            var gasObj = new GameObject("Test_Gas_115");
+            try
+            {
+                var home = homeObj.AddComponent<WorkerHomeController>();
+                var arMode = arObj.AddComponent<ARModeController>();
+                var ctrl = gasObj.AddComponent<GasArInteractionController>();
+                var ui = gasObj.AddComponent<GasInteractionFeedbackUI>();
+                var summaryUI = gasObj.AddComponent<GasAssessmentSummaryUI>();
+                var bus = new TrainingEventBus();
+
+                ctrl.SetEventDispatcher(bus);
+                ui.Controller = ctrl;
+                summaryUI.Controller = ctrl;
+
+                home.StartGasTraining();
+                if (home.CurrentState != WorkerHomeController.WorkerAppScreenState.TrainingGas)
+                    throw new Exception("Home controller not in TrainingGas state.");
+                if (!arMode.IsARActive)
+                    throw new Exception("AR mode should be enabled during Gas training.");
+
+                // Complete full 9 steps
+                SetupArSteps1To8(ctrl);
+                ctrl.CompleteGasTraining();
+
+                if (!ctrl.IsAssessmentCompleted) throw new Exception("Assessment not completed.");
+                if (ctrl.LatestAssessment.ClientScore != 100.00f) throw new Exception("Score was not 100.");
+
+                home.ReturnToHome();
+                if (home.CurrentState != WorkerHomeController.WorkerAppScreenState.Home)
+                    throw new Exception("Home controller not in Home state after return.");
+                if (arMode.IsARActive)
+                    throw new Exception("AR mode should be disabled upon returning to home.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(homeObj);
+                UnityEngine.Object.DestroyImmediate(arObj);
+                UnityEngine.Object.DestroyImmediate(gasObj);
             }
         }
     }

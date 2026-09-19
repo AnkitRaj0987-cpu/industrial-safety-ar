@@ -462,7 +462,58 @@ namespace IndustrialSafetyAR.Core
                 { "comm_attendant_radio", "Attendant Radio" },
                 { "status_verified", "VERIFIED" },
                 { "status_unsafe_atmosphere", "UNSAFE ATMOSPHERE" },
-                { "status_do_not_enter", "DO NOT ENTER" }
+                { "status_do_not_enter", "DO NOT ENTER" },
+
+                // Phase 3: Step 7 - Safe Entry Decision
+                { "unsafe_atmosphere", "UNSAFE ATMOSPHERE" },
+                { "do_not_enter", "DO NOT ENTER" },
+                { "btn_do_not_enter", "DO NOT ENTER — UNSAFE" },
+                { "enter_confined_space", "ENTER CONFINED SPACE" },
+                { "btn_enter_space", "ENTER CONFINED SPACE" },
+                { "entry_prohibited", "ENTRY PROHIBITED — ATMOSPHERE UNSAFE" },
+                { "entry_decision_prompt", "Based on these readings, should you enter the confined space?" },
+                { "entry_decision_success", "DO NOT ENTER. Isolate the area and follow site emergency procedures." },
+                { "entry_decision_warning", "CRITICAL VIOLATION: Atmosphere is hazardous! DO NOT ENTER! PPE does not make an unsafe atmosphere safe." },
+
+                // Phase 3: Step 8 - Emergency Response & Evacuation
+                { "gas_alarm_title", "GAS ALARM" },
+                { "critical_atmosphere", "CRITICAL ATMOSPHERE" },
+                { "btn_acknowledge_alarm", "ACKNOWLEDGE ALARM" },
+                { "stop_work_title", "STOP WORK" },
+                { "keep_out_warning", "DO NOT ENTER • KEEP UNAUTHORIZED PERSONNEL OUT" },
+                { "btn_acknowledge_stop_work", "ACKNOWLEDGE & KEEP OUT" },
+                { "btn_alert_supervisor", "ALERT EMERGENCY SUPERVISOR" },
+                { "emergency_response_title", "EMERGENCY RESPONSE" },
+                { "emergency_response_desc", "Alert trained emergency/rescue personnel. Do NOT attempt improvised rescue." },
+                { "supervisor_alerted_status", "EMERGENCY SUPERVISOR ALERTED ✓" },
+                { "evacuation_navigation_title", "UPWIND EVACUATION ROUTE" },
+                { "waypoint_move_away", "MOVE AWAY FROM HAZARD" },
+                { "waypoint_move_upwind", "MOVE UPWIND" },
+                { "safe_area_title", "SAFE AREA" },
+                { "waypoint_reach_safe_area", "REACH SAFE AREA" },
+                { "muster_point_title", "MUSTER POINT ALPHA (UPWIND)" },
+                { "safe_area_reached_status", "SAFE AREA REACHED ✓" },
+                { "trained_rescue_team", "TRAINED RESCUE TEAM" },
+                { "emergency_checklist_isolated", "Area isolated" },
+                { "emergency_checklist_alerted", "Emergency supervisor alerted" },
+                { "emergency_checklist_outside", "Worker remains outside" },
+                { "emergency_checklist_team", "Trained rescue team requested" },
+                { "btn_confirm_rescue", "CONFIRM TRAINED RESCUE RESPONSE" },
+
+                // Phase 3: Step 9 - Final Safety Check & Completion
+                { "final_safety_check_title", "FINAL SAFETY CHECK" },
+                { "btn_complete_training", "COMPLETE TRAINING" },
+                { "gas_chk_hazard", "Gas hazard recognized" },
+                { "gas_chk_danger_zone", "Danger zone recognized" },
+                { "gas_chk_atmosphere", "Atmosphere tested" },
+                { "gas_chk_ppe_selected", "PPE selected" },
+                { "gas_chk_ppe_verified", "PPE verified" },
+                { "gas_chk_attendant", "Outside attendant assigned" },
+                { "gas_chk_comm", "Communication verified" },
+                { "gas_chk_entry_decision", "DO NOT ENTER decision made" },
+                { "gas_chk_emergency", "Emergency response completed" },
+                { "gas_chk_safe_area", "Safe area reached" },
+                { "gas_final_rule", "FINAL RULE: DO NOT ENTER" }
             };
             _catalog[LangEnglish] = en;
 
@@ -749,7 +800,58 @@ namespace IndustrialSafetyAR.Core
                 { "comm_attendant_radio", "परिचारक रेडियो" },
                 { "status_verified", "सत्यापित" },
                 { "status_unsafe_atmosphere", "असुरक्षित वायुमंडल" },
-                { "status_do_not_enter", "प्रवेश न करें" }
+                { "status_do_not_enter", "प्रवेश न करें" },
+
+                // Phase 3: Step 7 - Safe Entry Decision
+                { "unsafe_atmosphere", "असुरक्षित वायुमंडल" },
+                { "do_not_enter", "प्रवेश न करें" },
+                { "btn_do_not_enter", "प्रवेश न करें — असुरक्षित" },
+                { "enter_confined_space", "सीमित स्थान में प्रवेश करें" },
+                { "btn_enter_space", "सीमित स्थान में प्रवेश करें" },
+                { "entry_prohibited", "प्रवेश निषेध — वायुमंडल असुरक्षित" },
+                { "entry_decision_prompt", "इन आंकड़ों के आधार पर, क्या आपको सीमित स्थान में प्रवेश करना चाहिए?" },
+                { "entry_decision_success", "प्रवेश न करें। क्षेत्र को अलग करें और आपातकालीन प्रक्रियाओं का पालन करें।" },
+                { "entry_decision_warning", "गंभीर उल्लंघन: वायुमंडल खतरनाक है! प्रवेश न करें! पीपीई असुरक्षित हवा को सुरक्षित नहीं बनाता।" },
+
+                // Phase 3: Step 8 - Emergency Response & Evacuation
+                { "gas_alarm_title", "गैस अलार्म" },
+                { "critical_atmosphere", "गंभीर वायुमंडल खतरा" },
+                { "btn_acknowledge_alarm", "अलार्म स्वीकार करें" },
+                { "stop_work_title", "कार्य बंद करें" },
+                { "keep_out_warning", "प्रवेश न करें • अनधिकृत कर्मियों को बाहर रखें" },
+                { "btn_acknowledge_stop_work", "पुष्टि करें और बाहर रहें" },
+                { "btn_alert_supervisor", "आपातकालीन पर्यवेक्षक को सूचित करें" },
+                { "emergency_response_title", "आपातकालीन प्रतिक्रिया" },
+                { "emergency_response_desc", "प्रशिक्षित बचाव कर्मियों को सतर्क करें। स्वयं बचाव का प्रयास न करें।" },
+                { "supervisor_alerted_status", "आपातकालीन पर्यवेक्षक सतर्क ✓" },
+                { "evacuation_navigation_title", "हवा के विपरीत निकासी मार्ग" },
+                { "waypoint_move_away", "खतरे से दूर हटें" },
+                { "waypoint_move_upwind", "हवा के विपरीत दिशा में बढ़ें" },
+                { "safe_area_title", "सुरक्षित क्षेत्र" },
+                { "waypoint_reach_safe_area", "सुरक्षित क्षेत्र में पहुंचें" },
+                { "muster_point_title", "जमाव बिंदु अल्फा (हवा के विपरीत)" },
+                { "safe_area_reached_status", "सुरक्षित क्षेत्र में पहुंचे ✓" },
+                { "trained_rescue_team", "प्रशिक्षित बचाव दल" },
+                { "emergency_checklist_isolated", "क्षेत्र अलग किया गया" },
+                { "emergency_checklist_alerted", "आपातकालीन पर्यवेक्षक को सूचित किया" },
+                { "emergency_checklist_outside", "श्रमिक बाहर सुरक्षित रहा" },
+                { "emergency_checklist_team", "प्रशिक्षित बचाव दल का अनुरोध किया" },
+                { "btn_confirm_rescue", "प्रशिक्षित बचाव कार्रवाई की पुष्टि करें" },
+
+                // Phase 3: Step 9 - Final Safety Check & Completion
+                { "final_safety_check_title", "अंतिम सुरक्षा जांच" },
+                { "btn_complete_training", "प्रशिक्षण पूर्ण करें" },
+                { "gas_chk_hazard", "गैस खतरा पहचाना गया" },
+                { "gas_chk_danger_zone", "खतरा क्षेत्र चिह्नित किया गया" },
+                { "gas_chk_atmosphere", "वायुमंडल का परीक्षण किया गया" },
+                { "gas_chk_ppe_selected", "पीपीई का चयन किया गया" },
+                { "gas_chk_ppe_verified", "पीपीई की जांच व पुष्टि हुई" },
+                { "gas_chk_attendant", "बाहरी परिचारक तैनात किया गया" },
+                { "gas_chk_comm", "रेडियो संचार सत्यापित हुआ" },
+                { "gas_chk_entry_decision", "प्रवेश न करने का सुरक्षित निर्णय लिया" },
+                { "gas_chk_emergency", "आपातकालीन प्रतिक्रिया पूरी हुई" },
+                { "gas_chk_safe_area", "सुरक्षित क्षेत्र तक पहुंचे" },
+                { "gas_final_rule", "अंतिम नियम: प्रवेश न करें" }
             };
             _catalog[LangHindi] = hi;
 
@@ -1036,7 +1138,58 @@ namespace IndustrialSafetyAR.Core
                 { "comm_attendant_radio", "ᱮᱴᱮᱱᱰᱮᱱᱴ ᱨᱮᱰᱤᱭᱳ" },
                 { "status_verified", "ᱯᱩᱥᱴᱟᱹᱣ" },
                 { "status_unsafe_atmosphere", "ᱵᱚᱛᱚᱨᱟᱱ ᱦᱚᱭ-ᱦᱤᱥᱤᱫ" },
-                { "status_do_not_enter", "ᱟᱞᱚᱢ ᱵᱚᱞᱚᱱᱟ" }
+                { "status_do_not_enter", "ᱟᱞᱚᱢ ᱵᱚᱞᱚᱱᱟ" },
+
+                // Phase 3: Step 7 - Safe Entry Decision
+                { "unsafe_atmosphere", "ᱵᱚᱛᱚᱨᱟᱱ ᱦᱚᱭ-ᱦᱤᱥᱤᱫ" },
+                { "do_not_enter", "ᱟᱞᱚᱢ ᱵᱚᱞᱚᱱᱟ" },
+                { "btn_do_not_enter", "ᱟᱞᱚᱢ ᱵᱚᱞᱚᱱᱟ — ᱵᱚᱛᱚᱨᱟᱱ" },
+                { "enter_confined_space", "ᱥᱤᱢᱤᱛ ᱴᱷᱟᱶ ᱨᱮ ᱵᱚᱞᱚᱱ ᱢᱮ" },
+                { "btn_enter_space", "ᱥᱤᱢᱤᱛ ᱴᱷᱟᱶ ᱨᱮ ᱵᱚᱞᱚᱱ ᱢᱮ" },
+                { "entry_prohibited", "ᱵᱚᱞᱚᱱ ᱢᱟᱱᱟ ᱜᱮᱭᱟ — ᱦᱚᱭ ᱵᱚᱛᱚᱨᱟᱱ" },
+                { "entry_decision_prompt", "ᱱᱚᱣᱟ ᱦᱚᱭ ᱞᱮᱠᱷᱟ ᱧᱮᱞ ᱠᱟᱛᱮ, ᱪᱮᱫ ᱟᱢ ᱥᱤᱢᱤᱛ ᱴᱷᱟᱶ ᱨᱮᱢ ᱵᱚᱞᱚᱱᱟ?" },
+                { "entry_decision_success", "ᱟᱞᱚᱢ ᱵᱚᱞᱚᱱᱟ ᱾ ᱴᱷᱟᱶ ᱵᱷᱮᱜᱟᱨ ᱢᱮ ᱟᱨ ᱟᱯᱟᱛᱠᱟᱞᱤᱱ ᱱᱤᱭᱟᱹᱢ ᱯᱟᱸᱡᱟᱭ ᱢᱮ ᱾" },
+                { "entry_decision_warning", "ᱢᱟᱨᱟᱝ ᱵᱷᱩᱞ: ᱦᱚᱭ ᱵᱚᱛᱚᱨ ᱜᱮᱭᱟ! ᱟᱞᱚᱢ ᱵᱚᱞᱚᱱᱟ! PPE ᱦᱚᱭ ᱵᱟᱭ ᱵᱮᱥᱟ ᱾" },
+
+                // Phase 3: Step 8 - Emergency Response & Evacuation
+                { "gas_alarm_title", "ᱜᱮᱥ ᱟᱞᱟᱨᱢ" },
+                { "critical_atmosphere", "ᱟᱹᱰᱤ ᱵᱚᱛᱚᱨ ᱦᱚᱭ-ᱦᱤᱥᱤᱫ" },
+                { "btn_acknowledge_alarm", "ᱟᱞᱟᱨᱢ ᱴᱷᱟᱹᱣᱠᱟᱹᱭ ᱢᱮ" },
+                { "stop_work_title", "ᱠᱟᱹᱢᱤ ᱛᱷᱟᱢᱵᱷᱟᱣ ᱢᱮ" },
+                { "keep_out_warning", "ᱟᱞᱚᱢ ᱵᱚᱞᱚᱱᱟ • ᱵᱟᱝ ᱪᱷᱟᱹᱲ ᱦᱚᱲ ᱵᱟᱦᱨᱮ ᱫᱚᱦᱚ ᱠᱚᱢ" },
+                { "btn_acknowledge_stop_work", "ᱴᱷᱟᱹᱣᱠᱟᱹᱭ ᱢᱮ ᱟᱨ ᱵᱟᱦᱨᱮ ᱛᱟᱦᱮᱸᱱ ᱢᱮ" },
+                { "btn_alert_supervisor", "ᱟᱯᱟᱛᱠᱟᱞᱤᱱ ᱥᱩᱯᱚᱨᱵᱷᱟᱭᱡᱚᱨ ᱞᱟᱹᱭᱟᱭ ᱢᱮ" },
+                { "emergency_response_title", "ᱟᱯᱟᱛᱠᱟᱞᱤᱱ ᱠᱟᱹᱢᱤ" },
+                { "emergency_response_desc", "ᱴᱨᱮᱱᱤᱝ ᱧᱟᱢ ᱵᱟᱧᱪᱟᱣ ᱫᱚᱞ ᱠᱷᱚᱵᱚᱨ ᱟᱠᱚᱢ ᱾ ᱟᱯᱱᱟᱨ ᱛᱮ ᱵᱟᱧᱪᱟᱣ ᱟᱞᱚᱢ ᱠᱩᱨᱩᱢᱩᱴᱩᱭᱟ ᱾" },
+                { "supervisor_alerted_status", "ᱥᱩᱯᱚᱨᱵᱷᱟᱭᱡᱚᱨ ᱠᱷᱚᱵᱚᱨ ᱮᱱᱟ ✓" },
+                { "evacuation_navigation_title", "ᱦᱚᱭ ᱵᱤᱨᱩᱫᱷ ᱨᱮ ᱚᱰᱚᱠ ᱦᱚᱨ" },
+                { "waypoint_move_away", "ᱵᱚᱛᱚᱨ ᱠᱷᱚᱱ ᱥᱟᱺᱜᱤᱧᱚᱜ ᱢᱮ" },
+                { "waypoint_move_upwind", "ᱦᱚᱭ ᱵᱤᱨᱩᱫᱷ ᱨᱮ ᱞᱟᱦᱟᱜ ᱢᱮ" },
+                { "safe_area_title", "ᱨᱩᱠᱷᱤᱭᱟᱹ ᱴᱷᱟᱶ" },
+                { "waypoint_reach_safe_area", "ᱨᱩᱠᱷᱤᱭᱟᱹ ᱴᱷᱟᱶ ᱥᱮᱴᱮᱨᱚᱜ ᱢᱮ" },
+                { "muster_point_title", "ᱡᱟᱣᱨᱟ ᱴᱷᱟᱶ ᱟᱞᱯᱷᱟ (ᱦᱚᱭ ᱵᱤᱨᱩᱫᱷ)" },
+                { "safe_area_reached_status", "ᱨᱩᱠᱷᱤᱭᱟᱹ ᱴᱷᱟᱶ ᱥᱮᱴᱮᱨ ᱮᱱᱟ ✓" },
+                { "trained_rescue_team", "ᱴᱨᱮᱱᱤᱝ ᱧᱟᱢ ᱵᱟᱧᱪᱟᱣ ᱫᱚᱞ" },
+                { "emergency_checklist_isolated", "ᱴᱷᱟᱶ ᱵᱷᱮᱜᱟᱨ ᱮᱱᱟ" },
+                { "emergency_checklist_alerted", "ᱥᱩᱯᱚᱨᱵᱷᱟᱭᱡᱚᱨ ᱞᱟᱹᱭ ᱟᱫᱮᱭᱟ" },
+                { "emergency_checklist_outside", "ᱠᱟᱹᱢᱤᱭᱟᱹ ᱵᱟᱦᱨᱮ ᱨᱮᱜᱮ ᱛᱟᱦᱮᱸ ᱮᱱᱟ" },
+                { "emergency_checklist_team", "ᱴᱨᱮᱱᱤᱝ ᱧᱟᱢ ᱵᱟᱧᱪᱟᱣ ᱫᱚᱞ ᱠᱷᱚᱡᱽ ᱮᱱᱟ" },
+                { "btn_confirm_rescue", "ᱵᱟᱧᱪᱟᱣ ᱠᱟᱹᱢᱤ ᱯᱩᱥᱴᱟᱹᱣ ᱢᱮ" },
+
+                // Phase 3: Step 9 - Final Safety Check & Completion
+                { "final_safety_check_title", "ᱢᱩᱪᱟᱹᱫ ᱨᱩᱠᱷᱤᱭᱟᱹ ᱯᱚᱨᱚᱠ" },
+                { "btn_complete_training", "ᱴᱨᱮᱱᱤᱝ ᱯᱩᱨᱟᱹᱣ ᱢᱮ" },
+                { "gas_chk_hazard", "ᱜᱮᱥ ᱵᱚᱛᱚᱨ ᱴᱷᱟᱹᱣᱠᱟᱹ ᱮᱱᱟ" },
+                { "gas_chk_danger_zone", "ᱵᱚᱛᱚᱨ ᱥᱤᱢᱟᱹ ᱪᱤᱱᱦᱟᱹ ᱮᱱᱟ" },
+                { "gas_chk_atmosphere", "ᱦᱚᱭ-ᱦᱤᱥᱤᱫ ᱯᱚᱨᱚᱠ ᱮᱱᱟ" },
+                { "gas_chk_ppe_selected", "PPE ᱵᱟᱪᱷᱟᱣ ᱮᱱᱟ" },
+                { "gas_chk_ppe_verified", "PPE ᱯᱩᱥᱴᱟᱹᱣ ᱮᱱᱟ" },
+                { "gas_chk_attendant", "ᱵᱟᱦᱨᱮ ᱮᱴᱮᱱᱰᱮᱱᱴ ᱵᱟᱦᱟᱞ ᱮᱱᱟ" },
+                { "gas_chk_comm", "ᱨᱮᱰᱤᱭᱳ ᱡᱚᱯᱚᱲᱟᱣ ᱯᱩᱥᱴᱟᱹᱣ ᱮᱱᱟ" },
+                { "gas_chk_entry_decision", "ᱟᱞᱚᱢ ᱵᱚᱞᱚᱱᱟ ᱜᱚᱴᱟ ᱮᱱᱟ" },
+                { "gas_chk_emergency", "ᱟᱯᱟᱛᱠᱟᱞᱤᱱ ᱠᱟᱹᱢᱤ ᱯᱩᱨᱟᱹᱣ ᱮᱱᱟ" },
+                { "gas_chk_safe_area", "ᱨᱩᱠᱷᱤᱭᱟᱹ ᱴᱷᱟᱶ ᱥᱮᱴᱮᱨ ᱮᱱᱟ" },
+                { "gas_final_rule", "ᱢᱩᱪᱟᱹᱫ ᱱᱤᱭᱟᱹᱢ: ᱟᱞᱚᱢ ᱵᱚᱞᱚᱱᱟ" }
             };
             _catalog[LangSantali] = sat;
         }

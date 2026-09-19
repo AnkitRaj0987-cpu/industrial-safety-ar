@@ -43,6 +43,19 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
         AwaitingBuddySystem,
         AttendantAssigned,
         CommunicationChecked,
+        AwaitingEntryDecision,
+        EntryDecisionMade,
+        GasAlarmSounding,
+        GasAlarmAcknowledged,
+        AwaitingStopWorkAcknowledgment,
+        StopWorkAcknowledged,
+        AwaitingSupervisorAlert,
+        EmergencyResponseStarted,
+        EvacuatingWaypoints,
+        SafeAreaReached,
+        EmergencyProcedureCompleted,
+        AwaitingFinalSafetyCheck,
+        TrainingCompleted,
         StepCompleted
     }
 
@@ -91,6 +104,17 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
         private bool _isHarnessFitPassed;
         private bool _isCylinderPressurePassed;
 
+        // Step 8: Emergency Response & Evacuation state
+        private bool _isGasAlarmAcknowledged;
+        private bool _isStopWorkAcknowledged;
+        private bool _isSupervisorAlerted;
+        private bool _isSafeAreaReached;
+        private bool _isEmergencyProcedureCompleted;
+        private int _currentWaypointIndex = 1;
+        private readonly System.Collections.Generic.List<GasEvacuationMarker> _evacuationMarkers =
+            new System.Collections.Generic.List<GasEvacuationMarker>();
+        private GasWindDirectionIndicator _windIndicator;
+
         public GasInteractionState State => _state;
         public GasWorkflowStage WorkflowStage => _workflow.CurrentStage;
         public GasTrainingWorkflow Workflow => _workflow;
@@ -104,6 +128,22 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
         public bool IsCylinderPressurePassed => _isCylinderPressurePassed;
         public bool IsAttendantAssigned => _workflow.IsAttendantAssigned;
         public bool IsCommunicationChecked => _workflow.IsCommunicationChecked;
+
+        // Step 7-9 Getters
+        public bool IsEntryDecisionMade => _workflow.IsEntryDecisionMade;
+        public string EntryDecisionResult => _workflow.EntryDecisionResult;
+        public bool IsGasAlarmAcknowledged => _isGasAlarmAcknowledged;
+        public bool IsStopWorkAcknowledged => _isStopWorkAcknowledged;
+        public bool IsSupervisorAlerted => _isSupervisorAlerted;
+        public bool IsSafeAreaReached => _isSafeAreaReached;
+        public bool IsEmergencyProcedureCompleted => _isEmergencyProcedureCompleted;
+        public int CurrentWaypointIndex => _currentWaypointIndex;
+        public System.Collections.Generic.IReadOnlyList<GasEvacuationMarker> EvacuationMarkers => _evacuationMarkers;
+        public GasWindDirectionIndicator WindIndicator => _windIndicator;
+        public TrainingAttempt LatestAttempt => _workflow.LatestAttempt;
+        public AssessmentResult LatestAssessment => _workflow.LatestAssessment;
+        public bool IsAssessmentCompleted => _workflow.IsAssessmentCompleted;
+        public bool IsAttemptFinalizedForOutbox => _workflow.IsAttemptFinalizedForOutbox;
 
         public event Action<GasInteractionState> OnStateChanged;
         public event Action<GasHazardMarker> OnHazardPlaced;
@@ -119,6 +159,15 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
         public event Action<TrainingEvent> OnPpeVerificationFailed;
         public event Action<TrainingEvent> OnAttendantAssigned;
         public event Action<TrainingEvent> OnCommunicationChecked;
+        public event Action<TrainingEvent> OnSafeEntryDecision;
+        public event Action<TrainingEvent> OnUnsafeEntryAttempt;
+        public event Action<TrainingEvent> OnGasAlarmAcknowledged;
+        public event Action<TrainingEvent> OnEmergencyResponseStarted;
+        public event Action<TrainingEvent> OnSafeAreaReached;
+        public event Action<TrainingEvent> OnEmergencyProcedureCompleted;
+        public event Action<TrainingEvent> OnGasTrainingCompleted;
+        public event Action<TrainingAttempt, AssessmentResult> OnAssessmentCompleted;
+        public event Action<TrainingAttempt> OnAttemptFinalizedForOutbox;
         public event Action<string> OnFeedbackChanged;
 
         private void Awake()
@@ -292,6 +341,16 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
 
         private void ProcessHit(RaycastHit hit)
         {
+            var waypointMarker = hit.collider.GetComponentInParent<GasEvacuationMarker>();
+            if (waypointMarker != null)
+            {
+                if (_stepNavigator.CurrentStepIndex == 8)
+                {
+                    ProcessEvacuationWaypointTap(waypointMarker.WaypointIndex);
+                    return;
+                }
+            }
+
             var attendantMarker = hit.collider.GetComponentInParent<GasAttendantMarker>();
             if (attendantMarker != null)
             {
@@ -790,6 +849,311 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
         }
 
         // =============================================================
+        // STEP 7: ENTRY DECISION (UNSAFE -> DO NOT ENTER)
+        // =============================================================
+        public void PrepareStep7EntryDecision()
+        {
+            SetState(GasInteractionState.AwaitingEntryDecision);
+            SetFeedback("ATMOSPHERE UNSAFE! Evaluate atmospheric readings and make safety entry decision.");
+        }
+
+        public bool SubmitEntryDecision(bool allowEntry)
+        {
+            return SubmitEntryDecision(allowEntry ? GasTrainingWorkflow.DecisionEnterSpace : GasTrainingWorkflow.DecisionDoNotEnter);
+        }
+
+        public bool SubmitEntryDecision(string decisionId)
+        {
+            if (_stepNavigator.CurrentStepIndex != 7) return false;
+
+            if (_workflow.SubmitEntryDecision(decisionId, _eventDispatcher, out TrainingEvent emittedEvent))
+            {
+                // Correct decision: DO NOT ENTER
+                SetState(GasInteractionState.EntryDecisionMade);
+                _stepNavigator.CompleteStep(7, "✓ Safe decision: DO NOT ENTER. Atmosphere is hazardous.");
+                PlayAudioCorrect();
+                TriggerHapticLight();
+                SetFeedback("DO NOT ENTER. Isolate the area and follow site emergency procedures.");
+                OnSafeEntryDecision?.Invoke(emittedEvent);
+                return true;
+            }
+            else
+            {
+                // Incorrect decision: ENTER CONFINED SPACE (Severe penalty, recovery allowed)
+                PlayAudioIncorrect();
+                TriggerHapticWarning();
+                SetFeedback("ENTRY PROHIBITED — ATMOSPHERE UNSAFE! Atmosphere is hazardous! DO NOT ENTER! PPE does not make an unsafe atmosphere safe.");
+                if (emittedEvent != null)
+                {
+                    OnUnsafeEntryAttempt?.Invoke(emittedEvent);
+                }
+                return false;
+            }
+        }
+
+        // =============================================================
+        // STEP 8: EMERGENCY RESPONSE & EVACUATION (ALARM -> ISOLATE -> COMMUNICATE -> UPWIND EVACUATION -> TRAINED RESCUE)
+        // =============================================================
+        public void PrepareStep8EmergencyResponse()
+        {
+            _isGasAlarmAcknowledged = false;
+            _isStopWorkAcknowledged = false;
+            _isSupervisorAlerted = false;
+            _isSafeAreaReached = false;
+            _isEmergencyProcedureCompleted = false;
+            _currentWaypointIndex = 1;
+
+            SetState(GasInteractionState.GasAlarmSounding);
+            EnsureEvacuationMarkersAndWindIndicator();
+
+            // Play emergency siren if enabled
+            PlayEmergencyAlarmWarning();
+            TriggerHapticWarning();
+            SetFeedback("CRITICAL GAS ALARM! Atmosphere is unsafe. Acknowledge alarm and initiate emergency response.");
+        }
+
+        private void EnsureEvacuationMarkersAndWindIndicator()
+        {
+            Vector3 center = _activeHazard != null ? _activeHazard.transform.position : Vector3.zero;
+            Vector3 forwardDir = _activeHazard != null && _activeHazard.transform.forward != Vector3.zero
+                ? _activeHazard.transform.forward
+                : Vector3.forward;
+            Vector3 rightDir = Vector3.Cross(Vector3.up, forwardDir).normalized;
+
+            // Spawn simulated wind indicator
+            if (_windIndicator == null)
+            {
+                var windObj = new GameObject("SimulatedWindIndicator");
+                windObj.transform.position = center + rightDir * 2.5f + Vector3.up * 0.1f;
+                _windIndicator = windObj.AddComponent<GasWindDirectionIndicator>();
+                _windIndicator.EnsureVisuals();
+                _windIndicator.SetWindDirection(rightDir, "SIMULATED WIND: UPWIND →");
+            }
+
+            // Spawn 3 evacuation waypoints
+            if (_evacuationMarkers.Count == 0)
+            {
+                // Waypoint 1: Move away from hazard (exit 3.0m danger perimeter)
+                Vector3 wp1Pos = center - forwardDir * 3.5f;
+                var wp1 = CreateEvacuationMarker(1, "gas_waypoint_away", "MOVE AWAY FROM HAZARD", wp1Pos);
+                wp1.SetActive(false);
+                _evacuationMarkers.Add(wp1);
+
+                // Waypoint 2: Move upwind
+                Vector3 wp2Pos = wp1Pos + rightDir * 2.5f;
+                var wp2 = CreateEvacuationMarker(2, "gas_waypoint_upwind", "MOVE UPWIND", wp2Pos);
+                wp2.SetActive(false);
+                _evacuationMarkers.Add(wp2);
+
+                // Waypoint 3: Reach safe area (muster point)
+                Vector3 wp3Pos = wp2Pos + rightDir * 3.0f + forwardDir * 1.0f;
+                var wp3 = CreateEvacuationMarker(3, "gas_waypoint_safe_area", "REACH SAFE AREA", wp3Pos);
+                wp3.SetActive(false);
+                _evacuationMarkers.Add(wp3);
+            }
+        }
+
+        private GasEvacuationMarker CreateEvacuationMarker(int index, string id, string title, Vector3 position)
+        {
+            var go = new GameObject($"EvacuationMarker_{index}");
+            go.transform.position = position;
+            var marker = go.AddComponent<GasEvacuationMarker>();
+            marker.Initialize(index, id, title);
+            marker.OnWaypointTapped += m => ProcessEvacuationWaypointTap(m.WaypointIndex);
+            return marker;
+        }
+
+        public bool AcknowledgeGasAlarm()
+        {
+            if (_stepNavigator.CurrentStepIndex != 8) return false;
+
+            if (_workflow.AcknowledgeGasAlarm(_eventDispatcher, out TrainingEvent emittedEvent))
+            {
+                _isGasAlarmAcknowledged = true;
+                if (FireAudioService.Instance != null)
+                {
+                    FireAudioService.Instance.StopEmergencyAlarm();
+                }
+
+                SetState(GasInteractionState.AwaitingStopWorkAcknowledgment);
+                PlayAudioCorrect();
+                TriggerHapticLight();
+                SetFeedback("Alarm acknowledged. STOP WORK immediately. Keep unauthorized personnel out.");
+                OnGasAlarmAcknowledged?.Invoke(emittedEvent);
+                return true;
+            }
+
+            PlayAudioIncorrect();
+            TriggerHapticWarning();
+            return false;
+        }
+
+        public bool AcknowledgeStopWork()
+        {
+            if (_stepNavigator.CurrentStepIndex != 8 || !_isGasAlarmAcknowledged) return false;
+
+            _isStopWorkAcknowledged = true;
+            SetState(GasInteractionState.AwaitingSupervisorAlert);
+            PlayAudioCorrect();
+            TriggerHapticLight();
+            SetFeedback("Work stopped. Alert emergency supervisor using intrinsically safe radio.");
+            return true;
+        }
+
+        public bool AlertEmergencySupervisor()
+        {
+            if (_stepNavigator.CurrentStepIndex != 8 || !_isStopWorkAcknowledged) return false;
+
+            if (_workflow.StartEmergencyResponse(_eventDispatcher, out TrainingEvent emittedEvent))
+            {
+                _isSupervisorAlerted = true;
+                SetState(GasInteractionState.EvacuatingWaypoints);
+                PlayRadioCommunicationAudio();
+                TriggerHapticLight();
+
+                // Activate first evacuation waypoint
+                _currentWaypointIndex = 1;
+                if (_evacuationMarkers.Count > 0)
+                {
+                    _evacuationMarkers[0].SetActive(true);
+                }
+
+                SetFeedback("Emergency supervisor alerted! Trained rescue requested. Evacuate UPWIND toward designated safe area.");
+                OnEmergencyResponseStarted?.Invoke(emittedEvent);
+                return true;
+            }
+
+            PlayAudioIncorrect();
+            TriggerHapticWarning();
+            return false;
+        }
+
+        public bool ProcessEvacuationWaypointTap(int waypointIndex)
+        {
+            if (_stepNavigator.CurrentStepIndex != 8) return false;
+
+            if (!_isSupervisorAlerted)
+            {
+                SetFeedback("Alert emergency supervisor before evacuating.");
+                PlayAudioIncorrect();
+                TriggerHapticWarning();
+                return false;
+            }
+
+            if (_isSafeAreaReached)
+            {
+                return true;
+            }
+
+            // Strictly enforce sequence order: 1 -> 2 -> 3
+            if (waypointIndex != _currentWaypointIndex)
+            {
+                SetFeedback($"Follow evacuation route in order! Complete Waypoint {_currentWaypointIndex} first.");
+                PlayAudioIncorrect();
+                TriggerHapticWarning();
+                return false;
+            }
+
+            // Mark current waypoint as traversed
+            if (waypointIndex >= 1 && waypointIndex <= _evacuationMarkers.Count)
+            {
+                _evacuationMarkers[waypointIndex - 1].AcknowledgeTraversed();
+            }
+
+            PlayAudioCorrect();
+            TriggerHapticLight();
+
+            if (waypointIndex < 3)
+            {
+                _currentWaypointIndex = waypointIndex + 1;
+                if (_currentWaypointIndex <= _evacuationMarkers.Count)
+                {
+                    _evacuationMarkers[_currentWaypointIndex - 1].SetActive(true);
+                }
+                SetFeedback($"✓ Waypoint {waypointIndex} completed. Proceed to Waypoint {_currentWaypointIndex}.");
+                return true;
+            }
+            else
+            {
+                // Waypoint 3 reached: Safe Area
+                if (_workflow.ReachSafeArea("safe_muster_area_upwind", _eventDispatcher, out TrainingEvent emittedEvent))
+                {
+                    _isSafeAreaReached = true;
+                    SetState(GasInteractionState.SafeAreaReached);
+                    PlayAudioCorrect();
+                    TriggerHapticLight();
+                    SetFeedback("✓ Safe muster area reached! Confirm trained rescue team response.");
+                    OnSafeAreaReached?.Invoke(emittedEvent);
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        public bool ConfirmTrainedRescueResponse()
+        {
+            if (_stepNavigator.CurrentStepIndex != 8 || !_isSafeAreaReached) return false;
+
+            if (_workflow.CompleteEmergencyProcedure("alert_emergency_supervisor", _eventDispatcher, out TrainingEvent emittedEvent))
+            {
+                _isEmergencyProcedureCompleted = true;
+                SetState(GasInteractionState.EmergencyProcedureCompleted);
+                _stepNavigator.CompleteStep(8, "✓ Emergency response completed: Area isolated, supervisor alerted, trained team dispatched.");
+                PlayAudioCorrect();
+                TriggerHapticLight();
+                SetFeedback("✓ Emergency response completed! Worker remains outside; trained rescue team dispatched.");
+                OnEmergencyProcedureCompleted?.Invoke(emittedEvent);
+                return true;
+            }
+
+            PlayAudioIncorrect();
+            TriggerHapticWarning();
+            return false;
+        }
+
+        // =============================================================
+        // STEP 9: FINAL SAFETY CHECK & EVALUATION
+        // =============================================================
+        public void PrepareStep9FinalSafetyCheck()
+        {
+            SetState(GasInteractionState.AwaitingFinalSafetyCheck);
+            SetFeedback("Review final safety check compliance before completing training.");
+        }
+
+        public bool CompleteGasTraining()
+        {
+            if (_stepNavigator.CurrentStepIndex != 9) return false;
+
+            if (_workflow.CompleteGasTraining(_eventDispatcher, out TrainingEvent emittedEvent))
+            {
+                SetState(GasInteractionState.TrainingCompleted);
+                _stepNavigator.CompleteStep(9, "✓ Confined space safety training completed.");
+                PlayAudioCorrect();
+                TriggerHapticLight();
+                SetFeedback("✓ Gas Leak & Confined Space Safety training complete!");
+
+                OnGasTrainingCompleted?.Invoke(emittedEvent);
+                OnAssessmentCompleted?.Invoke(_workflow.LatestAttempt, _workflow.LatestAssessment);
+                _stepNavigator.CompleteTraining();
+                return true;
+            }
+
+            PlayAudioIncorrect();
+            TriggerHapticWarning();
+            return false;
+        }
+
+        public bool FinalizeAttemptForOutbox(out TrainingAttempt attempt)
+        {
+            bool result = _workflow.FinalizeAttemptForOutbox(_eventDispatcher, out attempt);
+            if (result && attempt != null)
+            {
+                OnAttemptFinalizedForOutbox?.Invoke(attempt);
+            }
+            return result;
+        }
+
+        // =============================================================
         // RETAKE / RESET
         // =============================================================
         public void ResetScenario()
@@ -799,6 +1163,31 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
             _isHarnessFitPassed = false;
             _isCylinderPressurePassed = false;
 
+            _isGasAlarmAcknowledged = false;
+            _isStopWorkAcknowledged = false;
+            _isSupervisorAlerted = false;
+            _isSafeAreaReached = false;
+            _isEmergencyProcedureCompleted = false;
+            _currentWaypointIndex = 1;
+
+            foreach (var m in _evacuationMarkers)
+            {
+                if (m != null) Destroy(m.gameObject);
+            }
+            _evacuationMarkers.Clear();
+
+            if (_windIndicator != null)
+            {
+                Destroy(_windIndicator.gameObject);
+                _windIndicator = null;
+            }
+
+            if (FireAudioService.Instance != null)
+            {
+                FireAudioService.Instance.StopEmergencyAlarm();
+                FireAudioService.Instance.StopAllAudio();
+            }
+
             if (_activeAttendant != null)
             {
                 _activeAttendant.ResetMarker();
@@ -807,6 +1196,11 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
             if (_activeHazard != null)
             {
                 _activeHazard.ResetMarker();
+            }
+
+            if (_eventDispatcher is IndustrialSafetyAR.Core.Events.TrainingEventBus bus)
+            {
+                bus.Clear();
             }
 
             _workflow.ResetWorkflow();
@@ -846,6 +1240,18 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
                 else if (nextStep == 6)
                 {
                     PrepareStep6BuddySystem();
+                }
+                else if (nextStep == 7)
+                {
+                    PrepareStep7EntryDecision();
+                }
+                else if (nextStep == 8)
+                {
+                    PrepareStep8EmergencyResponse();
+                }
+                else if (nextStep == 9)
+                {
+                    PrepareStep9FinalSafetyCheck();
                 }
             }
         }

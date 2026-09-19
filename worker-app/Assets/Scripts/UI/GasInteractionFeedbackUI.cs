@@ -8,6 +8,7 @@
 // and phone-touch-friendly primary action buttons with TapGatedButton swipe rejection.
 
 using System;
+using IndustrialSafetyAR.Assessment;
 using IndustrialSafetyAR.Core;
 using IndustrialSafetyAR.Core.Audio;
 using IndustrialSafetyAR.Modules.GasConfinedSpace;
@@ -129,6 +130,53 @@ namespace IndustrialSafetyAR.UI
         private Image _btnCheckCommunicationBg;
         private TextMeshProUGUI _commStatusText;
 
+        // Step 7: Entry Decision UI
+        private GameObject _entryDecisionRootObj;
+        private TextMeshProUGUI _entryHeaderWarningText;
+        private TextMeshProUGUI _entryDecisionPromptText;
+        private Button _btnDoNotEnter;
+        private TextMeshProUGUI _btnDoNotEnterText;
+        private Image _btnDoNotEnterBg;
+        private Button _btnEnterConfinedSpace;
+        private TextMeshProUGUI _btnEnterConfinedSpaceText;
+        private Image _btnEnterConfinedSpaceBg;
+        private TextMeshProUGUI _entryDecisionFeedbackText;
+
+        // Step 8: Emergency Response UI
+        private GameObject _emergencyResponseRootObj;
+        private TextMeshProUGUI _emergencyHeaderTitleText;
+        private GameObject _gasAlarmSubPanel;
+        private Button _btnAcknowledgeAlarm;
+        private TextMeshProUGUI _btnAcknowledgeAlarmText;
+        private Image _btnAcknowledgeAlarmBg;
+        private GameObject _stopWorkSubPanel;
+        private Button _btnAcknowledgeStopWork;
+        private TextMeshProUGUI _btnAcknowledgeStopWorkText;
+        private Image _btnAcknowledgeStopWorkBg;
+        private GameObject _supervisorAlertSubPanel;
+        private Button _btnAlertSupervisor;
+        private TextMeshProUGUI _btnAlertSupervisorText;
+        private Image _btnAlertSupervisorBg;
+        private GameObject _evacuationWaypointsSubPanel;
+        private TextMeshProUGUI _evacuationProgressText;
+        private Button _btnWaypointAdvance;
+        private TextMeshProUGUI _btnWaypointAdvanceText;
+        private Image _btnWaypointAdvanceBg;
+        private GameObject _trainedRescueSubPanel;
+        private TextMeshProUGUI _rescueChecklistText;
+        private Button _btnConfirmRescue;
+        private TextMeshProUGUI _btnConfirmRescueText;
+        private Image _btnConfirmRescueBg;
+
+        // Step 9: Final Safety Check UI
+        private GameObject _finalSafetyCheckRootObj;
+        private TextMeshProUGUI _finalHeaderTitleText;
+        private TextMeshProUGUI _finalChecklistText;
+        private TextMeshProUGUI _finalAtmosphereRuleText;
+        private Button _btnCompleteTraining;
+        private TextMeshProUGUI _btnCompleteTrainingText;
+        private Image _btnCompleteTrainingBg;
+
         private readonly GuidedStepNavigator _fallbackNavigator = new GuidedStepNavigator();
         private static TMP_FontAsset s_CachedFont;
 
@@ -172,6 +220,21 @@ namespace IndustrialSafetyAR.UI
         public Button BtnAssignAttendant => _btnAssignAttendant;
         public Button BtnCheckCommunication => _btnCheckCommunication;
         public Button GetPpeButton(string itemId) => _ppeButtons.TryGetValue(itemId, out var btn) ? btn : null;
+
+        // Step 7-9 Getters for Testing & Automation
+        public GameObject EntryDecisionRootObj => _entryDecisionRootObj;
+        public GameObject EmergencyResponseRootObj => _emergencyResponseRootObj;
+        public GameObject FinalSafetyCheckRootObj => _finalSafetyCheckRootObj;
+        public Button BtnDoNotEnter => _btnDoNotEnter;
+        public Button BtnEnterConfinedSpace => _btnEnterConfinedSpace;
+        public Button BtnAcknowledgeAlarm => _btnAcknowledgeAlarm;
+        public Button BtnAcknowledgeStopWork => _btnAcknowledgeStopWork;
+        public Button BtnAlertSupervisor => _btnAlertSupervisor;
+        public Button BtnWaypointAdvance => _btnWaypointAdvance;
+        public Button BtnConfirmRescue => _btnConfirmRescue;
+        public Button BtnCompleteTraining => _btnCompleteTraining;
+        public TextMeshProUGUI EntryDecisionFeedbackText => _entryDecisionFeedbackText;
+        public TextMeshProUGUI FinalChecklistText => _finalChecklistText;
 
         public bool IsNextButtonVisible => _nextButtonObj != null && _nextButtonObj.activeSelf;
         public bool IsBackButtonVisible => _backButtonObj != null && _backButtonObj.activeSelf;
@@ -560,6 +623,15 @@ namespace IndustrialSafetyAR.UI
 
             // 6. Step 6 Buddy / Outside Attendant System
             BuildBuddySystemUI(_optionsContainer, font);
+
+            // 7. Step 7 Safe Entry Decision UI
+            BuildEntryDecisionUI(_optionsContainer, font);
+
+            // 8. Step 8 Emergency Response & Evacuation UI
+            BuildEmergencyResponseUI(_optionsContainer, font);
+
+            // 9. Step 9 Final Safety Check UI
+            BuildFinalSafetyCheckUI(_optionsContainer, font);
 
             // Primary Next Button
             _nextButtonObj = new GameObject("PrimaryNextButton");
@@ -1339,6 +1411,716 @@ namespace IndustrialSafetyAR.UI
             }
         }
 
+        private void BuildEntryDecisionUI(GameObject parent, TMP_FontAsset font)
+        {
+            _entryDecisionRootObj = new GameObject("EntryDecisionUI");
+            _entryDecisionRootObj.transform.SetParent(parent.transform, false);
+            var rect = _entryDecisionRootObj.AddComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            var bg = _entryDecisionRootObj.AddComponent<Image>();
+            bg.color = new Color(0.10f, 0.12f, 0.16f, 0.98f);
+
+            var headerObj = new GameObject("EntryHeaderWarning");
+            headerObj.transform.SetParent(_entryDecisionRootObj.transform, false);
+            var hRect = headerObj.AddComponent<RectTransform>();
+            hRect.anchorMin = new Vector2(0.02f, 0.76f);
+            hRect.anchorMax = new Vector2(0.98f, 0.98f);
+            hRect.offsetMin = Vector2.zero;
+            hRect.offsetMax = Vector2.zero;
+            _entryHeaderWarningText = headerObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _entryHeaderWarningText.font = font;
+            _entryHeaderWarningText.fontSize = 14;
+            _entryHeaderWarningText.alignment = TextAlignmentOptions.Center;
+            _entryHeaderWarningText.color = new Color(0.95f, 0.75f, 0.20f);
+
+            var promptObj = new GameObject("DecisionPrompt");
+            promptObj.transform.SetParent(_entryDecisionRootObj.transform, false);
+            var pRect = promptObj.AddComponent<RectTransform>();
+            pRect.anchorMin = new Vector2(0.02f, 0.48f);
+            pRect.anchorMax = new Vector2(0.98f, 0.75f);
+            pRect.offsetMin = Vector2.zero;
+            pRect.offsetMax = Vector2.zero;
+            _entryDecisionPromptText = promptObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _entryDecisionPromptText.font = font;
+            _entryDecisionPromptText.fontSize = 13;
+            _entryDecisionPromptText.alignment = TextAlignmentOptions.Center;
+            _entryDecisionPromptText.color = new Color(0.9f, 0.92f, 0.95f);
+
+            // Choice 1: DO NOT ENTER (SAFE)
+            var doNotEnterObj = new GameObject("BtnDoNotEnter");
+            doNotEnterObj.transform.SetParent(_entryDecisionRootObj.transform, false);
+            var dneRect = doNotEnterObj.AddComponent<RectTransform>();
+            dneRect.anchorMin = new Vector2(0.03f, 0.24f);
+            dneRect.anchorMax = new Vector2(0.48f, 0.46f);
+            dneRect.offsetMin = Vector2.zero;
+            dneRect.offsetMax = Vector2.zero;
+            _btnDoNotEnterBg = doNotEnterObj.AddComponent<Image>();
+            _btnDoNotEnterBg.color = new Color(0.75f, 0.22f, 0.17f, 0.98f);
+            _btnDoNotEnter = doNotEnterObj.AddComponent<Button>();
+            _btnDoNotEnter.targetGraphic = _btnDoNotEnterBg;
+            Action doNotEnterAction = () => {
+                if (_controller != null)
+                {
+                    _controller.SubmitEntryDecision(false);
+                    UpdateEntryDecisionVisuals();
+                }
+            };
+            _btnDoNotEnter.onClick.AddListener(() => doNotEnterAction());
+            var dneTap = doNotEnterObj.AddComponent<TapGatedButton>();
+            dneTap.Initialize(doNotEnterAction);
+            var dneLabelObj = new GameObject("Label");
+            dneLabelObj.transform.SetParent(doNotEnterObj.transform, false);
+            var dneLabelRect = dneLabelObj.AddComponent<RectTransform>();
+            dneLabelRect.anchorMin = Vector2.zero;
+            dneLabelRect.anchorMax = Vector2.one;
+            _btnDoNotEnterText = dneLabelObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _btnDoNotEnterText.font = font;
+            _btnDoNotEnterText.text = "<b>DO NOT ENTER\n<size=80%>[UNSAFE]</size></b>";
+            _btnDoNotEnterText.alignment = TextAlignmentOptions.Center;
+            _btnDoNotEnterText.fontSize = 14;
+            _btnDoNotEnterText.color = Color.white;
+
+            // Choice 2: ENTER CONFINED SPACE (UNSAFE)
+            var enterObj = new GameObject("BtnEnterConfinedSpace");
+            enterObj.transform.SetParent(_entryDecisionRootObj.transform, false);
+            var eRect = enterObj.AddComponent<RectTransform>();
+            eRect.anchorMin = new Vector2(0.52f, 0.24f);
+            eRect.anchorMax = new Vector2(0.97f, 0.46f);
+            eRect.offsetMin = Vector2.zero;
+            eRect.offsetMax = Vector2.zero;
+            _btnEnterConfinedSpaceBg = enterObj.AddComponent<Image>();
+            _btnEnterConfinedSpaceBg.color = new Color(0.35f, 0.38f, 0.42f, 0.98f);
+            _btnEnterConfinedSpace = enterObj.AddComponent<Button>();
+            _btnEnterConfinedSpace.targetGraphic = _btnEnterConfinedSpaceBg;
+            Action enterAction = () => {
+                if (_controller != null)
+                {
+                    _controller.SubmitEntryDecision(true);
+                    UpdateEntryDecisionVisuals();
+                }
+            };
+            _btnEnterConfinedSpace.onClick.AddListener(() => enterAction());
+            var eTap = enterObj.AddComponent<TapGatedButton>();
+            eTap.Initialize(enterAction);
+            var eLabelObj = new GameObject("Label");
+            eLabelObj.transform.SetParent(enterObj.transform, false);
+            var eLabelRect = eLabelObj.AddComponent<RectTransform>();
+            eLabelRect.anchorMin = Vector2.zero;
+            eLabelRect.anchorMax = Vector2.one;
+            _btnEnterConfinedSpaceText = eLabelObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _btnEnterConfinedSpaceText.font = font;
+            _btnEnterConfinedSpaceText.text = "<b>ENTER CONFINED\n<size=80%>SPACE</size></b>";
+            _btnEnterConfinedSpaceText.alignment = TextAlignmentOptions.Center;
+            _btnEnterConfinedSpaceText.fontSize = 14;
+            _btnEnterConfinedSpaceText.color = Color.white;
+
+            var fbObj = new GameObject("EntryDecisionFeedback");
+            fbObj.transform.SetParent(_entryDecisionRootObj.transform, false);
+            var fbRect = fbObj.AddComponent<RectTransform>();
+            fbRect.anchorMin = new Vector2(0.02f, 0.02f);
+            fbRect.anchorMax = new Vector2(0.98f, 0.22f);
+            fbRect.offsetMin = Vector2.zero;
+            fbRect.offsetMax = Vector2.zero;
+            _entryDecisionFeedbackText = fbObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _entryDecisionFeedbackText.font = font;
+            _entryDecisionFeedbackText.fontSize = 12;
+            _entryDecisionFeedbackText.alignment = TextAlignmentOptions.Center;
+            _entryDecisionFeedbackText.color = new Color(0.85f, 0.88f, 0.92f);
+
+            _entryDecisionRootObj.SetActive(false);
+        }
+
+        private void UpdateEntryDecisionVisuals()
+        {
+            if (_controller == null) return;
+            var loc = LocaleService.Instance;
+
+            if (_entryHeaderWarningText != null)
+            {
+                _entryHeaderWarningText.text = $"<b><color=#E74C3C>{loc.Get("entry_decision_header", "ATMOSPHERIC HAZARD DETECTED • SAFE ENTRY EVALUATION")}</color></b>";
+            }
+
+            if (_entryDecisionPromptText != null)
+            {
+                _entryDecisionPromptText.text = loc.Get("entry_decision_prompt", "O2: 19.1% (Low) | LEL: 18.0% (Risk) | H2S: 35 ppm (Lethal)\n<b>ATMOSPHERE IS UNSAFE. SELECT WORKER ACTION:</b>");
+            }
+
+            if (_btnDoNotEnterText != null)
+            {
+                _btnDoNotEnterText.text = $"<b>{loc.Get("btn_do_not_enter", "DO NOT ENTER — UNSAFE")}</b>";
+            }
+
+            if (_btnEnterConfinedSpaceText != null)
+            {
+                _btnEnterConfinedSpaceText.text = $"<b>{loc.Get("btn_enter_confined_space", "ENTER CONFINED SPACE")}</b>";
+            }
+
+            if (_controller.IsEntryDecisionMade)
+            {
+                if (string.Equals(_controller.EntryDecisionResult, "do_not_enter", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (_btnDoNotEnterBg != null) _btnDoNotEnterBg.color = new Color(0.15f, 0.60f, 0.28f, 0.98f);
+                    if (_btnEnterConfinedSpace != null) _btnEnterConfinedSpace.interactable = false;
+                    if (_btnEnterConfinedSpaceBg != null) _btnEnterConfinedSpaceBg.color = new Color(0.2f, 0.2f, 0.2f, 0.5f);
+                    if (_entryDecisionFeedbackText != null)
+                    {
+                        _entryDecisionFeedbackText.text = $"<b><color=#2ECC71>{loc.Get("entry_decision_safe_success", "CORRECT DECISION: Confined space entry prohibited under unsafe atmospheric conditions. Proceed to emergency response.")}</color></b>";
+                    }
+                }
+                else
+                {
+                    if (_btnEnterConfinedSpaceBg != null) _btnEnterConfinedSpaceBg.color = new Color(0.85f, 0.2f, 0.2f, 0.98f);
+                    if (_entryDecisionFeedbackText != null)
+                    {
+                        _entryDecisionFeedbackText.text = $"<b><color=#E74C3C>{loc.Get("entry_decision_unsafe_warning", "CRITICAL SAFETY VIOLATION: Atmosphere is lethal and flammable! Never enter an unsafe confined space. Correct your decision now.")}</color></b>";
+                    }
+                }
+            }
+            else
+            {
+                if (_btnDoNotEnterBg != null) _btnDoNotEnterBg.color = new Color(0.75f, 0.22f, 0.17f, 0.98f);
+                if (_btnEnterConfinedSpaceBg != null) _btnEnterConfinedSpaceBg.color = new Color(0.35f, 0.38f, 0.42f, 0.98f);
+                if (_btnEnterConfinedSpace != null) _btnEnterConfinedSpace.interactable = true;
+                if (_entryDecisionFeedbackText != null)
+                {
+                    _entryDecisionFeedbackText.text = loc.Get("entry_decision_hint", "Evaluate multi-gas detector readings before making entry decision.");
+                }
+            }
+        }
+
+        private void BuildEmergencyResponseUI(GameObject parent, TMP_FontAsset font)
+        {
+            _emergencyResponseRootObj = new GameObject("EmergencyResponseUI");
+            _emergencyResponseRootObj.transform.SetParent(parent.transform, false);
+            var rect = _emergencyResponseRootObj.AddComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            var bg = _emergencyResponseRootObj.AddComponent<Image>();
+            bg.color = new Color(0.10f, 0.12f, 0.16f, 0.98f);
+
+            var titleObj = new GameObject("EmergencyHeader");
+            titleObj.transform.SetParent(_emergencyResponseRootObj.transform, false);
+            var tRect = titleObj.AddComponent<RectTransform>();
+            tRect.anchorMin = new Vector2(0.02f, 0.82f);
+            tRect.anchorMax = new Vector2(0.98f, 0.98f);
+            tRect.offsetMin = Vector2.zero;
+            tRect.offsetMax = Vector2.zero;
+            _emergencyHeaderTitleText = titleObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _emergencyHeaderTitleText.font = font;
+            _emergencyHeaderTitleText.fontSize = 14;
+            _emergencyHeaderTitleText.alignment = TextAlignmentOptions.Center;
+            _emergencyHeaderTitleText.color = new Color(0.95f, 0.35f, 0.25f);
+
+            // Sub-panel 1: Gas Alarm (8A)
+            _gasAlarmSubPanel = new GameObject("SubPanel_Alarm");
+            _gasAlarmSubPanel.transform.SetParent(_emergencyResponseRootObj.transform, false);
+            var aRect = _gasAlarmSubPanel.AddComponent<RectTransform>();
+            aRect.anchorMin = new Vector2(0.02f, 0.04f);
+            aRect.anchorMax = new Vector2(0.98f, 0.80f);
+            aRect.offsetMin = Vector2.zero;
+            aRect.offsetMax = Vector2.zero;
+
+            var alarmMsgObj = new GameObject("AlarmMessage");
+            alarmMsgObj.transform.SetParent(_gasAlarmSubPanel.transform, false);
+            var amRect = alarmMsgObj.AddComponent<RectTransform>();
+            amRect.anchorMin = new Vector2(0.04f, 0.45f);
+            amRect.anchorMax = new Vector2(0.96f, 0.95f);
+            amRect.offsetMin = Vector2.zero;
+            amRect.offsetMax = Vector2.zero;
+            var alarmMsg = alarmMsgObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) alarmMsg.font = font;
+            alarmMsg.text = "<b><color=#E74C3C>GAS ALARM SOUNDING!</color></b>\n<size=85%>Audible & visual alarms activated. Multi-gas detector threshold exceeded!</size>";
+            alarmMsg.alignment = TextAlignmentOptions.Center;
+            alarmMsg.fontSize = 14;
+            alarmMsg.color = Color.white;
+
+            var ackBtnObj = new GameObject("BtnAcknowledgeAlarm");
+            ackBtnObj.transform.SetParent(_gasAlarmSubPanel.transform, false);
+            var abRect = ackBtnObj.AddComponent<RectTransform>();
+            abRect.anchorMin = new Vector2(0.10f, 0.08f);
+            abRect.anchorMax = new Vector2(0.90f, 0.40f);
+            abRect.offsetMin = Vector2.zero;
+            abRect.offsetMax = Vector2.zero;
+            _btnAcknowledgeAlarmBg = ackBtnObj.AddComponent<Image>();
+            _btnAcknowledgeAlarmBg.color = new Color(0.85f, 0.25f, 0.20f, 0.98f);
+            _btnAcknowledgeAlarm = ackBtnObj.AddComponent<Button>();
+            _btnAcknowledgeAlarm.targetGraphic = _btnAcknowledgeAlarmBg;
+            Action ackAction = () => {
+                if (_controller != null)
+                {
+                    _controller.AcknowledgeGasAlarm();
+                    UpdateEmergencyResponseVisuals();
+                }
+            };
+            _btnAcknowledgeAlarm.onClick.AddListener(() => ackAction());
+            var ackTap = ackBtnObj.AddComponent<TapGatedButton>();
+            ackTap.Initialize(ackAction);
+            var ackLabelObj = new GameObject("Label");
+            ackLabelObj.transform.SetParent(ackBtnObj.transform, false);
+            var alRect = ackLabelObj.AddComponent<RectTransform>();
+            alRect.anchorMin = Vector2.zero;
+            alRect.anchorMax = Vector2.one;
+            _btnAcknowledgeAlarmText = ackLabelObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _btnAcknowledgeAlarmText.font = font;
+            _btnAcknowledgeAlarmText.text = "<b>ACKNOWLEDGE ALARM</b>";
+            _btnAcknowledgeAlarmText.alignment = TextAlignmentOptions.Center;
+            _btnAcknowledgeAlarmText.fontSize = 16;
+            _btnAcknowledgeAlarmText.color = Color.white;
+
+            // Sub-panel 2: Stop Work (8B)
+            _stopWorkSubPanel = new GameObject("SubPanel_StopWork");
+            _stopWorkSubPanel.transform.SetParent(_emergencyResponseRootObj.transform, false);
+            var swRect = _stopWorkSubPanel.AddComponent<RectTransform>();
+            swRect.anchorMin = new Vector2(0.02f, 0.04f);
+            swRect.anchorMax = new Vector2(0.98f, 0.80f);
+            swRect.offsetMin = Vector2.zero;
+            swRect.offsetMax = Vector2.zero;
+
+            var swMsgObj = new GameObject("StopWorkMessage");
+            swMsgObj.transform.SetParent(_stopWorkSubPanel.transform, false);
+            var swmRect = swMsgObj.AddComponent<RectTransform>();
+            swmRect.anchorMin = new Vector2(0.04f, 0.45f);
+            swmRect.anchorMax = new Vector2(0.96f, 0.95f);
+            swmRect.offsetMin = Vector2.zero;
+            swmRect.offsetMax = Vector2.zero;
+            var swMsg = swMsgObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) swMsg.font = font;
+            swMsg.text = "<b><color=#E67E22>STOP WORK ORDER ISSUED</color></b>\n<size=85%>Halt all hot work & entry. Keep all personnel outside danger perimeter!</size>";
+            swMsg.alignment = TextAlignmentOptions.Center;
+            swMsg.fontSize = 14;
+            swMsg.color = Color.white;
+
+            var swBtnObj = new GameObject("BtnAcknowledgeStopWork");
+            swBtnObj.transform.SetParent(_stopWorkSubPanel.transform, false);
+            var swbRect = swBtnObj.AddComponent<RectTransform>();
+            swbRect.anchorMin = new Vector2(0.10f, 0.08f);
+            swbRect.anchorMax = new Vector2(0.90f, 0.40f);
+            swbRect.offsetMin = Vector2.zero;
+            swbRect.offsetMax = Vector2.zero;
+            _btnAcknowledgeStopWorkBg = swBtnObj.AddComponent<Image>();
+            _btnAcknowledgeStopWorkBg.color = new Color(0.85f, 0.45f, 0.15f, 0.98f);
+            _btnAcknowledgeStopWork = swBtnObj.AddComponent<Button>();
+            _btnAcknowledgeStopWork.targetGraphic = _btnAcknowledgeStopWorkBg;
+            Action swAction = () => {
+                if (_controller != null)
+                {
+                    _controller.AcknowledgeStopWork();
+                    UpdateEmergencyResponseVisuals();
+                }
+            };
+            _btnAcknowledgeStopWork.onClick.AddListener(() => swAction());
+            var swTap = swBtnObj.AddComponent<TapGatedButton>();
+            swTap.Initialize(swAction);
+            var swLabelObj = new GameObject("Label");
+            swLabelObj.transform.SetParent(swBtnObj.transform, false);
+            var swlRect = swLabelObj.AddComponent<RectTransform>();
+            swlRect.anchorMin = Vector2.zero;
+            swlRect.anchorMax = Vector2.one;
+            _btnAcknowledgeStopWorkText = swLabelObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _btnAcknowledgeStopWorkText.font = font;
+            _btnAcknowledgeStopWorkText.text = "<b>STOP WORK & KEEP OUT</b>";
+            _btnAcknowledgeStopWorkText.alignment = TextAlignmentOptions.Center;
+            _btnAcknowledgeStopWorkText.fontSize = 16;
+            _btnAcknowledgeStopWorkText.color = Color.white;
+
+            // Sub-panel 3: Supervisor Alert (8C)
+            _supervisorAlertSubPanel = new GameObject("SubPanel_SupervisorAlert");
+            _supervisorAlertSubPanel.transform.SetParent(_emergencyResponseRootObj.transform, false);
+            var saRect = _supervisorAlertSubPanel.AddComponent<RectTransform>();
+            saRect.anchorMin = new Vector2(0.02f, 0.04f);
+            saRect.anchorMax = new Vector2(0.98f, 0.80f);
+            saRect.offsetMin = Vector2.zero;
+            saRect.offsetMax = Vector2.zero;
+
+            var saMsgObj = new GameObject("SupervisorAlertMessage");
+            saMsgObj.transform.SetParent(_supervisorAlertSubPanel.transform, false);
+            var samRect = saMsgObj.AddComponent<RectTransform>();
+            samRect.anchorMin = new Vector2(0.04f, 0.45f);
+            samRect.anchorMax = new Vector2(0.96f, 0.95f);
+            samRect.offsetMin = Vector2.zero;
+            samRect.offsetMax = Vector2.zero;
+            var saMsg = saMsgObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) saMsg.font = font;
+            saMsg.text = "<b><color=#3498DB>EMERGENCY NOTIFICATION</color></b>\n<size=85%>Inform outside attendant & call safety control room / emergency services.</size>";
+            saMsg.alignment = TextAlignmentOptions.Center;
+            saMsg.fontSize = 14;
+            saMsg.color = Color.white;
+
+            var saBtnObj = new GameObject("BtnAlertSupervisor");
+            saBtnObj.transform.SetParent(_supervisorAlertSubPanel.transform, false);
+            var sabRect = saBtnObj.AddComponent<RectTransform>();
+            sabRect.anchorMin = new Vector2(0.10f, 0.08f);
+            sabRect.anchorMax = new Vector2(0.90f, 0.40f);
+            sabRect.offsetMin = Vector2.zero;
+            sabRect.offsetMax = Vector2.zero;
+            _btnAlertSupervisorBg = saBtnObj.AddComponent<Image>();
+            _btnAlertSupervisorBg.color = new Color(0.20f, 0.50f, 0.85f, 0.98f);
+            _btnAlertSupervisor = saBtnObj.AddComponent<Button>();
+            _btnAlertSupervisor.targetGraphic = _btnAlertSupervisorBg;
+            Action saAction = () => {
+                if (_controller != null)
+                {
+                    _controller.AlertEmergencySupervisor();
+                    UpdateEmergencyResponseVisuals();
+                }
+            };
+            _btnAlertSupervisor.onClick.AddListener(() => saAction());
+            var saTap = saBtnObj.AddComponent<TapGatedButton>();
+            saTap.Initialize(saAction);
+            var saLabelObj = new GameObject("Label");
+            saLabelObj.transform.SetParent(saBtnObj.transform, false);
+            var salRect = saLabelObj.AddComponent<RectTransform>();
+            salRect.anchorMin = Vector2.zero;
+            salRect.anchorMax = Vector2.one;
+            _btnAlertSupervisorText = saLabelObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _btnAlertSupervisorText.font = font;
+            _btnAlertSupervisorText.text = "<b>ALERT SUPERVISOR & ATTENDANT</b>";
+            _btnAlertSupervisorText.alignment = TextAlignmentOptions.Center;
+            _btnAlertSupervisorText.fontSize = 15;
+            _btnAlertSupervisorText.color = Color.white;
+
+            // Sub-panel 4: Upwind Evacuation Waypoints (8D)
+            _evacuationWaypointsSubPanel = new GameObject("SubPanel_EvacuationWaypoints");
+            _evacuationWaypointsSubPanel.transform.SetParent(_emergencyResponseRootObj.transform, false);
+            var ewRect = _evacuationWaypointsSubPanel.AddComponent<RectTransform>();
+            ewRect.anchorMin = new Vector2(0.02f, 0.04f);
+            ewRect.anchorMax = new Vector2(0.98f, 0.80f);
+            ewRect.offsetMin = Vector2.zero;
+            ewRect.offsetMax = Vector2.zero;
+
+            var epObj = new GameObject("EvacuationProgressText");
+            epObj.transform.SetParent(_evacuationWaypointsSubPanel.transform, false);
+            var epRect = epObj.AddComponent<RectTransform>();
+            epRect.anchorMin = new Vector2(0.04f, 0.45f);
+            epRect.anchorMax = new Vector2(0.96f, 0.95f);
+            epRect.offsetMin = Vector2.zero;
+            epRect.offsetMax = Vector2.zero;
+            _evacuationProgressText = epObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _evacuationProgressText.font = font;
+            _evacuationProgressText.text = "<b>EVACUATE UPWIND</b>\n<size=85%>Follow green waypoint markers in 3D AR or tap button below.</size>";
+            _evacuationProgressText.alignment = TextAlignmentOptions.Center;
+            _evacuationProgressText.fontSize = 13;
+            _evacuationProgressText.color = Color.white;
+
+            var wpBtnObj = new GameObject("BtnWaypointAdvance");
+            wpBtnObj.transform.SetParent(_evacuationWaypointsSubPanel.transform, false);
+            var wpbRect = wpBtnObj.AddComponent<RectTransform>();
+            wpbRect.anchorMin = new Vector2(0.10f, 0.08f);
+            wpbRect.anchorMax = new Vector2(0.90f, 0.40f);
+            wpbRect.offsetMin = Vector2.zero;
+            wpbRect.offsetMax = Vector2.zero;
+            _btnWaypointAdvanceBg = wpBtnObj.AddComponent<Image>();
+            _btnWaypointAdvanceBg.color = new Color(0.15f, 0.65f, 0.35f, 0.98f);
+            _btnWaypointAdvance = wpBtnObj.AddComponent<Button>();
+            _btnWaypointAdvance.targetGraphic = _btnWaypointAdvanceBg;
+            Action wpAction = () => {
+                if (_controller != null)
+                {
+                    _controller.ProcessEvacuationWaypointTap(_controller.CurrentWaypointIndex);
+                    UpdateEmergencyResponseVisuals();
+                }
+            };
+            _btnWaypointAdvance.onClick.AddListener(() => wpAction());
+            var wpTap = wpBtnObj.AddComponent<TapGatedButton>();
+            wpTap.Initialize(wpAction);
+            var wpLabelObj = new GameObject("Label");
+            wpLabelObj.transform.SetParent(wpBtnObj.transform, false);
+            var wplRect = wpLabelObj.AddComponent<RectTransform>();
+            wplRect.anchorMin = Vector2.zero;
+            wplRect.anchorMax = Vector2.one;
+            _btnWaypointAdvanceText = wpLabelObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _btnWaypointAdvanceText.font = font;
+            _btnWaypointAdvanceText.text = "<b>REACH WAYPOINT 1 →</b>";
+            _btnWaypointAdvanceText.alignment = TextAlignmentOptions.Center;
+            _btnWaypointAdvanceText.fontSize = 16;
+            _btnWaypointAdvanceText.color = Color.white;
+
+            // Sub-panel 5: Trained Rescue Confirmation (8E)
+            _trainedRescueSubPanel = new GameObject("SubPanel_TrainedRescue");
+            _trainedRescueSubPanel.transform.SetParent(_emergencyResponseRootObj.transform, false);
+            var trRect = _trainedRescueSubPanel.AddComponent<RectTransform>();
+            trRect.anchorMin = new Vector2(0.02f, 0.04f);
+            trRect.anchorMax = new Vector2(0.98f, 0.80f);
+            trRect.offsetMin = Vector2.zero;
+            trRect.offsetMax = Vector2.zero;
+
+            var rcObj = new GameObject("RescueChecklistText");
+            rcObj.transform.SetParent(_trainedRescueSubPanel.transform, false);
+            var rcRect = rcObj.AddComponent<RectTransform>();
+            rcRect.anchorMin = new Vector2(0.04f, 0.45f);
+            rcRect.anchorMax = new Vector2(0.96f, 0.95f);
+            rcRect.offsetMin = Vector2.zero;
+            rcRect.offsetMax = Vector2.zero;
+            _rescueChecklistText = rcObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _rescueChecklistText.font = font;
+            _rescueChecklistText.text = "<b><color=#F1C40F>STRICT RULE: NO IMPROVISED RESCUE</color></b>\n<size=85%>Never enter confined space without breathing equipment to attempt rescue. Wait for certified emergency rescue team!</size>";
+            _rescueChecklistText.alignment = TextAlignmentOptions.Center;
+            _rescueChecklistText.fontSize = 13;
+            _rescueChecklistText.color = Color.white;
+
+            var crBtnObj = new GameObject("BtnConfirmRescue");
+            crBtnObj.transform.SetParent(_trainedRescueSubPanel.transform, false);
+            var crbRect = crBtnObj.AddComponent<RectTransform>();
+            crbRect.anchorMin = new Vector2(0.10f, 0.08f);
+            crbRect.anchorMax = new Vector2(0.90f, 0.40f);
+            crbRect.offsetMin = Vector2.zero;
+            crbRect.offsetMax = Vector2.zero;
+            _btnConfirmRescueBg = crBtnObj.AddComponent<Image>();
+            _btnConfirmRescueBg.color = new Color(0.15f, 0.60f, 0.28f, 0.98f);
+            _btnConfirmRescue = crBtnObj.AddComponent<Button>();
+            _btnConfirmRescue.targetGraphic = _btnConfirmRescueBg;
+            Action crAction = () => {
+                if (_controller != null)
+                {
+                    _controller.ConfirmTrainedRescueResponse();
+                    UpdateEmergencyResponseVisuals();
+                }
+            };
+            _btnConfirmRescue.onClick.AddListener(() => crAction());
+            var crTap = crBtnObj.AddComponent<TapGatedButton>();
+            crTap.Initialize(crAction);
+            var crLabelObj = new GameObject("Label");
+            crLabelObj.transform.SetParent(crBtnObj.transform, false);
+            var crlRect = crLabelObj.AddComponent<RectTransform>();
+            crlRect.anchorMin = Vector2.zero;
+            crlRect.anchorMax = Vector2.one;
+            _btnConfirmRescueText = crLabelObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _btnConfirmRescueText.font = font;
+            _btnConfirmRescueText.text = "<b>CONFIRM TRAINED RESCUE PROTOCOL</b>";
+            _btnConfirmRescueText.alignment = TextAlignmentOptions.Center;
+            _btnConfirmRescueText.fontSize = 15;
+            _btnConfirmRescueText.color = Color.white;
+
+            _emergencyResponseRootObj.SetActive(false);
+        }
+
+        private void UpdateEmergencyResponseVisuals()
+        {
+            if (_controller == null) return;
+            var loc = LocaleService.Instance;
+
+            if (_emergencyHeaderTitleText != null)
+            {
+                _emergencyHeaderTitleText.text = $"<b><color=#E74C3C>{loc.Get("emergency_title", "STEP 8: EMERGENCY RESPONSE & EVACUATION")}</color></b>";
+            }
+
+            bool alarmAck = _controller.IsGasAlarmAcknowledged;
+            bool stopWork = _controller.IsStopWorkAcknowledged;
+            bool alertSuper = _controller.IsSupervisorAlerted;
+            bool safeArea = _controller.IsSafeAreaReached;
+            bool emergencyDone = _controller.IsEmergencyProcedureCompleted;
+
+            if (_gasAlarmSubPanel != null) _gasAlarmSubPanel.SetActive(!alarmAck);
+            if (_stopWorkSubPanel != null) _stopWorkSubPanel.SetActive(alarmAck && !stopWork);
+            if (_supervisorAlertSubPanel != null) _supervisorAlertSubPanel.SetActive(stopWork && !alertSuper);
+            if (_evacuationWaypointsSubPanel != null) _evacuationWaypointsSubPanel.SetActive(alertSuper && !safeArea);
+            if (_trainedRescueSubPanel != null) _trainedRescueSubPanel.SetActive(safeArea);
+
+            if (_evacuationWaypointsSubPanel != null && _evacuationWaypointsSubPanel.activeSelf)
+            {
+                int currentWp = _controller.CurrentWaypointIndex;
+                if (_evacuationProgressText != null)
+                {
+                    _evacuationProgressText.text = $"<b>{loc.Get("evac_title", "EVACUATE UPWIND ALONG DESIGNATED ROUTE")}</b>\n<size=85%>{loc.Get("evac_wp_prompt", "Waypoint")} {Mathf.Clamp(currentWp, 1, 3)} / 3 • {loc.Get("evac_wind_dir", "Wind: UPWIND (Follow Green Arrow)")}</size>";
+                }
+                if (_btnWaypointAdvanceText != null)
+                {
+                    string wpName = currentWp == 1 ? loc.Get("evac_wp1", "Exit Danger Perimeter") :
+                                    currentWp == 2 ? loc.Get("evac_wp2", "Upwind Cross-Path") :
+                                    loc.Get("evac_wp3", "Safe Assembly Area");
+                    _btnWaypointAdvanceText.text = $"<b>{loc.Get("evac_btn_advance", "REACH")} {wpName} →</b>";
+                }
+            }
+
+            if (_trainedRescueSubPanel != null && _trainedRescueSubPanel.activeSelf)
+            {
+                if (_rescueChecklistText != null)
+                {
+                    _rescueChecklistText.text = emergencyDone ?
+                        $"<b><color=#2ECC71>{loc.Get("rescue_confirmed", "TRAINED RESCUE PROTOCOL CONFIRMED ✓\nAll personnel accounted for at safe assembly point.")}</color></b>" :
+                        $"<b><color=#F1C40F>{loc.Get("rescue_rule_title", "CRITICAL RULE: NO IMPROVISED RESCUE")}</color></b>\n<size=85%>{loc.Get("rescue_rule_desc", "Never re-enter without certified rescue team & breathing apparatus.")}</size>";
+                }
+                if (_btnConfirmRescue != null)
+                {
+                    _btnConfirmRescue.interactable = !emergencyDone;
+                    if (_btnConfirmRescueBg != null) _btnConfirmRescueBg.color = emergencyDone ? new Color(0.15f, 0.45f, 0.22f) : new Color(0.15f, 0.60f, 0.28f);
+                    if (_btnConfirmRescueText != null) _btnConfirmRescueText.text = emergencyDone ? "COMPLETED ✓" : loc.Get("rescue_btn_confirm", "CONFIRM TRAINED RESCUE PROTOCOL");
+                }
+            }
+        }
+
+        private void BuildFinalSafetyCheckUI(GameObject parent, TMP_FontAsset font)
+        {
+            _finalSafetyCheckRootObj = new GameObject("FinalSafetyCheckUI");
+            _finalSafetyCheckRootObj.transform.SetParent(parent.transform, false);
+            var rect = _finalSafetyCheckRootObj.AddComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            var bg = _finalSafetyCheckRootObj.AddComponent<Image>();
+            bg.color = new Color(0.10f, 0.12f, 0.16f, 0.98f);
+
+            var titleObj = new GameObject("FinalHeaderTitle");
+            titleObj.transform.SetParent(_finalSafetyCheckRootObj.transform, false);
+            var tRect = titleObj.AddComponent<RectTransform>();
+            tRect.anchorMin = new Vector2(0.02f, 0.85f);
+            tRect.anchorMax = new Vector2(0.98f, 0.98f);
+            tRect.offsetMin = Vector2.zero;
+            tRect.offsetMax = Vector2.zero;
+            _finalHeaderTitleText = titleObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _finalHeaderTitleText.font = font;
+            _finalHeaderTitleText.fontSize = 15;
+            _finalHeaderTitleText.alignment = TextAlignmentOptions.Center;
+            _finalHeaderTitleText.color = new Color(0.20f, 0.80f, 0.50f);
+
+            var clObj = new GameObject("FinalChecklistText");
+            clObj.transform.SetParent(_finalSafetyCheckRootObj.transform, false);
+            var clRect = clObj.AddComponent<RectTransform>();
+            clRect.anchorMin = new Vector2(0.04f, 0.36f);
+            clRect.anchorMax = new Vector2(0.96f, 0.84f);
+            clRect.offsetMin = Vector2.zero;
+            clRect.offsetMax = Vector2.zero;
+            _finalChecklistText = clObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _finalChecklistText.font = font;
+            _finalChecklistText.fontSize = 11;
+            _finalChecklistText.alignment = TextAlignmentOptions.TopLeft;
+            _finalChecklistText.color = new Color(0.92f, 0.94f, 0.97f);
+            var sbInit = new System.Text.StringBuilder();
+            sbInit.AppendLine("✓ 1. Gas Hazard Identified (Methane & Toxic Plume)");
+            sbInit.AppendLine("✓ 2. 3m Safety Danger Perimeter Established");
+            sbInit.AppendLine("✓ 3. Handheld Atmospheric Testing Completed (O2 -> LEL -> H2S)");
+            sbInit.AppendLine("✓ 4. Mandatory PPE Selected (SCBA, Chem Suit, Harness, Monitor, Radio)");
+            sbInit.AppendLine("✓ 5. PPE Verification Verified (Face Seal, Harness, Cylinder 300 Bar)");
+            sbInit.AppendLine("✓ 6. Outside Attendant Stationed & Radio Link Operational");
+            sbInit.AppendLine("✓ 7. Entry Decision Evaluated: DO NOT ENTER (Atmosphere UNSAFE)");
+            sbInit.AppendLine("✓ 8. Gas Alarm Acknowledged & Stop-Work Order Enforced");
+            sbInit.AppendLine("✓ 9. Attendant & Supervisor Alerted via Emergency Radio");
+            sbInit.AppendLine("✓ 10. Upwind Evacuation Completed (Waypoints 1-3) & Rescue Confirmed");
+            _finalChecklistText.text = sbInit.ToString();
+
+            var ruleObj = new GameObject("FinalAtmosphereRule");
+            ruleObj.transform.SetParent(_finalSafetyCheckRootObj.transform, false);
+            var rRect = ruleObj.AddComponent<RectTransform>();
+            rRect.anchorMin = new Vector2(0.04f, 0.22f);
+            rRect.anchorMax = new Vector2(0.96f, 0.35f);
+            rRect.offsetMin = Vector2.zero;
+            rRect.offsetMax = Vector2.zero;
+            _finalAtmosphereRuleText = ruleObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _finalAtmosphereRuleText.font = font;
+            _finalAtmosphereRuleText.fontSize = 12;
+            _finalAtmosphereRuleText.alignment = TextAlignmentOptions.Center;
+            _finalAtmosphereRuleText.color = new Color(0.95f, 0.75f, 0.20f);
+            _finalAtmosphereRuleText.text = "<b><color=#E74C3C>FINAL ATMOSPHERE STATUS: UNSAFE (LEL 18.0%, H2S 35 ppm)\nCONFINED SPACE ENTRY PROHIBITED • 10/10 PROTOCOLS VERIFIED</color></b>";
+
+            var completeBtnObj = new GameObject("BtnCompleteTraining");
+            completeBtnObj.transform.SetParent(_finalSafetyCheckRootObj.transform, false);
+            var cbRect = completeBtnObj.AddComponent<RectTransform>();
+            cbRect.anchorMin = new Vector2(0.08f, 0.03f);
+            cbRect.anchorMax = new Vector2(0.92f, 0.20f);
+            cbRect.offsetMin = Vector2.zero;
+            cbRect.offsetMax = Vector2.zero;
+            _btnCompleteTrainingBg = completeBtnObj.AddComponent<Image>();
+            _btnCompleteTrainingBg.color = new Color(0.12f, 0.58f, 0.28f, 0.98f);
+            _btnCompleteTraining = completeBtnObj.AddComponent<Button>();
+            _btnCompleteTraining.targetGraphic = _btnCompleteTrainingBg;
+            Action compAction = () => {
+                if (_controller != null)
+                {
+                    _controller.CompleteGasTraining();
+                    ShowGasAssessmentSummary();
+                }
+            };
+            _btnCompleteTraining.onClick.AddListener(() => compAction());
+            var compTap = completeBtnObj.AddComponent<TapGatedButton>();
+            compTap.Initialize(compAction);
+            var cbLabelObj = new GameObject("Label");
+            cbLabelObj.transform.SetParent(completeBtnObj.transform, false);
+            var cblRect = cbLabelObj.AddComponent<RectTransform>();
+            cblRect.anchorMin = Vector2.zero;
+            cblRect.anchorMax = Vector2.one;
+            _btnCompleteTrainingText = cbLabelObj.AddComponent<TextMeshProUGUI>();
+            if (font != null) _btnCompleteTrainingText.font = font;
+            _btnCompleteTrainingText.text = "<b>COMPLETE TRAINING & VIEW ASSESSMENT →</b>";
+            _btnCompleteTrainingText.alignment = TextAlignmentOptions.Center;
+            _btnCompleteTrainingText.fontSize = 15;
+            _btnCompleteTrainingText.color = Color.white;
+
+            _finalSafetyCheckRootObj.SetActive(false);
+        }
+
+        private void UpdateFinalSafetyCheckVisuals()
+        {
+            var loc = LocaleService.Instance;
+
+            if (_finalHeaderTitleText != null)
+            {
+                _finalHeaderTitleText.text = $"<b>{loc.Get("final_check_title", "CONFINED SPACE SAFETY AUDIT & COMPLIANCE SUMMARY")}</b>";
+            }
+
+            if (_finalChecklistText != null)
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("✓ 1. Gas Hazard Identified (Methane & Toxic Plume)");
+                sb.AppendLine("✓ 2. 3m Safety Danger Perimeter Established");
+                sb.AppendLine("✓ 3. Handheld Atmospheric Testing Completed (O2 -> LEL -> H2S)");
+                sb.AppendLine("✓ 4. Mandatory PPE Selected (SCBA, Chem Suit, Harness, Monitor, Radio)");
+                sb.AppendLine("✓ 5. PPE Verification Verified (Face Seal, Harness, Cylinder 300 Bar)");
+                sb.AppendLine("✓ 6. Outside Attendant Stationed & Radio Link Operational");
+                sb.AppendLine("✓ 7. Entry Decision Evaluated: DO NOT ENTER (Atmosphere UNSAFE)");
+                sb.AppendLine("✓ 8. Gas Alarm Acknowledged & Stop-Work Order Enforced");
+                sb.AppendLine("✓ 9. Attendant & Supervisor Alerted via Emergency Radio");
+                sb.AppendLine("✓ 10. Upwind Evacuation Completed (Waypoints 1-3) & Rescue Confirmed");
+                _finalChecklistText.text = sb.ToString();
+            }
+
+            if (_finalAtmosphereRuleText != null)
+            {
+                _finalAtmosphereRuleText.text = $"<b><color=#E74C3C>{loc.Get("final_rule_unsafe", "FINAL ATMOSPHERE STATUS: UNSAFE (LEL 18.0%, H2S 35 ppm)\nCONFINED SPACE ENTRY PROHIBITED • 10/10 PROTOCOLS VERIFIED")}</color></b>";
+            }
+
+            if (_btnCompleteTrainingText != null)
+            {
+                bool isDone = _controller != null && _controller.IsAssessmentCompleted;
+                _btnCompleteTrainingText.text = isDone ?
+                    $"<b>{loc.Get("btn_view_summary", "VIEW ASSESSMENT SUMMARY →")}</b>" :
+                    $"<b>{loc.Get("btn_complete_training", "COMPLETE TRAINING & VIEW SUMMARY →")}</b>";
+            }
+        }
+
+        public void ShowGasAssessmentSummary()
+        {
+            var summaryUI = FindAnyObjectByType<GasAssessmentSummaryUI>(FindObjectsInactive.Include);
+            if (summaryUI == null)
+            {
+                var canvas = GetOrCreateCanvas();
+                var summaryObj = new GameObject("GasAssessmentSummaryUI");
+                summaryObj.transform.SetParent(canvas.transform, false);
+                summaryUI = summaryObj.AddComponent<GasAssessmentSummaryUI>();
+            }
+
+            if (_controller != null)
+            {
+                summaryUI.Controller = _controller;
+                if (_controller.LatestAttempt != null && _controller.LatestAssessment != null)
+                {
+                    summaryUI.ShowSummary(AssessmentSummaryViewModel.Build(_controller.LatestAttempt, _controller.LatestAssessment));
+                }
+                else
+                {
+                    summaryUI.HandleCompleteTrainingRequested();
+                }
+            }
+        }
+
         private void OnEnable()
         {
             SubscribeEvents();
@@ -1497,6 +2279,30 @@ namespace IndustrialSafetyAR.UI
                     UpdateBuddySystemVisuals();
                 }
             }
+            if (_entryDecisionRootObj != null)
+            {
+                _entryDecisionRootObj.SetActive(step == 7);
+                if (step == 7)
+                {
+                    UpdateEntryDecisionVisuals();
+                }
+            }
+            if (_emergencyResponseRootObj != null)
+            {
+                _emergencyResponseRootObj.SetActive(step == 8);
+                if (step == 8)
+                {
+                    UpdateEmergencyResponseVisuals();
+                }
+            }
+            if (_finalSafetyCheckRootObj != null)
+            {
+                _finalSafetyCheckRootObj.SetActive(step == 9);
+                if (step == 9)
+                {
+                    UpdateFinalSafetyCheckVisuals();
+                }
+            }
 
             // Primary Next button visibility
             if (_nextButtonObj != null)
@@ -1522,6 +2328,13 @@ namespace IndustrialSafetyAR.UI
 
         private void OnNextButtonClicked()
         {
+            var nav = Navigator;
+            if (nav.CurrentStepIndex == 9 && _controller != null && _controller.IsAssessmentCompleted)
+            {
+                ShowGasAssessmentSummary();
+                return;
+            }
+
             if (_controller != null)
             {
                 _controller.AdvanceToNextStep();
