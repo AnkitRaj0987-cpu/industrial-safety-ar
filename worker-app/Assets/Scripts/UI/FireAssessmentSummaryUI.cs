@@ -401,7 +401,7 @@ namespace IndustrialSafetyAR.UI
             _scoreBadgeText = scoreTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _scoreBadgeText.font = defaultFont;
             _scoreBadgeText.alignment = TextAlignmentOptions.Center;
-            _scoreBadgeText.fontSize = 28;
+            _scoreBadgeText.fontSize = 34;
             _scoreBadgeText.color = Color.white;
 
             // Metadata Row

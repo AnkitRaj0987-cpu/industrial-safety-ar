@@ -400,7 +400,7 @@ namespace IndustrialSafetyAR.UI
             _scoreBadgeText = scoreTextObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _scoreBadgeText.font = font;
             _scoreBadgeText.alignment = TextAlignmentOptions.Center;
-            _scoreBadgeText.fontSize = 24;
+            _scoreBadgeText.fontSize = 34;
             _scoreBadgeText.color = Color.white;
 
             // Meta info (duration, worker ID)

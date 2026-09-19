@@ -142,10 +142,12 @@ namespace IndustrialSafetyAR.UI
         private TextMeshProUGUI _settingsTitleText;
         private TextMeshProUGUI _soundToggleLabel;
         private Button _soundToggleButton;
+        private Image _soundToggleBg;
         private TextMeshProUGUI _soundToggleButtonText;
 
         private TextMeshProUGUI _alarmToggleLabel;
         private Button _alarmToggleButton;
+        private Image _alarmToggleBg;
         private TextMeshProUGUI _alarmToggleButtonText;
 
         private TextMeshProUGUI _volumeLabel;
@@ -154,8 +156,11 @@ namespace IndustrialSafetyAR.UI
 
         private TextMeshProUGUI _languageHeader;
         private Button _btnLangEnglish;
+        private Image _btnLangEnglishBg;
         private Button _btnLangHindi;
+        private Image _btnLangHindiBg;
         private Button _btnLangSantali;
+        private Image _btnLangSantaliBg;
         private TextMeshProUGUI _btnLangEnglishText;
         private TextMeshProUGUI _btnLangHindiText;
         private TextMeshProUGUI _btnLangSantaliText;
@@ -1085,12 +1090,16 @@ namespace IndustrialSafetyAR.UI
             {
                 bool on = audio.IsSoundEnabled;
                 _soundToggleButtonText.text = on ? $"<b>{loc.Get("state_on", "ON")}</b>" : $"<b>{loc.Get("state_off", "OFF")}</b>";
+                _soundToggleButtonText.color = on ? UITheme.TextLightOnDark : UITheme.TextPrimary;
+                if (_soundToggleBg != null) _soundToggleBg.color = on ? UITheme.PrimaryOrange : UITheme.CardSecondaryBg;
             }
 
             if (_alarmToggleButtonText != null)
             {
                 bool on = audio.IsEmergencyAlarmEnabled;
                 _alarmToggleButtonText.text = on ? $"<b>{loc.Get("state_on", "ON")}</b>" : $"<b>{loc.Get("state_off", "OFF")}</b>";
+                _alarmToggleButtonText.color = on ? UITheme.TextLightOnDark : UITheme.TextPrimary;
+                if (_alarmToggleBg != null) _alarmToggleBg.color = on ? UITheme.DangerRed : UITheme.CardSecondaryBg;
             }
 
             if (_volumeSlider != null)
@@ -1103,14 +1112,13 @@ namespace IndustrialSafetyAR.UI
                 _volumeValueText.text = $"{(audio.EffectsVolume * 100f):0}%";
             }
 
-            // Language button states
-            string curLang = loc.CurrentLanguage;
-            if (_btnLangEnglishText != null)
-                _btnLangEnglishText.color = curLang == LocaleService.LangEnglish ? new Color(0.4f, 0.9f, 1f) : Color.white;
-            if (_btnLangHindiText != null)
-                _btnLangHindiText.color = curLang == LocaleService.LangHindi ? new Color(0.4f, 0.9f, 1f) : Color.white;
-            if (_btnLangSantaliText != null)
-                _btnLangSantaliText.color = curLang == LocaleService.LangSantali ? new Color(0.4f, 0.9f, 1f) : Color.white;
+            // Language button states: Strict Contrast Enforced
+            // Inactive: Light neutral background (#F4F6F9) + Dark slate text (#0F172A), SemiBold
+            // Active: Safety orange background (#F97316) + Pure white bold text (#FFFFFF)
+            string curLang = loc != null ? loc.CurrentLanguage : LocaleService.LangEnglish;
+            UITheme.ApplyLanguageButton(_btnLangEnglish, _btnLangEnglishBg, _btnLangEnglishText, curLang == LocaleService.LangEnglish);
+            UITheme.ApplyLanguageButton(_btnLangHindi, _btnLangHindiBg, _btnLangHindiText, curLang == LocaleService.LangHindi);
+            UITheme.ApplyLanguageButton(_btnLangSantali, _btnLangSantaliBg, _btnLangSantaliText, curLang == LocaleService.LangSantali);
         }
 
         /// <summary>
@@ -1642,8 +1650,8 @@ namespace IndustrialSafetyAR.UI
             var arCardObj = new GameObject("ArLaunchCard");
             arCardObj.transform.SetParent(_arContentRoot.transform, false);
             var arCardRect = arCardObj.AddComponent<RectTransform>();
-            arCardRect.anchorMin = new Vector2(0.04f, 0.10f);
-            arCardRect.anchorMax = new Vector2(0.96f, 0.90f);
+            arCardRect.anchorMin = new Vector2(0.06f, 0.28f);
+            arCardRect.anchorMax = new Vector2(0.94f, 0.72f);
             arCardRect.offsetMin = Vector2.zero;
             arCardRect.offsetMax = Vector2.zero;
 
@@ -1670,8 +1678,8 @@ namespace IndustrialSafetyAR.UI
             var arSubObj = new GameObject("ArSubtitle");
             arSubObj.transform.SetParent(arCardObj.transform, false);
             var asRect = arSubObj.AddComponent<RectTransform>();
-            asRect.anchorMin = new Vector2(0.06f, 0.74f);
-            asRect.anchorMax = new Vector2(0.94f, 0.82f);
+            asRect.anchorMin = new Vector2(0.06f, 0.70f);
+            asRect.anchorMax = new Vector2(0.94f, 0.80f);
             asRect.offsetMin = Vector2.zero;
             asRect.offsetMax = Vector2.zero;
 
@@ -1686,8 +1694,8 @@ namespace IndustrialSafetyAR.UI
             var arDescObj = new GameObject("ArDesc");
             arDescObj.transform.SetParent(arCardObj.transform, false);
             var adRect = arDescObj.AddComponent<RectTransform>();
-            adRect.anchorMin = new Vector2(0.08f, 0.50f);
-            adRect.anchorMax = new Vector2(0.92f, 0.70f);
+            adRect.anchorMin = new Vector2(0.06f, 0.52f);
+            adRect.anchorMax = new Vector2(0.94f, 0.68f);
             adRect.offsetMin = Vector2.zero;
             adRect.offsetMax = Vector2.zero;
 
@@ -1702,8 +1710,8 @@ namespace IndustrialSafetyAR.UI
             var arStatusBoxObj = new GameObject("ArStatusBox");
             arStatusBoxObj.transform.SetParent(arCardObj.transform, false);
             var asbRect = arStatusBoxObj.AddComponent<RectTransform>();
-            asbRect.anchorMin = new Vector2(0.08f, 0.36f);
-            asbRect.anchorMax = new Vector2(0.92f, 0.46f);
+            asbRect.anchorMin = new Vector2(0.06f, 0.34f);
+            asbRect.anchorMax = new Vector2(0.94f, 0.48f);
             asbRect.offsetMin = Vector2.zero;
             asbRect.offsetMax = Vector2.zero;
 
@@ -1727,8 +1735,8 @@ namespace IndustrialSafetyAR.UI
             var arToggleBtnObj = new GameObject("ArToggleButton");
             arToggleBtnObj.transform.SetParent(arCardObj.transform, false);
             var atbRect = arToggleBtnObj.AddComponent<RectTransform>();
-            atbRect.anchorMin = new Vector2(0.08f, 0.20f);
-            atbRect.anchorMax = new Vector2(0.92f, 0.32f);
+            atbRect.anchorMin = new Vector2(0.06f, 0.14f);
+            atbRect.anchorMax = new Vector2(0.94f, 0.28f);
             atbRect.offsetMin = Vector2.zero;
             atbRect.offsetMax = Vector2.zero;
 
@@ -1755,8 +1763,8 @@ namespace IndustrialSafetyAR.UI
             var arFireBtnObj = new GameObject("ArStartFireShortcut");
             arFireBtnObj.transform.SetParent(arCardObj.transform, false);
             var afbRect = arFireBtnObj.AddComponent<RectTransform>();
-            afbRect.anchorMin = new Vector2(0.08f, 0.06f);
-            afbRect.anchorMax = new Vector2(0.92f, 0.17f);
+            afbRect.anchorMin = new Vector2(0.06f, 0.02f);
+            afbRect.anchorMax = new Vector2(0.94f, 0.12f);
             afbRect.offsetMin = Vector2.zero;
             afbRect.offsetMax = Vector2.zero;
 
@@ -1775,7 +1783,7 @@ namespace IndustrialSafetyAR.UI
             _arStartFireShortcutBtnText = afbTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _arStartFireShortcutBtnText.font = defaultFont;
             _arStartFireShortcutBtnText.text = "<b>START TRAINING →</b>";
-            _arStartFireShortcutBtnText.fontSize = 24;
+            _arStartFireShortcutBtnText.fontSize = 22;
             _arStartFireShortcutBtnText.alignment = TextAlignmentOptions.Center;
             _arStartFireShortcutBtnText.color = UITheme.SuccessText;
             arFireBtnObj.SetActive(false);
@@ -1783,7 +1791,7 @@ namespace IndustrialSafetyAR.UI
             _arContentRoot.SetActive(false);
 
             // =============================================================
-            // TAB 3: CERTIFICATES CONTENT ROOT (Safe Empty State)
+            // TAB 3: CERTIFICATES CONTENT ROOT (Safe Compact Empty State)
             // =============================================================
             _certificatesContentRoot = new GameObject("CertificatesContentRoot");
             _certificatesContentRoot.transform.SetParent(contentContainer.transform, false);
@@ -1796,8 +1804,8 @@ namespace IndustrialSafetyAR.UI
             var certCardObj = new GameObject("CertificatesCard");
             certCardObj.transform.SetParent(_certificatesContentRoot.transform, false);
             var ccardRect = certCardObj.AddComponent<RectTransform>();
-            ccardRect.anchorMin = new Vector2(0.04f, 0.15f);
-            ccardRect.anchorMax = new Vector2(0.96f, 0.85f);
+            ccardRect.anchorMin = new Vector2(0.06f, 0.30f);
+            ccardRect.anchorMax = new Vector2(0.94f, 0.70f);
             ccardRect.offsetMin = Vector2.zero;
             ccardRect.offsetMax = Vector2.zero;
 
@@ -1807,8 +1815,8 @@ namespace IndustrialSafetyAR.UI
             var certTitleObj = new GameObject("CertTitle");
             certTitleObj.transform.SetParent(certCardObj.transform, false);
             var ctitRect = certTitleObj.AddComponent<RectTransform>();
-            ctitRect.anchorMin = new Vector2(0.05f, 0.82f);
-            ctitRect.anchorMax = new Vector2(0.95f, 0.95f);
+            ctitRect.anchorMin = new Vector2(0.05f, 0.78f);
+            ctitRect.anchorMax = new Vector2(0.95f, 0.94f);
             ctitRect.offsetMin = Vector2.zero;
             ctitRect.offsetMax = Vector2.zero;
 
@@ -1822,8 +1830,8 @@ namespace IndustrialSafetyAR.UI
             var certIconObj = new GameObject("CertIcon");
             certIconObj.transform.SetParent(certCardObj.transform, false);
             var cicoRect = certIconObj.AddComponent<RectTransform>();
-            cicoRect.anchorMin = new Vector2(0.35f, 0.45f);
-            cicoRect.anchorMax = new Vector2(0.65f, 0.78f);
+            cicoRect.anchorMin = new Vector2(0.35f, 0.55f);
+            cicoRect.anchorMax = new Vector2(0.65f, 0.75f);
             cicoRect.offsetMin = Vector2.zero;
             cicoRect.offsetMax = Vector2.zero;
 
@@ -1833,40 +1841,40 @@ namespace IndustrialSafetyAR.UI
             _certIconText.fontSize = 54;
             _certIconText.alignment = TextAlignmentOptions.Center;
 
+            var certSubObj = new GameObject("CertSub");
+            certSubObj.transform.SetParent(certCardObj.transform, false);
+            var csubRect = certSubObj.AddComponent<RectTransform>();
+            csubRect.anchorMin = new Vector2(0.06f, 0.50f);
+            csubRect.anchorMax = new Vector2(0.94f, 0.72f);
+            csubRect.offsetMin = Vector2.zero;
+            csubRect.offsetMax = Vector2.zero;
+
+            _certSubText = certSubObj.AddComponent<TextMeshProUGUI>();
+            if (defaultFont != null) _certSubText.font = defaultFont;
+            _certSubText.text = "<b>No official certificates issued yet.</b>";
+            _certSubText.fontSize = 22;
+            _certSubText.alignment = TextAlignmentOptions.Center;
+            _certSubText.color = UITheme.TextPrimary;
+
             var certDescObj = new GameObject("CertDesc");
             certDescObj.transform.SetParent(certCardObj.transform, false);
             var cdescRect = certDescObj.AddComponent<RectTransform>();
-            cdescRect.anchorMin = new Vector2(0.08f, 0.25f);
-            cdescRect.anchorMax = new Vector2(0.92f, 0.44f);
+            cdescRect.anchorMin = new Vector2(0.06f, 0.16f);
+            cdescRect.anchorMax = new Vector2(0.94f, 0.46f);
             cdescRect.offsetMin = Vector2.zero;
             cdescRect.offsetMax = Vector2.zero;
 
             _certDescText = certDescObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _certDescText.font = defaultFont;
             _certDescText.text = "Training certificates will appear here after successful training and synchronization.";
-            _certDescText.fontSize = 22;
+            _certDescText.fontSize = 20;
             _certDescText.alignment = TextAlignmentOptions.Center;
             _certDescText.color = UITheme.TextSecondary;
-
-            var certSubObj = new GameObject("CertSub");
-            certSubObj.transform.SetParent(certCardObj.transform, false);
-            var csubRect = certSubObj.AddComponent<RectTransform>();
-            csubRect.anchorMin = new Vector2(0.08f, 0.10f);
-            csubRect.anchorMax = new Vector2(0.92f, 0.22f);
-            csubRect.offsetMin = Vector2.zero;
-            csubRect.offsetMax = Vector2.zero;
-
-            _certSubText = certSubObj.AddComponent<TextMeshProUGUI>();
-            if (defaultFont != null) _certSubText.font = defaultFont;
-            _certSubText.text = "No official certificates issued yet.";
-            _certSubText.fontSize = 20;
-            _certSubText.alignment = TextAlignmentOptions.Center;
-            _certSubText.color = UITheme.TextMuted;
 
             _certificatesContentRoot.SetActive(false);
 
             // =============================================================
-            // TAB 4: PROFILE CONTENT ROOT (Worker Identity & Preferences)
+            // TAB 4: PROFILE CONTENT ROOT (Compact Worker Identity)
             // =============================================================
             _profileContentRoot = new GameObject("ProfileContentRoot");
             _profileContentRoot.transform.SetParent(contentContainer.transform, false);
@@ -1879,8 +1887,8 @@ namespace IndustrialSafetyAR.UI
             var pCardObj = new GameObject("ProfileDetailsCard");
             pCardObj.transform.SetParent(_profileContentRoot.transform, false);
             var pdcRect = pCardObj.AddComponent<RectTransform>();
-            pdcRect.anchorMin = new Vector2(0.04f, 0.10f);
-            pdcRect.anchorMax = new Vector2(0.96f, 0.90f);
+            pdcRect.anchorMin = new Vector2(0.06f, 0.22f);
+            pdcRect.anchorMax = new Vector2(0.94f, 0.78f);
             pdcRect.offsetMin = Vector2.zero;
             pdcRect.offsetMax = Vector2.zero;
 
@@ -1906,8 +1914,8 @@ namespace IndustrialSafetyAR.UI
             var pvNameObj = new GameObject("NameField");
             pvNameObj.transform.SetParent(pCardObj.transform, false);
             var pvnRect = pvNameObj.AddComponent<RectTransform>();
-            pvnRect.anchorMin = new Vector2(0.08f, 0.72f);
-            pvnRect.anchorMax = new Vector2(0.92f, 0.84f);
+            pvnRect.anchorMin = new Vector2(0.08f, 0.71f);
+            pvnRect.anchorMax = new Vector2(0.92f, 0.85f);
             pvnRect.offsetMin = Vector2.zero;
             pvnRect.offsetMax = Vector2.zero;
 
@@ -1928,14 +1936,14 @@ namespace IndustrialSafetyAR.UI
             _pvNameVal = pvNameValObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _pvNameVal.font = defaultFont;
             _pvNameVal.text = $"<b>{_workerName}</b>";
-            _pvNameVal.fontSize = 24;
+            _pvNameVal.fontSize = 26;
             _pvNameVal.color = UITheme.TextPrimary;
 
             // Worker ID Field
             var pvIdObj = new GameObject("IdField");
             pvIdObj.transform.SetParent(pCardObj.transform, false);
             var pviRect = pvIdObj.AddComponent<RectTransform>();
-            pviRect.anchorMin = new Vector2(0.08f, 0.56f);
+            pviRect.anchorMin = new Vector2(0.08f, 0.54f);
             pviRect.anchorMax = new Vector2(0.92f, 0.68f);
             pviRect.offsetMin = Vector2.zero;
             pviRect.offsetMax = Vector2.zero;
@@ -1957,14 +1965,14 @@ namespace IndustrialSafetyAR.UI
             _pvIdVal = pvIdValObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _pvIdVal.font = defaultFont;
             _pvIdVal.text = $"<color=#F97316>{_workerId}</color>";
-            _pvIdVal.fontSize = 22;
+            _pvIdVal.fontSize = 24;
 
             // Division Field
             var pvDivObj = new GameObject("DivField");
             pvDivObj.transform.SetParent(pCardObj.transform, false);
             var pvdRect = pvDivObj.AddComponent<RectTransform>();
-            pvdRect.anchorMin = new Vector2(0.08f, 0.42f);
-            pvdRect.anchorMax = new Vector2(0.92f, 0.52f);
+            pvdRect.anchorMin = new Vector2(0.08f, 0.40f);
+            pvdRect.anchorMax = new Vector2(0.92f, 0.51f);
             pvdRect.offsetMin = Vector2.zero;
             pvdRect.offsetMax = Vector2.zero;
 
@@ -1978,8 +1986,8 @@ namespace IndustrialSafetyAR.UI
             var pvLangObj = new GameObject("LangField");
             pvLangObj.transform.SetParent(pCardObj.transform, false);
             var pvlRect = pvLangObj.AddComponent<RectTransform>();
-            pvlRect.anchorMin = new Vector2(0.08f, 0.26f);
-            pvlRect.anchorMax = new Vector2(0.92f, 0.38f);
+            pvlRect.anchorMin = new Vector2(0.08f, 0.24f);
+            pvlRect.anchorMax = new Vector2(0.92f, 0.37f);
             pvlRect.offsetMin = Vector2.zero;
             pvlRect.offsetMax = Vector2.zero;
 
@@ -2007,8 +2015,8 @@ namespace IndustrialSafetyAR.UI
             var pvSetBtnObj = new GameObject("ProfileSettingsBtn");
             pvSetBtnObj.transform.SetParent(pCardObj.transform, false);
             var pvsRect = pvSetBtnObj.AddComponent<RectTransform>();
-            pvsRect.anchorMin = new Vector2(0.10f, 0.06f);
-            pvsRect.anchorMax = new Vector2(0.90f, 0.18f);
+            pvsRect.anchorMin = new Vector2(0.08f, 0.05f);
+            pvsRect.anchorMax = new Vector2(0.92f, 0.18f);
             pvsRect.offsetMin = Vector2.zero;
             pvsRect.offsetMax = Vector2.zero;
 
@@ -2027,7 +2035,7 @@ namespace IndustrialSafetyAR.UI
             _pvSettingsBtnText = pvsTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _pvSettingsBtnText.font = defaultFont;
             _pvSettingsBtnText.text = "<b>APPLICATION SETTINGS</b>";
-            _pvSettingsBtnText.fontSize = 20;
+            _pvSettingsBtnText.fontSize = 22;
             _pvSettingsBtnText.alignment = TextAlignmentOptions.Center;
             _pvSettingsBtnText.color = UITheme.TextPrimary;
 
@@ -2207,8 +2215,8 @@ namespace IndustrialSafetyAR.UI
             var settingsCardObj = new GameObject("SettingsCard");
             settingsCardObj.transform.SetParent(_settingsRoot.transform, false);
             var scRect = settingsCardObj.AddComponent<RectTransform>();
-            scRect.anchorMin = new Vector2(0.04f, 0.08f);
-            scRect.anchorMax = new Vector2(0.96f, 0.92f);
+            scRect.anchorMin = new Vector2(0.05f, 0.22f);
+            scRect.anchorMax = new Vector2(0.95f, 0.78f);
             scRect.offsetMin = Vector2.zero;
             scRect.offsetMax = Vector2.zero;
 
@@ -2219,8 +2227,8 @@ namespace IndustrialSafetyAR.UI
             var stObj = new GameObject("SettingsTitle");
             stObj.transform.SetParent(settingsCardObj.transform, false);
             var stRect = stObj.AddComponent<RectTransform>();
-            stRect.anchorMin = new Vector2(0.05f, 0.90f);
-            stRect.anchorMax = new Vector2(0.84f, 0.98f);
+            stRect.anchorMin = new Vector2(0.05f, 0.88f);
+            stRect.anchorMax = new Vector2(0.84f, 0.96f);
             stRect.offsetMin = Vector2.zero;
             stRect.offsetMax = Vector2.zero;
 
@@ -2235,8 +2243,8 @@ namespace IndustrialSafetyAR.UI
             var topCloseObj = new GameObject("TopCloseButton");
             topCloseObj.transform.SetParent(settingsCardObj.transform, false);
             var tcRect = topCloseObj.AddComponent<RectTransform>();
-            tcRect.anchorMin = new Vector2(0.85f, 0.90f);
-            tcRect.anchorMax = new Vector2(0.96f, 0.98f);
+            tcRect.anchorMin = new Vector2(0.85f, 0.88f);
+            tcRect.anchorMax = new Vector2(0.95f, 0.96f);
             tcRect.offsetMin = Vector2.zero;
             tcRect.offsetMax = Vector2.zero;
 
@@ -2262,8 +2270,8 @@ namespace IndustrialSafetyAR.UI
             var seObj = new GameObject("SoundEffectsRow");
             seObj.transform.SetParent(settingsCardObj.transform, false);
             var seRect = seObj.AddComponent<RectTransform>();
-            seRect.anchorMin = new Vector2(0.06f, 0.77f);
-            seRect.anchorMax = new Vector2(0.94f, 0.87f);
+            seRect.anchorMin = new Vector2(0.06f, 0.74f);
+            seRect.anchorMax = new Vector2(0.94f, 0.84f);
             seRect.offsetMin = Vector2.zero;
             seRect.offsetMax = Vector2.zero;
 
@@ -2290,8 +2298,8 @@ namespace IndustrialSafetyAR.UI
             sebRect.offsetMin = Vector2.zero;
             sebRect.offsetMax = Vector2.zero;
 
-            var sebImg = seBtnObj.AddComponent<Image>();
-            sebImg.color = UITheme.CardSecondaryBg;
+            _soundToggleBg = seBtnObj.AddComponent<Image>();
+            _soundToggleBg.color = UITheme.CardSecondaryBg;
             _soundToggleButton = seBtnObj.AddComponent<Button>();
             var seTapGated = seBtnObj.AddComponent<TapGatedButton>();
             seTapGated.Initialize(() =>
@@ -2318,8 +2326,8 @@ namespace IndustrialSafetyAR.UI
             var eaObj = new GameObject("AlarmRow");
             eaObj.transform.SetParent(settingsCardObj.transform, false);
             var eaRect = eaObj.AddComponent<RectTransform>();
-            eaRect.anchorMin = new Vector2(0.06f, 0.64f);
-            eaRect.anchorMax = new Vector2(0.94f, 0.74f);
+            eaRect.anchorMin = new Vector2(0.06f, 0.61f);
+            eaRect.anchorMax = new Vector2(0.94f, 0.71f);
             eaRect.offsetMin = Vector2.zero;
             eaRect.offsetMax = Vector2.zero;
 
@@ -2346,8 +2354,8 @@ namespace IndustrialSafetyAR.UI
             eabRect.offsetMin = Vector2.zero;
             eabRect.offsetMax = Vector2.zero;
 
-            var eabImg = eaBtnObj.AddComponent<Image>();
-            eabImg.color = UITheme.CardSecondaryBg;
+            _alarmToggleBg = eaBtnObj.AddComponent<Image>();
+            _alarmToggleBg.color = UITheme.CardSecondaryBg;
             _alarmToggleButton = eaBtnObj.AddComponent<Button>();
             var eaTapGated = eaBtnObj.AddComponent<TapGatedButton>();
             eaTapGated.Initialize(() =>
@@ -2374,15 +2382,15 @@ namespace IndustrialSafetyAR.UI
             var volObj = new GameObject("VolumeRow");
             volObj.transform.SetParent(settingsCardObj.transform, false);
             var volRect = volObj.AddComponent<RectTransform>();
-            volRect.anchorMin = new Vector2(0.06f, 0.50f);
-            volRect.anchorMax = new Vector2(0.94f, 0.60f);
+            volRect.anchorMin = new Vector2(0.06f, 0.46f);
+            volRect.anchorMax = new Vector2(0.94f, 0.58f);
             volRect.offsetMin = Vector2.zero;
             volRect.offsetMax = Vector2.zero;
 
             var vlObj = new GameObject("Label");
             vlObj.transform.SetParent(volObj.transform, false);
             var vlRect = vlObj.AddComponent<RectTransform>();
-            vlRect.anchorMin = new Vector2(0f, 0.55f);
+            vlRect.anchorMin = new Vector2(0f, 0.52f);
             vlRect.anchorMax = new Vector2(0.60f, 1f);
             vlRect.offsetMin = Vector2.zero;
             vlRect.offsetMax = Vector2.zero;
@@ -2397,7 +2405,7 @@ namespace IndustrialSafetyAR.UI
             var vvObj = new GameObject("ValueText");
             vvObj.transform.SetParent(volObj.transform, false);
             var vvRect = vvObj.AddComponent<RectTransform>();
-            vvRect.anchorMin = new Vector2(0.62f, 0.55f);
+            vvRect.anchorMin = new Vector2(0.62f, 0.52f);
             vvRect.anchorMax = new Vector2(1f, 1f);
             vvRect.offsetMin = Vector2.zero;
             vvRect.offsetMax = Vector2.zero;
@@ -2405,7 +2413,7 @@ namespace IndustrialSafetyAR.UI
             _volumeValueText = vvObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _volumeValueText.font = defaultFont;
             _volumeValueText.text = "100%";
-            _volumeValueText.fontSize = 20;
+            _volumeValueText.fontSize = 22;
             _volumeValueText.alignment = TextAlignmentOptions.Right;
             _volumeValueText.color = UITheme.PrimaryOrange;
 
@@ -2414,7 +2422,7 @@ namespace IndustrialSafetyAR.UI
             vmBtnObj.transform.SetParent(volObj.transform, false);
             var vmbRect = vmBtnObj.AddComponent<RectTransform>();
             vmbRect.anchorMin = new Vector2(0f, 0f);
-            vmbRect.anchorMax = new Vector2(0.46f, 0.50f);
+            vmbRect.anchorMax = new Vector2(0.46f, 0.48f);
             vmbRect.offsetMin = Vector2.zero;
             vmbRect.offsetMax = Vector2.zero;
 
@@ -2445,7 +2453,7 @@ namespace IndustrialSafetyAR.UI
             vpBtnObj.transform.SetParent(volObj.transform, false);
             var vpbRect = vpBtnObj.AddComponent<RectTransform>();
             vpbRect.anchorMin = new Vector2(0.54f, 0f);
-            vpbRect.anchorMax = new Vector2(1f, 0.50f);
+            vpbRect.anchorMax = new Vector2(1f, 0.48f);
             vpbRect.offsetMin = Vector2.zero;
             vpbRect.offsetMax = Vector2.zero;
 
@@ -2475,8 +2483,8 @@ namespace IndustrialSafetyAR.UI
             var langHeaderObj = new GameObject("LanguageHeader");
             langHeaderObj.transform.SetParent(settingsCardObj.transform, false);
             var lhRect = langHeaderObj.AddComponent<RectTransform>();
-            lhRect.anchorMin = new Vector2(0.06f, 0.38f);
-            lhRect.anchorMax = new Vector2(0.94f, 0.46f);
+            lhRect.anchorMin = new Vector2(0.06f, 0.33f);
+            lhRect.anchorMax = new Vector2(0.94f, 0.42f);
             lhRect.offsetMin = Vector2.zero;
             lhRect.offsetMax = Vector2.zero;
 
@@ -2491,11 +2499,12 @@ namespace IndustrialSafetyAR.UI
             var lEnObj = new GameObject("LangBtn_English");
             lEnObj.transform.SetParent(settingsCardObj.transform, false);
             var lenRect = lEnObj.AddComponent<RectTransform>();
-            lenRect.anchorMin = new Vector2(0.06f, 0.26f);
-            lenRect.anchorMax = new Vector2(0.33f, 0.36f);
+            lenRect.anchorMin = new Vector2(0.06f, 0.19f);
+            lenRect.anchorMax = new Vector2(0.33f, 0.31f);
             lenRect.offsetMin = Vector2.zero;
             lenRect.offsetMax = Vector2.zero;
-            lEnObj.AddComponent<Image>().color = UITheme.CardSecondaryBg;
+            _btnLangEnglishBg = lEnObj.AddComponent<Image>();
+            _btnLangEnglishBg.color = UITheme.CardSecondaryBg;
             _btnLangEnglish = lEnObj.AddComponent<Button>();
             var enTap = lEnObj.AddComponent<TapGatedButton>();
             enTap.Initialize(() => LocaleService.Instance.SetLanguage(LocaleService.LangEnglish));
@@ -2516,11 +2525,12 @@ namespace IndustrialSafetyAR.UI
             var lHiObj = new GameObject("LangBtn_Hindi");
             lHiObj.transform.SetParent(settingsCardObj.transform, false);
             var lhiRect = lHiObj.AddComponent<RectTransform>();
-            lhiRect.anchorMin = new Vector2(0.36f, 0.26f);
-            lhiRect.anchorMax = new Vector2(0.63f, 0.36f);
+            lhiRect.anchorMin = new Vector2(0.36f, 0.19f);
+            lhiRect.anchorMax = new Vector2(0.63f, 0.31f);
             lhiRect.offsetMin = Vector2.zero;
             lhiRect.offsetMax = Vector2.zero;
-            lHiObj.AddComponent<Image>().color = UITheme.CardSecondaryBg;
+            _btnLangHindiBg = lHiObj.AddComponent<Image>();
+            _btnLangHindiBg.color = UITheme.CardSecondaryBg;
             _btnLangHindi = lHiObj.AddComponent<Button>();
             var hiTap = lHiObj.AddComponent<TapGatedButton>();
             hiTap.Initialize(() => LocaleService.Instance.SetLanguage(LocaleService.LangHindi));
@@ -2541,11 +2551,12 @@ namespace IndustrialSafetyAR.UI
             var lSatObj = new GameObject("LangBtn_Santali");
             lSatObj.transform.SetParent(settingsCardObj.transform, false);
             var lsatRect = lSatObj.AddComponent<RectTransform>();
-            lsatRect.anchorMin = new Vector2(0.66f, 0.26f);
-            lsatRect.anchorMax = new Vector2(0.94f, 0.36f);
+            lsatRect.anchorMin = new Vector2(0.66f, 0.19f);
+            lsatRect.anchorMax = new Vector2(0.94f, 0.31f);
             lsatRect.offsetMin = Vector2.zero;
             lsatRect.offsetMax = Vector2.zero;
-            lSatObj.AddComponent<Image>().color = UITheme.CardSecondaryBg;
+            _btnLangSantaliBg = lSatObj.AddComponent<Image>();
+            _btnLangSantaliBg.color = UITheme.CardSecondaryBg;
             _btnLangSantali = lSatObj.AddComponent<Button>();
             var satTap = lSatObj.AddComponent<TapGatedButton>();
             satTap.Initialize(() => LocaleService.Instance.SetLanguage(LocaleService.LangSantali));
@@ -2566,8 +2577,8 @@ namespace IndustrialSafetyAR.UI
             var closeBtnObj = new GameObject("CloseSettingsButton");
             closeBtnObj.transform.SetParent(settingsCardObj.transform, false);
             var cbRect = closeBtnObj.AddComponent<RectTransform>();
-            cbRect.anchorMin = new Vector2(0.15f, 0.06f);
-            cbRect.anchorMax = new Vector2(0.85f, 0.16f);
+            cbRect.anchorMin = new Vector2(0.12f, 0.05f);
+            cbRect.anchorMax = new Vector2(0.88f, 0.15f);
             cbRect.offsetMin = Vector2.zero;
             cbRect.offsetMax = Vector2.zero;
 

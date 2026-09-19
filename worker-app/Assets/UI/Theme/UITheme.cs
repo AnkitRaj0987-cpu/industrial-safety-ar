@@ -225,5 +225,27 @@ namespace IndustrialSafetyAR.UI
                 label.color = textColor;
             }
         }
+
+        /// <summary>
+        /// Formats a language selector button enforcing strict contrast:
+        /// - Active: Safety orange background (#F97316), pure white bold text (#FFFFFF)
+        /// - Inactive: Light neutral background (#F4F6F9), dark slate text (#0F172A), SemiBold
+        /// </summary>
+        public static void ApplyLanguageButton(Button button, Image background, TextMeshProUGUI label, bool isActive)
+        {
+            if (background != null)
+            {
+                background.color = isActive ? PrimaryOrange : CardSecondaryBg;
+            }
+            if (label != null)
+            {
+                var font = GetFont();
+                if (font != null) label.font = font;
+                label.fontSize = 20f;
+                label.fontStyle = isActive ? FontStyles.Bold : FontStyles.Normal;
+                label.alignment = TextAlignmentOptions.Center;
+                label.color = isActive ? TextLightOnDark : TextPrimary;
+            }
+        }
     }
 }
