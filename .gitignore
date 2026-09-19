@@ -27,8 +27,16 @@ worker-app/build/
 worker-app/Logs/
 worker-app/UserSettings/
 worker-app/.utmp/
+worker-app/Assets/_Recovery*
+worker-app/test_trigger.txt
+worker-app/refresh_trigger.txt
 
 # Unity build artifacts
 builds/
 *.apk
 *.aab
+
+# Node & Next.js
+node_modules/
+admin-dashboard/node_modules/
+admin-dashboard/.next/

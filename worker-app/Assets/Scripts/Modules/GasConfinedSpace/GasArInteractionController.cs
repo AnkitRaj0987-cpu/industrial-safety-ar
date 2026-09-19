@@ -96,7 +96,7 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
         private GasInteractionState _state = GasInteractionState.WaitingForTracking;
         private GasHazardMarker _activeHazard;
         private GasAttendantMarker _activeAttendant;
-        private ITrainingEventDispatcher _eventDispatcher;
+        private ITrainingEventDispatcher _eventDispatcher = TrainingEventBus.Instance;
 
         // Step 4: PPE Selection state
         private readonly System.Collections.Generic.HashSet<string> _selectedPpeItems =
@@ -196,6 +196,7 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
             }
 
             _stepNavigator.InitializeDefaultGasSteps();
+            _eventDispatcher ??= TrainingEventBus.Instance;
             _workflow.StartWorkflow();
         }
 
@@ -221,9 +222,15 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
             HandleInput();
         }
 
+        public ITrainingEventDispatcher EventDispatcher
+        {
+            get => _eventDispatcher ?? TrainingEventBus.Instance;
+            set => _eventDispatcher = value ?? TrainingEventBus.Instance;
+        }
+
         public void SetEventDispatcher(ITrainingEventDispatcher dispatcher)
         {
-            _eventDispatcher = dispatcher;
+            _eventDispatcher = dispatcher ?? TrainingEventBus.Instance;
         }
 
         public void SetState(GasInteractionState newState)

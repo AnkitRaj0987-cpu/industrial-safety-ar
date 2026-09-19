@@ -230,13 +230,30 @@ namespace IndustrialSafetyAR.Editor
                 BuildSummary summary = report.summary;
 
                 string status = summary.result == BuildResult.Succeeded ? "SUCCESS" : "FAILED";
-                string result = $"Status: {status}\n" +
-                                $"TotalErrors: {summary.totalErrors}\n" +
-                                $"TotalWarnings: {summary.totalWarnings}\n" +
-                                $"TotalSize: {summary.totalSize}\n" +
-                                $"OutputPath: {outputApk}\n";
-                File.WriteAllText(logPath, result);
-                Debug.Log($"[BuildWorkerApp] Finished build: {status}, TotalSize: {summary.totalSize}");
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine($"Status: {status}");
+                sb.AppendLine($"ResultEnum: {summary.result}");
+                sb.AppendLine($"ActiveTarget: {EditorUserBuildSettings.activeBuildTarget}");
+                sb.AppendLine($"TotalErrors: {summary.totalErrors}");
+                sb.AppendLine($"TotalWarnings: {summary.totalWarnings}");
+                sb.AppendLine($"TotalTimeSec: {summary.totalTime.TotalSeconds}");
+                sb.AppendLine($"TotalSize: {summary.totalSize}");
+                sb.AppendLine($"OutputPath: {outputApk}");
+                if (report.steps != null)
+                {
+                    foreach (var step in report.steps)
+                    {
+                        if (step.messages != null)
+                        {
+                            foreach (var msg in step.messages)
+                            {
+                                sb.AppendLine($"[{msg.type}] {msg.content}");
+                            }
+                        }
+                    }
+                }
+                File.WriteAllText(logPath, sb.ToString());
+                Debug.Log($"[BuildWorkerApp] Finished build: {status}, ResultEnum: {summary.result}");
 
                 if (Application.isBatchMode)
                 {

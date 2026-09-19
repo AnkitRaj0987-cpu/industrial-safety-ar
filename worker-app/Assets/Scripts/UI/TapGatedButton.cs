@@ -24,11 +24,17 @@ namespace IndustrialSafetyAR.UI
         private bool _isSwipe;
         private Action _onTap;
         private Button _button;
+        private int _lastTriggerFrame = -1;
 
         public void Initialize(Action onTap)
         {
             _button = GetComponent<Button>();
             _onTap = onTap;
+            if (_button != null)
+            {
+                _button.onClick.RemoveAllListeners();
+                _button.onClick.AddListener(TriggerTap);
+            }
         }
 
         public void OnPointerDown(PointerEventData eventData)
@@ -67,7 +73,7 @@ namespace IndustrialSafetyAR.UI
             }
 
             // Valid intentional button tap
-            _onTap?.Invoke();
+            TriggerTap();
         }
 
         /// <summary>
@@ -75,6 +81,8 @@ namespace IndustrialSafetyAR.UI
         /// </summary>
         public void TriggerTap()
         {
+            if (Time.frameCount == _lastTriggerFrame) return;
+            _lastTriggerFrame = Time.frameCount;
             _onTap?.Invoke();
         }
     }

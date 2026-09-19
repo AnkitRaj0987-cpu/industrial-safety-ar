@@ -156,6 +156,9 @@ namespace IndustrialSafetyAR.Tests
             if (!RunTest("121_Step3To4_BackNavigation_ResetsStep3TransientState", Test_121_Step3To4_BackNavigation_ResetsStep3TransientState, logMessages)) allPassed = false;
             if (!RunTest("122_Step3_CanBeCompletedAgainAfterBackReset", Test_122_Step3_CanBeCompletedAgainAfterBackReset, logMessages)) allPassed = false;
             if (!RunTest("123_UITheme_TokensAndFont_AreValid", Test_123_UITheme_TokensAndFont_AreValid, logMessages)) allPassed = false;
+            if (!RunTest("124_Gas_PerfectRun_Scores100_WithCompleteEventPipeline", Test_124_Gas_PerfectRun_Scores100_WithCompleteEventPipeline, logMessages)) allPassed = false;
+            if (!RunTest("125_Gas_PartialRun_ReflectsActualCompletedActions", Test_125_Gas_PartialRun_ReflectsActualCompletedActions, logMessages)) allPassed = false;
+            if (!RunTest("126_Gas_InvalidActions_ApplyRubricPenalties", Test_126_Gas_InvalidActions_ApplyRubricPenalties, logMessages)) allPassed = false;
 
             return allPassed;
         }
@@ -3516,6 +3519,152 @@ namespace IndustrialSafetyAR.Tests
             if (UITheme.PrimaryAction.r <= UITheme.PrimaryAction.b) throw new Exception("UITheme.PrimaryAction must be orange.");
             if (UITheme.Success.g <= UITheme.Success.r) throw new Exception("UITheme.Success must be green.");
             if (UITheme.Danger.r <= UITheme.Danger.g) throw new Exception("UITheme.Danger must be red.");
+        }
+
+        public static void Test_124_Gas_PerfectRun_Scores100_WithCompleteEventPipeline()
+        {
+            TrainingEventBus.Instance.Clear();
+            var go = new GameObject("Test_GasAr_124");
+            try
+            {
+                // Rely purely on Awake() default event dispatcher initialization
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                SetupArSteps1To8(ctrl);
+                ctrl.CompleteGasTraining();
+
+                var assessment = ctrl.LatestAssessment;
+                if (assessment == null) throw new Exception("LatestAssessment should not be null.");
+                if (assessment.ClientScore != 100.00f) throw new Exception($"Expected score 100.00, got {assessment.ClientScore}");
+                if (!assessment.Passed) throw new Exception("Assessment should be passed for perfect run.");
+                if (assessment.TotalPenalties != 0.00f) throw new Exception($"Expected 0 penalties, got {assessment.TotalPenalties}");
+
+                var vm = AssessmentSummaryViewModel.Build(ctrl.LatestAttempt, assessment);
+                if (vm == null) throw new Exception("ViewModel must not be null.");
+                if (!vm.Passed) throw new Exception("ViewModel.Passed must be true.");
+                if (vm.StepSummaries == null || vm.StepSummaries.Count != 9)
+                    throw new Exception($"Expected 9 step summaries, got {vm.StepSummaries?.Count}");
+
+                for (int i = 0; i < 9; i++)
+                {
+                    if (!vm.StepSummaries[i].IsSatisfied)
+                        throw new Exception($"Step {i + 1} ({vm.StepSummaries[i].Title}) must be satisfied in perfect run.");
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_125_Gas_PartialRun_ReflectsActualCompletedActions()
+        {
+            TrainingEventBus.Instance.Clear();
+            var go = new GameObject("Test_GasAr_125");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                SetupArSteps1To3(ctrl);
+
+                // Steps 1 to 3 completed (10 + 15 + 15 = 40 pts)
+                var rubric = RubricLoader.LoadGasConfinedSpaceRubric();
+                var result = LocalAssessmentEngine.Evaluate(new List<TrainingEvent>(TrainingEventBus.Instance.DispatchedEvents), rubric);
+
+                if (result.ClientScore != 40.00f)
+                    throw new Exception($"Expected 40.00 points for steps 1-3, got {result.ClientScore}");
+                if (result.Passed)
+                    throw new Exception("Partial run with 40 points must fail (pass threshold 70%).");
+
+                var attempt = ctrl.LatestAttempt ?? new TrainingAttempt { ModuleId = "gas-confined-space", WorkerId = WorkerSessionService.Instance.WorkerCode };
+                var vm = AssessmentSummaryViewModel.Build(attempt, result);
+                if (vm.Passed) throw new Exception("ViewModel.Passed must be false for partial run.");
+                if (vm.StepSummaries == null || vm.StepSummaries.Count != 9)
+                    throw new Exception($"Expected 9 step summaries, got {vm.StepSummaries?.Count}");
+
+                if (!vm.StepSummaries[0].IsSatisfied) throw new Exception("Step 1 must be satisfied.");
+                if (!vm.StepSummaries[1].IsSatisfied) throw new Exception("Step 2 must be satisfied.");
+                if (!vm.StepSummaries[2].IsSatisfied) throw new Exception("Step 3 must be satisfied.");
+
+                for (int i = 3; i < 8; i++)
+                {
+                    if (vm.StepSummaries[i].IsSatisfied)
+                        throw new Exception($"Step {i + 1} ({vm.StepSummaries[i].Title}) must NOT be satisfied in partial run.");
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        public static void Test_126_Gas_InvalidActions_ApplyRubricPenalties()
+        {
+            TrainingEventBus.Instance.Clear();
+            var go = new GameObject("Test_GasAr_126");
+            try
+            {
+                var ctrl = go.AddComponent<GasArInteractionController>();
+                SetupArSteps1To3(ctrl);
+
+                // Step 4: Pick distractor PPE (cloth mask = -5 pts penalty)
+                ctrl.SelectPpeItem(GasPpeSystem.ItemClothMask);
+                ctrl.TogglePpeItem(GasPpeSystem.ItemClothMask);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHelmet);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemHarness);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemGloves);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemBoots);
+                ctrl.SelectPpeItem(GasPpeSystem.ItemScba);
+                ctrl.SubmitPpeSelection();
+                ctrl.AdvanceToNextStep();
+
+                // Step 5: Verify PPE
+                ctrl.VerifyScbaSeal();
+                ctrl.VerifyHarnessFit();
+                ctrl.CheckCylinderPressure();
+                ctrl.AdvanceToNextStep();
+
+                // Step 6: Buddy system
+                ctrl.AssignAttendant();
+                ctrl.CheckCommunication();
+                ctrl.AdvanceToNextStep();
+
+                // Step 7: Attempt unsafe entry (-15 pts penalty), then recover with DO NOT ENTER
+                ctrl.SubmitEntryDecision(true);
+                ctrl.SubmitEntryDecision(false);
+                ctrl.AdvanceToNextStep();
+
+                // Step 8: Emergency evacuation
+                ctrl.AcknowledgeGasAlarm();
+                ctrl.AcknowledgeStopWork();
+                ctrl.AlertEmergencySupervisor();
+                ctrl.ProcessEvacuationWaypointTap(1);
+                ctrl.ProcessEvacuationWaypointTap(2);
+                ctrl.ProcessEvacuationWaypointTap(3);
+                ctrl.ConfirmTrainedRescueResponse();
+                ctrl.AdvanceToNextStep();
+
+                // Step 9: Finalize
+                ctrl.CompleteGasTraining();
+
+                var assessment = ctrl.LatestAssessment;
+                if (assessment == null) throw new Exception("Assessment must not be null.");
+                if (assessment.TotalPenalties != 20.00f)
+                    throw new Exception($"Expected 20.00 total penalties (5 distractor + 15 unsafe entry), got {assessment.TotalPenalties}");
+                if (assessment.ClientScore != 80.00f)
+                    throw new Exception($"Expected 80.00 net score (100 - 20), got {assessment.ClientScore}");
+                if (!assessment.Passed)
+                    throw new Exception("Score of 80.00 must pass (threshold 70%).");
+
+                var vm = AssessmentSummaryViewModel.Build(ctrl.LatestAttempt, assessment);
+                if (!vm.Passed) throw new Exception("ViewModel.Passed must be true.");
+                if (vm.StepSummaries[3].PenaltyDeducted != 5.00f)
+                    throw new Exception($"Expected step 4 to show 5.00 penalty, got {vm.StepSummaries[3].PenaltyDeducted}");
+                if (vm.StepSummaries[6].PenaltyDeducted != 15.00f)
+                    throw new Exception($"Expected step 7 to show 15.00 penalty, got {vm.StepSummaries[6].PenaltyDeducted}");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
         }
     }
 }

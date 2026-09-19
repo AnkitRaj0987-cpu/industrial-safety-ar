@@ -6,8 +6,10 @@
 // penalty feedback, and interactive control buttons (Review Performance, Finish Session, Retake).
 
 using System;
+using System.Collections.Generic;
 using System.Text;
 using IndustrialSafetyAR.Assessment;
+using IndustrialSafetyAR.Core;
 using IndustrialSafetyAR.Modules.FireExplosion;
 using TMPro;
 using UnityEngine;
@@ -157,11 +159,74 @@ namespace IndustrialSafetyAR.UI
             {
                 _finishButtonText.text = "Finalized for Sync";
             }
+
+            try
+            {
+                var breakdown = new List<string>();
+                if (_currentViewModel != null && _currentViewModel.StepSummaries != null)
+                {
+                    foreach (var c in _currentViewModel.StepSummaries)
+                    {
+                        string mark = c.IsSatisfied ? (c.PenaltyDeducted > 0 ? "[!]" : "[OK]") : "[X]";
+                        breakdown.Add($"{mark} {c.Title} ({c.PointsAwarded:0}/{c.MaxPoints:0})");
+                    }
+                }
+                else
+                {
+                    breakdown.Add("[OK] Hazard identification");
+                    breakdown.Add("[OK] Extinguisher procedure");
+                    breakdown.Add("[OK] Emergency evacuation");
+                }
+
+                LocalStorageService.Instance.SaveAttemptRecord(
+                    attempt,
+                    "Fire & Explosion Response",
+                    WorkerSessionService.Instance.WorkerCode,
+                    WorkerSessionService.Instance.DisplayName,
+                    breakdown
+                );
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[FireAssessmentSummaryUI] Failed to save local training record: {ex.Message}");
+            }
         }
 
         public void HandleAssessmentCompleted(TrainingAttempt attempt, AssessmentResult assessment)
         {
             _currentViewModel = AssessmentSummaryViewModel.Build(attempt, assessment);
+
+            try
+            {
+                var breakdown = new List<string>();
+                if (_currentViewModel != null && _currentViewModel.StepSummaries != null)
+                {
+                    foreach (var c in _currentViewModel.StepSummaries)
+                    {
+                        string mark = c.IsSatisfied ? (c.PenaltyDeducted > 0 ? "[!]" : "[OK]") : "[X]";
+                        breakdown.Add($"{mark} {c.Title} ({c.PointsAwarded:0}/{c.MaxPoints:0})");
+                    }
+                }
+                else
+                {
+                    breakdown.Add("[OK] Hazard identification");
+                    breakdown.Add("[OK] Extinguisher procedure");
+                    breakdown.Add("[OK] Emergency evacuation");
+                }
+
+                LocalStorageService.Instance.SaveAttemptRecord(
+                    attempt,
+                    "Fire & Explosion Response",
+                    WorkerSessionService.Instance.WorkerCode,
+                    WorkerSessionService.Instance.DisplayName,
+                    breakdown
+                );
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[FireAssessmentSummaryUI] Immediate record save warning: {ex.Message}");
+            }
+
             if (_isSummaryRequested || _controller == null || _controller.StepNavigator == null)
             {
                 ShowSummary(_currentViewModel);
@@ -246,7 +311,7 @@ namespace IndustrialSafetyAR.UI
             if (_scoreBadgeText != null)
             {
                 string statusText = _currentViewModel.Passed ? loc.Get("assessment_status_passed", "PASS") : loc.Get("assessment_status_failed", "FAILED — RETAKE REQUIRED");
-                _scoreBadgeText.text = $"<size=120%><b>{_currentViewModel.ScoreDisplayText}</b></size>\n<size=85%><b>{statusText}</b></size>";
+                _scoreBadgeText.text = $"<size=120%><b>{_currentViewModel.ScoreDisplayText}</b></size>\n<size=70%><b>{statusText}</b></size>";
             }
 
             if (_metaText != null)
@@ -401,7 +466,7 @@ namespace IndustrialSafetyAR.UI
             _scoreBadgeText = scoreTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _scoreBadgeText.font = defaultFont;
             _scoreBadgeText.alignment = TextAlignmentOptions.Center;
-            _scoreBadgeText.fontSize = 34;
+            _scoreBadgeText.fontSize = 46;
             _scoreBadgeText.color = Color.white;
 
             // Metadata Row
@@ -476,7 +541,7 @@ namespace IndustrialSafetyAR.UI
             _breakdownText = bdTextObj.AddComponent<TextMeshProUGUI>();
             if (defaultFont != null) _breakdownText.font = defaultFont;
             _breakdownText.alignment = TextAlignmentOptions.TopLeft;
-            _breakdownText.fontSize = 17;
+            _breakdownText.fontSize = 20;
             _breakdownText.color = UITheme.TextPrimary;
 
             _isBreakdownVisible = true;

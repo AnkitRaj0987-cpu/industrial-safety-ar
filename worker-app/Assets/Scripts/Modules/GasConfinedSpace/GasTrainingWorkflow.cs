@@ -127,6 +127,28 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
         public bool IsPpeSelected => PpeSystem.IsPpeSelected;
         public bool IsPpeVerified => PpeSystem.IsPpeVerified;
 
+        private readonly List<TrainingEvent> _sessionEvents = new List<TrainingEvent>();
+        public IReadOnlyList<TrainingEvent> SessionEvents
+        {
+            get
+            {
+                lock (_sessionEvents)
+                {
+                    return _sessionEvents.ToArray();
+                }
+            }
+        }
+
+        private void RecordAndDispatch(ITrainingEventDispatcher dispatcher, TrainingEvent evt)
+        {
+            if (evt == null) return;
+            lock (_sessionEvents)
+            {
+                _sessionEvents.Add(evt);
+            }
+            dispatcher?.Dispatch(evt);
+        }
+
         public bool IsAttendantAssigned { get; private set; }
         public bool IsCommunicationChecked { get; private set; }
         public bool IsEntryDecisionMade { get; private set; }
@@ -254,7 +276,7 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
                 }
             };
 
-            dispatcher?.Dispatch(emittedEvent);
+            RecordAndDispatch(dispatcher, emittedEvent);
             SetStage(GasWorkflowStage.HazardRecognized);
             SetStage(GasWorkflowStage.AwaitingDangerZone);
             return true;
@@ -291,7 +313,7 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
                 }
             };
 
-            dispatcher?.Dispatch(emittedEvent);
+            RecordAndDispatch(dispatcher, emittedEvent);
             SetStage(GasWorkflowStage.DangerZoneMarked);
             SetStage(GasWorkflowStage.AwaitingAtmosphericTest);
             return true;
@@ -324,7 +346,7 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
                 }
             };
 
-            dispatcher?.Dispatch(emittedEvent);
+            RecordAndDispatch(dispatcher, emittedEvent);
             OnFeedbackChanged?.Invoke("DANGER: Stay outside the hazardous perimeter! Atmospheric testing required before approach.");
             return true;
         }
@@ -340,7 +362,9 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
                 return false;
             }
 
-            return AtmosphericSimulator.StartTest(ModuleId, ContentVersion, dispatcher, out emittedEvent);
+            bool res = AtmosphericSimulator.StartTest(ModuleId, ContentVersion, dispatcher, out emittedEvent);
+            if (res && emittedEvent != null) { lock (_sessionEvents) _sessionEvents.Add(emittedEvent); }
+            return res;
         }
 
         public bool TestSensor(GasSensorType sensorType, ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent, out string rejectionReason)
@@ -354,7 +378,9 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
                 return false;
             }
 
-            return AtmosphericSimulator.TestSensor(sensorType, ModuleId, ContentVersion, dispatcher, out emittedEvent, out rejectionReason);
+            bool res = AtmosphericSimulator.TestSensor(sensorType, ModuleId, ContentVersion, dispatcher, out emittedEvent, out rejectionReason);
+            if (res && emittedEvent != null) { lock (_sessionEvents) _sessionEvents.Add(emittedEvent); }
+            return res;
         }
 
         public bool CompleteAtmosphericAssessment(ITrainingEventDispatcher dispatcher, out TrainingEvent emittedEvent)
@@ -370,6 +396,7 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
                 return false;
             }
 
+            if (emittedEvent != null) { lock (_sessionEvents) _sessionEvents.Add(emittedEvent); }
             SetStage(GasWorkflowStage.AtmosphericTestCompleted);
             SetStage(GasWorkflowStage.AwaitingPpeSelection);
             return true;
@@ -391,9 +418,11 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
 
             if (!PpeSystem.SubmitPpeSelection(items, ModuleId, ContentVersion, dispatcher, out emittedEvent, out feedback))
             {
+                if (emittedEvent != null) { lock (_sessionEvents) _sessionEvents.Add(emittedEvent); }
                 return false;
             }
 
+            if (emittedEvent != null) { lock (_sessionEvents) _sessionEvents.Add(emittedEvent); }
             SetStage(GasWorkflowStage.PpeSelected);
             SetStage(GasWorkflowStage.AwaitingPpeVerification);
             return true;
@@ -415,9 +444,11 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
 
             if (!PpeSystem.VerifyPpe(sealCheckPassed, harnessFitPassed, cylinderPressurePassed, ModuleId, ContentVersion, dispatcher, out emittedEvent, out feedback))
             {
+                if (emittedEvent != null) { lock (_sessionEvents) _sessionEvents.Add(emittedEvent); }
                 return false;
             }
 
+            if (emittedEvent != null) { lock (_sessionEvents) _sessionEvents.Add(emittedEvent); }
             SetStage(GasWorkflowStage.PpeVerified);
             SetStage(GasWorkflowStage.AwaitingBuddySystem);
             return true;
@@ -454,7 +485,7 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
                 }
             };
 
-            dispatcher?.Dispatch(emittedEvent);
+            RecordAndDispatch(dispatcher, emittedEvent);
             SetStage(GasWorkflowStage.AttendantAssigned);
             return true;
         }
@@ -487,7 +518,7 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
                 }
             };
 
-            dispatcher?.Dispatch(emittedEvent);
+            RecordAndDispatch(dispatcher, emittedEvent);
             SetStage(GasWorkflowStage.CommunicationChecked);
             SetStage(GasWorkflowStage.AwaitingEntryDecision);
             return true;
@@ -535,7 +566,7 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
                     }
                 };
 
-                dispatcher?.Dispatch(emittedEvent);
+                RecordAndDispatch(dispatcher, emittedEvent);
                 SetStage(GasWorkflowStage.EntryDecisionMade);
                 return true;
             }
@@ -562,7 +593,7 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
                     }
                 };
 
-                dispatcher?.Dispatch(emittedEvent);
+                RecordAndDispatch(dispatcher, emittedEvent);
                 OnFeedbackChanged?.Invoke("CRITICAL SAFETY VIOLATION: Atmosphere is hazardous! DO NOT ENTER! Entry prohibited even with PPE.");
                 return false;
             }
@@ -596,7 +627,7 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
                 }
             };
 
-            dispatcher?.Dispatch(emittedEvent);
+            RecordAndDispatch(dispatcher, emittedEvent);
             SetStage(GasWorkflowStage.GasAlarmAcknowledged);
             return true;
         }
@@ -627,7 +658,7 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
                 }
             };
 
-            dispatcher?.Dispatch(emittedEvent);
+            RecordAndDispatch(dispatcher, emittedEvent);
             SetStage(GasWorkflowStage.EmergencyResponseStarted);
             return true;
         }
@@ -660,7 +691,7 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
                 }
             };
 
-            dispatcher?.Dispatch(emittedEvent);
+            RecordAndDispatch(dispatcher, emittedEvent);
             SetStage(GasWorkflowStage.SafeAreaReached);
             return true;
         }
@@ -693,7 +724,7 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
                 }
             };
 
-            dispatcher?.Dispatch(emittedEvent);
+            RecordAndDispatch(dispatcher, emittedEvent);
             SetStage(GasWorkflowStage.EmergencyProcedureCompleted);
             return true;
         }
@@ -726,7 +757,7 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
                 }
             };
 
-            dispatcher?.Dispatch(emittedEvent);
+            RecordAndDispatch(dispatcher, emittedEvent);
             SetStage(GasWorkflowStage.TrainingCompleted);
             EvaluateAssessment(dispatcher);
             return true;
@@ -753,12 +784,29 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
             {
                 events = TrainingEventBus.Instance.DispatchedEvents;
             }
-            else
+
+            var eventList = new List<TrainingEvent>();
+            if (events != null)
             {
-                events = new List<TrainingEvent>();
+                foreach (var evt in events)
+                {
+                    if (evt != null && (string.IsNullOrEmpty(evt.ModuleId) || string.Equals(evt.ModuleId, ModuleId, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        eventList.Add(evt);
+                    }
+                }
             }
 
-            return EvaluateAssessment(events, rubric ?? BoundRubric);
+            // Fallback to internal recorded session events if dispatcher had 0 module events
+            if (eventList.Count == 0 && _sessionEvents.Count > 0)
+            {
+                lock (_sessionEvents)
+                {
+                    eventList.AddRange(_sessionEvents);
+                }
+            }
+
+            return EvaluateAssessment(eventList, rubric ?? BoundRubric);
         }
 
         public AssessmentResult EvaluateAssessment(IEnumerable<TrainingEvent> events, RubricDefinition rubric = null)
@@ -881,6 +929,11 @@ namespace IndustrialSafetyAR.Modules.GasConfinedSpace
             IsCommunicationChecked = false;
             IsEntryDecisionMade = false;
             EntryDecisionResult = null;
+
+            lock (_sessionEvents)
+            {
+                _sessionEvents.Clear();
+            }
 
             AtmosphericSimulator.Reset();
             PpeSystem.Reset();

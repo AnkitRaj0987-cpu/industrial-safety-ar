@@ -301,13 +301,13 @@ namespace IndustrialSafetyAR.UI
 
             var font = GetDefaultFont();
 
-            // Main top card inside safe area
+            // Main top card inside safe area (compact ~260px banner)
             var bannerObj = new GameObject("GasTrainingHeaderBanner");
             bannerObj.transform.SetParent(canvas.transform, false);
 
             var rect = bannerObj.AddComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0.04f, 0.74f);
-            rect.anchorMax = new Vector2(0.96f, 0.98f);
+            rect.anchorMin = new Vector2(0.04f, 0.850f);
+            rect.anchorMax = new Vector2(0.96f, 0.985f);
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
 
@@ -318,7 +318,7 @@ namespace IndustrialSafetyAR.UI
             var accentObj = new GameObject("TopAccentStrip");
             accentObj.transform.SetParent(bannerObj.transform, false);
             var accentRect = accentObj.AddComponent<RectTransform>();
-            accentRect.anchorMin = new Vector2(0f, 0.98f);
+            accentRect.anchorMin = new Vector2(0f, 0.97f);
             accentRect.anchorMax = new Vector2(1f, 1f);
             accentRect.offsetMin = Vector2.zero;
             accentRect.offsetMax = Vector2.zero;
@@ -329,8 +329,8 @@ namespace IndustrialSafetyAR.UI
             _backButtonObj = new GameObject("BackButton");
             _backButtonObj.transform.SetParent(bannerObj.transform, false);
             var backRect = _backButtonObj.AddComponent<RectTransform>();
-            backRect.anchorMin = new Vector2(0.02f, 0.80f);
-            backRect.anchorMax = new Vector2(0.20f, 0.96f);
+            backRect.anchorMin = new Vector2(0.02f, 0.74f);
+            backRect.anchorMax = new Vector2(0.20f, 0.95f);
             backRect.offsetMin = Vector2.zero;
             backRect.offsetMax = Vector2.zero;
 
@@ -352,7 +352,7 @@ namespace IndustrialSafetyAR.UI
             _backButtonText = backLabelObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _backButtonText.font = font;
             _backButtonText.text = $"<b>{LocaleService.Instance.Get("btn_back", "← BACK")}</b>";
-            _backButtonText.fontSize = 20;
+            _backButtonText.fontSize = 17;
             _backButtonText.alignment = TextAlignmentOptions.Center;
             _backButtonText.color = UITheme.TextPrimary;
 
@@ -360,18 +360,18 @@ namespace IndustrialSafetyAR.UI
             var headerObj = new GameObject("HeaderTitle");
             headerObj.transform.SetParent(bannerObj.transform, false);
             var headerRect = headerObj.AddComponent<RectTransform>();
-            headerRect.anchorMin = new Vector2(0.21f, 0.80f);
-            headerRect.anchorMax = new Vector2(0.60f, 0.96f);
+            headerRect.anchorMin = new Vector2(0.21f, 0.74f);
+            headerRect.anchorMax = new Vector2(0.60f, 0.95f);
             headerRect.offsetMin = Vector2.zero;
             headerRect.offsetMax = Vector2.zero;
 
             _headerTitleText = headerObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _headerTitleText.font = font;
             _headerTitleText.text = LocaleService.Instance.Get("gas_header_title", "GAS LEAK & CONFINED SPACE SAFETY");
-            _headerTitleText.fontSize = 24;
+            _headerTitleText.fontSize = 18;
             _headerTitleText.enableAutoSizing = true;
-            _headerTitleText.fontSizeMin = 18;
-            _headerTitleText.fontSizeMax = 28;
+            _headerTitleText.fontSizeMin = 13;
+            _headerTitleText.fontSizeMax = 20;
             _headerTitleText.fontStyle = FontStyles.Bold;
             _headerTitleText.alignment = TextAlignmentOptions.Center;
             _headerTitleText.color = UITheme.TextPrimary;
@@ -380,8 +380,8 @@ namespace IndustrialSafetyAR.UI
             _alarmButtonObj = new GameObject("AlarmButton");
             _alarmButtonObj.transform.SetParent(bannerObj.transform, false);
             var alarmRect = _alarmButtonObj.AddComponent<RectTransform>();
-            alarmRect.anchorMin = new Vector2(0.61f, 0.80f);
-            alarmRect.anchorMax = new Vector2(0.85f, 0.96f);
+            alarmRect.anchorMin = new Vector2(0.61f, 0.74f);
+            alarmRect.anchorMax = new Vector2(0.85f, 0.95f);
             alarmRect.offsetMin = Vector2.zero;
             alarmRect.offsetMax = Vector2.zero;
 
@@ -403,10 +403,10 @@ namespace IndustrialSafetyAR.UI
             _alarmButtonText = alarmLabelObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _alarmButtonText.font = font;
             _alarmButtonText.text = "<b>ALARM ON</b>";
-            _alarmButtonText.fontSize = 18;
+            _alarmButtonText.fontSize = 14;
             _alarmButtonText.enableAutoSizing = true;
-            _alarmButtonText.fontSizeMin = 14;
-            _alarmButtonText.fontSizeMax = 22;
+            _alarmButtonText.fontSizeMin = 11;
+            _alarmButtonText.fontSizeMax = 16;
             _alarmButtonText.alignment = TextAlignmentOptions.Center;
             _alarmButtonText.color = UITheme.DangerText;
             UpdateAlarmButtonVisual();
@@ -415,8 +415,8 @@ namespace IndustrialSafetyAR.UI
             _soundButtonObj = new GameObject("SoundButton");
             _soundButtonObj.transform.SetParent(bannerObj.transform, false);
             var soundRect = _soundButtonObj.AddComponent<RectTransform>();
-            soundRect.anchorMin = new Vector2(0.86f, 0.80f);
-            soundRect.anchorMax = new Vector2(0.98f, 0.96f);
+            soundRect.anchorMin = new Vector2(0.86f, 0.74f);
+            soundRect.anchorMax = new Vector2(0.98f, 0.95f);
             soundRect.offsetMin = Vector2.zero;
             soundRect.offsetMax = Vector2.zero;
 
@@ -438,69 +438,69 @@ namespace IndustrialSafetyAR.UI
             _soundButtonText = soundLabelObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _soundButtonText.font = font;
             _soundButtonText.text = "<b>SND</b>";
-            _soundButtonText.fontSize = 18;
+            _soundButtonText.fontSize = 15;
             _soundButtonText.alignment = TextAlignmentOptions.Center;
             _soundButtonText.color = UITheme.TextSecondary;
             UpdateSoundButtonVisual();
 
-            // Step Badge (e.g. STEP 1/9 • RECOGNIZE GAS HAZARD)
+            // Step Badge (row 2 left)
             var badgeObj = new GameObject("StepBadge");
             badgeObj.transform.SetParent(bannerObj.transform, false);
             var badgeRect = badgeObj.AddComponent<RectTransform>();
-            badgeRect.anchorMin = new Vector2(0.04f, 0.63f);
-            badgeRect.anchorMax = new Vector2(0.96f, 0.79f);
+            badgeRect.anchorMin = new Vector2(0.03f, 0.52f);
+            badgeRect.anchorMax = new Vector2(0.60f, 0.72f);
             badgeRect.offsetMin = Vector2.zero;
             badgeRect.offsetMax = Vector2.zero;
 
             _stepBadgeText = badgeObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _stepBadgeText.font = font;
             _stepBadgeText.text = "<color=#EA580C><b>STEP 1/9</b></color> • RECOGNIZE GAS HAZARD";
-            _stepBadgeText.fontSize = 26;
+            _stepBadgeText.fontSize = 20;
             _stepBadgeText.fontStyle = FontStyles.Bold;
-            _stepBadgeText.alignment = TextAlignmentOptions.Center;
+            _stepBadgeText.alignment = TextAlignmentOptions.MidlineLeft;
             _stepBadgeText.color = UITheme.TextPrimary;
 
-            // Progress Indicator (e.g. ● ○ ○ ○ ○ ○ ○ ○ ○   1 / 9)
+            // Progress Indicator (row 2 right)
             var progObj = new GameObject("ProgressIndicator");
             progObj.transform.SetParent(bannerObj.transform, false);
             var progRect = progObj.AddComponent<RectTransform>();
-            progRect.anchorMin = new Vector2(0.04f, 0.49f);
-            progRect.anchorMax = new Vector2(0.96f, 0.62f);
+            progRect.anchorMin = new Vector2(0.62f, 0.52f);
+            progRect.anchorMax = new Vector2(0.97f, 0.72f);
             progRect.offsetMin = Vector2.zero;
             progRect.offsetMax = Vector2.zero;
 
             _progressText = progObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _progressText.font = font;
             _progressText.text = "● ○ ○ ○ ○ ○ ○ ○ ○   1 / 9";
-            _progressText.fontSize = 22;
-            _progressText.alignment = TextAlignmentOptions.Center;
+            _progressText.fontSize = 17;
+            _progressText.alignment = TextAlignmentOptions.MidlineRight;
             _progressText.color = UITheme.TextSecondary;
 
-            // Instruction Prompt Text
+            // Instruction Prompt Text (row 3)
             var textObj = new GameObject("PromptText");
             textObj.transform.SetParent(bannerObj.transform, false);
             var textRect = textObj.AddComponent<RectTransform>();
-            textRect.anchorMin = new Vector2(0.04f, 0.23f);
-            textRect.anchorMax = new Vector2(0.96f, 0.48f);
+            textRect.anchorMin = new Vector2(0.03f, 0.24f);
+            textRect.anchorMax = new Vector2(0.97f, 0.50f);
             textRect.offsetMin = Vector2.zero;
             textRect.offsetMax = Vector2.zero;
 
             _promptText = textObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _promptText.font = font;
-            _promptText.fontSize = 28;
+            _promptText.fontSize = 22;
             _promptText.enableAutoSizing = true;
-            _promptText.fontSizeMin = 20;
-            _promptText.fontSizeMax = 32;
+            _promptText.fontSizeMin = 16;
+            _promptText.fontSizeMax = 26;
             _promptText.alignment = TextAlignmentOptions.Center;
             _promptText.color = UITheme.TextPrimary;
             _promptText.text = "Initializing Gas module...";
 
-            // State Feedback Sub-banner
+            // State Feedback Sub-banner (row 4)
             var feedbackBoxObj = new GameObject("StateFeedbackBanner");
             feedbackBoxObj.transform.SetParent(bannerObj.transform, false);
             var fbBoxRect = feedbackBoxObj.AddComponent<RectTransform>();
-            fbBoxRect.anchorMin = new Vector2(0.03f, 0.03f);
-            fbBoxRect.anchorMax = new Vector2(0.97f, 0.21f);
+            fbBoxRect.anchorMin = new Vector2(0.03f, 0.02f);
+            fbBoxRect.anchorMax = new Vector2(0.97f, 0.22f);
             fbBoxRect.offsetMin = Vector2.zero;
             fbBoxRect.offsetMax = Vector2.zero;
 
@@ -517,10 +517,10 @@ namespace IndustrialSafetyAR.UI
 
             _feedbackText = feedbackTextObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _feedbackText.font = font;
-            _feedbackText.fontSize = 22;
+            _feedbackText.fontSize = 18;
             _feedbackText.enableAutoSizing = true;
-            _feedbackText.fontSizeMin = 18;
-            _feedbackText.fontSizeMax = 26;
+            _feedbackText.fontSizeMin = 14;
+            _feedbackText.fontSizeMax = 22;
             _feedbackText.alignment = TextAlignmentOptions.Center;
             _feedbackText.color = UITheme.TextPrimary;
             _feedbackText.text = "Scanning floor surfaces...";
@@ -535,13 +535,13 @@ namespace IndustrialSafetyAR.UI
 
             var font = GetDefaultFont();
 
-            // Action container inside bottom safe area
+            // Action container inside bottom safe area (compact ~384px height vs 690px!)
             _actionContainer = new GameObject("TrainingActionContainer");
             _actionContainer.transform.SetParent(canvas.transform, false);
 
             var rect = _actionContainer.AddComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.04f, 0.02f);
-            rect.anchorMax = new Vector2(0.96f, 0.38f);
+            rect.anchorMax = new Vector2(0.96f, 0.22f);
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
 
@@ -549,17 +549,17 @@ namespace IndustrialSafetyAR.UI
             _optionsContainer = new GameObject("OptionsContainer");
             _optionsContainer.transform.SetParent(_actionContainer.transform, false);
             var optRect = _optionsContainer.AddComponent<RectTransform>();
-            optRect.anchorMin = new Vector2(0f, 0.24f);
-            optRect.anchorMax = new Vector2(1f, 1f);
+            optRect.anchorMin = Vector2.zero;
+            optRect.anchorMax = Vector2.one;
             optRect.offsetMin = Vector2.zero;
             optRect.offsetMax = Vector2.zero;
 
-            // 1. Step 1 Action Button
+            // 1. Step 1 Action Button (compact, content-driven height)
             _step1ActionBtnObj = new GameObject("Step1HazardActionButton");
             _step1ActionBtnObj.transform.SetParent(_optionsContainer.transform, false);
             var s1Rect = _step1ActionBtnObj.AddComponent<RectTransform>();
-            s1Rect.anchorMin = new Vector2(0.05f, 0.15f);
-            s1Rect.anchorMax = new Vector2(0.95f, 0.85f);
+            s1Rect.anchorMin = new Vector2(0.04f, 0.22f);
+            s1Rect.anchorMax = new Vector2(0.96f, 0.78f);
             s1Rect.offsetMin = Vector2.zero;
             s1Rect.offsetMax = Vector2.zero;
 
@@ -580,15 +580,16 @@ namespace IndustrialSafetyAR.UI
             if (font != null) _step1ActionBtnText.font = font;
             _step1ActionBtnText.text = "<b>IDENTIFY GAS HAZARD →</b>";
             _step1ActionBtnText.alignment = TextAlignmentOptions.Center;
-            _step1ActionBtnText.fontSize = 28;
+            _step1ActionBtnText.fontSize = 24;
+            _step1ActionBtnText.fontStyle = FontStyles.Bold;
             _step1ActionBtnText.color = UITheme.TextLightOnDark;
 
-            // 2. Step 2 Action Button
+            // 2. Step 2 Action Button (compact, content-driven height)
             _step2ActionBtnObj = new GameObject("Step2DangerZoneActionButton");
             _step2ActionBtnObj.transform.SetParent(_optionsContainer.transform, false);
             var s2Rect = _step2ActionBtnObj.AddComponent<RectTransform>();
-            s2Rect.anchorMin = new Vector2(0.05f, 0.15f);
-            s2Rect.anchorMax = new Vector2(0.95f, 0.85f);
+            s2Rect.anchorMin = new Vector2(0.04f, 0.22f);
+            s2Rect.anchorMax = new Vector2(0.96f, 0.78f);
             s2Rect.offsetMin = Vector2.zero;
             s2Rect.offsetMax = Vector2.zero;
 
@@ -609,7 +610,8 @@ namespace IndustrialSafetyAR.UI
             if (font != null) _step2ActionBtnText.font = font;
             _step2ActionBtnText.text = "<b>MARK 3m DANGER PERIMETER →</b>";
             _step2ActionBtnText.alignment = TextAlignmentOptions.Center;
-            _step2ActionBtnText.fontSize = 28;
+            _step2ActionBtnText.fontSize = 24;
+            _step2ActionBtnText.fontStyle = FontStyles.Bold;
             _step2ActionBtnText.color = UITheme.TextLightOnDark;
             _step2ActionBtnObj.SetActive(false);
 
@@ -639,7 +641,7 @@ namespace IndustrialSafetyAR.UI
             _nextButtonObj.transform.SetParent(_actionContainer.transform, false);
             var nextRect = _nextButtonObj.AddComponent<RectTransform>();
             nextRect.anchorMin = new Vector2(0f, 0.02f);
-            nextRect.anchorMax = new Vector2(1f, 0.22f);
+            nextRect.anchorMax = new Vector2(1f, 0.26f);
             nextRect.offsetMin = Vector2.zero;
             nextRect.offsetMax = Vector2.zero;
 
@@ -2394,6 +2396,27 @@ namespace IndustrialSafetyAR.UI
                         _nextButtonText.text = $"<b>{nextLabel}</b>";
                         _nextButtonText.color = UITheme.TextLightOnDark;
                     }
+                }
+            }
+
+            if (_optionsContainer != null)
+            {
+                var optRect = _optionsContainer.GetComponent<RectTransform>();
+                if (optRect != null)
+                {
+                    bool isNextActive = _nextButtonObj != null && _nextButtonObj.activeSelf;
+                    if (isNextActive)
+                    {
+                        optRect.anchorMin = new Vector2(0f, 0.28f);
+                        optRect.anchorMax = new Vector2(1f, 1f);
+                    }
+                    else
+                    {
+                        optRect.anchorMin = Vector2.zero;
+                        optRect.anchorMax = Vector2.one;
+                    }
+                    optRect.offsetMin = Vector2.zero;
+                    optRect.offsetMax = Vector2.zero;
                 }
             }
 

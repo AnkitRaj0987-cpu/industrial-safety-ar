@@ -72,6 +72,7 @@
     <Compile Include="Assets\Scripts\Assessment\LocalAssessmentEngine.cs" />
     <Compile Include="Assets\Scripts\UI\TapGatedButton.cs" />
     <Compile Include="Assets\Scripts\Modules\GasConfinedSpace\GasAtmosphericSimulator.cs" />
+    <Compile Include="Assets\Scripts\Core\LocalStorageService.cs" />
     <Compile Include="Assets\Scripts\Tests\GasTrainingEventTests.cs" />
     <Compile Include="Assets\Scripts\AR\ARModeController.cs" />
     <Compile Include="Assets\UI\Theme\UITheme.cs" />
@@ -79,7 +80,9 @@
     <Compile Include="Assets\Scripts\Modules\GasConfinedSpace\GasPpeSystem.cs" />
     <Compile Include="Assets\Scripts\Modules\GasConfinedSpace\GasHazardMarker.cs" />
     <Compile Include="Assets\Scripts\Modules\FireExplosion\TouchGestureFilter.cs" />
+    <Compile Include="Assets\Scripts\Core\SyncService.cs" />
     <Compile Include="Assets\Scripts\Modules\FireExplosion\AssemblyPointMarker.cs" />
+    <Compile Include="Assets\Scripts\Core\WorkerSessionService.cs" />
     <Compile Include="Assets\Scripts\Modules\GasConfinedSpace\GasEvacuationMarker.cs" />
     <Compile Include="Assets\Scripts\Modules\FireExplosion\FireTrainingWorkflow.cs" />
     <Compile Include="Assets\Scripts\Modules\GasConfinedSpace\GasAttendantMarker.cs" />

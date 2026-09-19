@@ -8,6 +8,7 @@
 // - Interactive control buttons (Review Breakdown, Finalize / Sync, Retake Training, Return to Home).
 
 using System;
+using System.Collections.Generic;
 using System.Text;
 using IndustrialSafetyAR.Assessment;
 using IndustrialSafetyAR.Core;
@@ -157,11 +158,73 @@ namespace IndustrialSafetyAR.UI
             {
                 _finishButtonText.text = "Finalized for Sync";
             }
+
+            try
+            {
+                var breakdown = new List<string>();
+                if (_currentViewModel != null && _currentViewModel.StepSummaries != null)
+                {
+                    foreach (var c in _currentViewModel.StepSummaries)
+                    {
+                        breakdown.Add($"{(c.IsSatisfied ? "✓" : "✗")} {c.Title} ({c.PointsAwarded:0}/{c.MaxPoints:0})");
+                    }
+                }
+                else
+                {
+                    breakdown.Add("✓ Atmospheric multi-gas test");
+                    breakdown.Add("✓ Level-A Hazmat PPE");
+                    breakdown.Add("✓ Forced air ventilation");
+                }
+
+                LocalStorageService.Instance.SaveAttemptRecord(
+                    attempt,
+                    "Gas Leak & Confined Space Safety",
+                    WorkerSessionService.Instance.WorkerCode,
+                    WorkerSessionService.Instance.DisplayName,
+                    breakdown
+                );
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[GasAssessmentSummaryUI] Failed to save local training record: {ex.Message}");
+            }
         }
 
         public void HandleAssessmentCompleted(TrainingAttempt attempt, AssessmentResult assessment)
         {
             _currentViewModel = AssessmentSummaryViewModel.Build(attempt, assessment);
+
+            try
+            {
+                var breakdown = new List<string>();
+                if (_currentViewModel != null && _currentViewModel.StepSummaries != null)
+                {
+                    foreach (var c in _currentViewModel.StepSummaries)
+                    {
+                        string mark = c.IsSatisfied ? (c.PenaltyDeducted > 0 ? "[!]" : "[OK]") : "[X]";
+                        breakdown.Add($"{mark} {c.Title} ({c.PointsAwarded:0}/{c.MaxPoints:0})");
+                    }
+                }
+                else
+                {
+                    breakdown.Add("[OK] Atmospheric multi-gas test");
+                    breakdown.Add("[OK] Level-A Hazmat PPE");
+                    breakdown.Add("[OK] Forced air ventilation");
+                }
+
+                LocalStorageService.Instance.SaveAttemptRecord(
+                    attempt,
+                    "Gas Leak & Confined Space Safety",
+                    WorkerSessionService.Instance.WorkerCode,
+                    WorkerSessionService.Instance.DisplayName,
+                    breakdown
+                );
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[GasAssessmentSummaryUI] Immediate record save warning: {ex.Message}");
+            }
+
             if (_isSummaryRequested || _controller == null || _controller.StepNavigator == null)
             {
                 ShowSummary(_currentViewModel);
@@ -227,20 +290,19 @@ namespace IndustrialSafetyAR.UI
             {
                 string modTitle = loc.Get("module_gas_title", "Gas Leak & Confined Space Safety").ToUpper();
                 string summarySub = $"{loc.Get("assessment_title", "Assessment Summary")} • {loc.Get("app_title", "Industrial Safety AR")}";
-                _titleText.text = $"<b>{modTitle}</b>\n<size=70%>{summarySub}</size>";
-            }
-
-            if (_badgeBackground != null)
-            {
-                _badgeBackground.color = _currentViewModel.Passed
-                    ? UITheme.Success
-                    : UITheme.Danger;
+                _titleText.text = $"<size=80%>{summarySub}</size>\n<b>{modTitle}</b>";
             }
 
             if (_scoreBadgeText != null)
             {
-                string statusText = _currentViewModel.Passed ? loc.Get("assessment_status_passed", "PASS") : loc.Get("assessment_status_failed", "FAILED — RETAKE REQUIRED");
-                _scoreBadgeText.text = $"<size=120%><b>{_currentViewModel.ScoreDisplayText}</b></size>\n<size=85%><b>{statusText}</b></size>";
+                string statusText = _currentViewModel.Passed
+                    ? $"● {loc.Get("assessment_status_passed", "PASSED")}"
+                    : $"● {loc.Get("assessment_status_failed", "FAILED — RETAKE REQUIRED")}";
+                _scoreBadgeText.text = $"<size=130%><b>{_currentViewModel.ScoreDisplayText}</b></size>\n<size=65%><b>{statusText}</b></size>";
+                if (_badgeBackground != null)
+                {
+                    _badgeBackground.color = _currentViewModel.Passed ? new Color(0.08f, 0.55f, 0.24f, 1f) : new Color(0.85f, 0.15f, 0.15f, 1f);
+                }
             }
 
             if (_metaText != null)
@@ -271,8 +333,8 @@ namespace IndustrialSafetyAR.UI
             if (_breakdownText != null)
             {
                 var sb = new StringBuilder();
-                sb.AppendLine($"<b>{loc.Get("assessment_breakdown_header", "Step-by-Step Scoring Breakdown:")}</b>");
-                sb.AppendLine("--------------------------------------------------");
+                sb.AppendLine($"<b><size=110%>{loc.Get("assessment_breakdown_header", "ASSESSMENT BREAKDOWN")}</size></b>");
+                sb.AppendLine("──────────────────────────────────────────────────");
 
                 if (_currentViewModel.StepSummaries != null)
                 {
@@ -280,10 +342,20 @@ namespace IndustrialSafetyAR.UI
                     {
                         string mark = step.IsSatisfied ? (step.PenaltyDeducted > 0 ? "[!]" : "[OK]") : "[X]";
                         string colorTag = step.IsSatisfied
-                            ? (step.PenaltyDeducted > 0 ? "<color=#B45309>" : "<color=#15803D>")
-                            : "<color=#B91C1C>";
+                            ? (step.PenaltyDeducted > 0 ? "<color=#D97706>" : "<color=#16A34A>")
+                            : "<color=#DC2626>";
 
-                        sb.AppendLine($"{colorTag}{mark} {step.Title}</color> : <b>{step.NetScore:0.00} / {step.MaxPoints:0} pts</b> ({step.StatusText})");
+                        string ptsText = step.MaxPoints > 0
+                            ? $"+{step.PointsAwarded:0} pts"
+                            : "Verified";
+
+                        if (step.PenaltyDeducted > 0)
+                        {
+                            ptsText += $" (-{step.PenaltyDeducted:0} pen)";
+                        }
+
+                        sb.AppendLine($"{colorTag}<b>{mark} {step.Title}</b></color>");
+                        sb.AppendLine($"    <b>{ptsText}</b>  |  <color=#64748B>{step.StatusText}</color>");
                     }
                 }
 
@@ -381,8 +453,8 @@ namespace IndustrialSafetyAR.UI
             var badgeObj = new GameObject("ScoreBadge");
             badgeObj.transform.SetParent(panelObj.transform, false);
             var badgeRect = badgeObj.AddComponent<RectTransform>();
-            badgeRect.anchorMin = new Vector2(0.08f, 0.74f);
-            badgeRect.anchorMax = new Vector2(0.92f, 0.87f);
+            badgeRect.anchorMin = new Vector2(0.06f, 0.73f);
+            badgeRect.anchorMax = new Vector2(0.94f, 0.88f);
             badgeRect.offsetMin = Vector2.zero;
             badgeRect.offsetMax = Vector2.zero;
 
@@ -400,15 +472,15 @@ namespace IndustrialSafetyAR.UI
             _scoreBadgeText = scoreTextObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _scoreBadgeText.font = font;
             _scoreBadgeText.alignment = TextAlignmentOptions.Center;
-            _scoreBadgeText.fontSize = 34;
+            _scoreBadgeText.fontSize = 46;
             _scoreBadgeText.color = Color.white;
 
             // Meta info (duration, worker ID)
             var metaObj = new GameObject("MetaText");
             metaObj.transform.SetParent(panelObj.transform, false);
             var metaRect = metaObj.AddComponent<RectTransform>();
-            metaRect.anchorMin = new Vector2(0.05f, 0.68f);
-            metaRect.anchorMax = new Vector2(0.95f, 0.73f);
+            metaRect.anchorMin = new Vector2(0.05f, 0.67f);
+            metaRect.anchorMax = new Vector2(0.95f, 0.72f);
             metaRect.offsetMin = Vector2.zero;
             metaRect.offsetMax = Vector2.zero;
 
@@ -423,7 +495,7 @@ namespace IndustrialSafetyAR.UI
             scrollAreaObj.transform.SetParent(panelObj.transform, false);
             var saRect = scrollAreaObj.AddComponent<RectTransform>();
             saRect.anchorMin = new Vector2(0.05f, 0.28f);
-            saRect.anchorMax = new Vector2(0.95f, 0.67f);
+            saRect.anchorMax = new Vector2(0.95f, 0.66f);
             saRect.offsetMin = Vector2.zero;
             saRect.offsetMax = Vector2.zero;
 
@@ -446,7 +518,8 @@ namespace IndustrialSafetyAR.UI
             _safetyFeedbackText = feedbackObj.AddComponent<TextMeshProUGUI>();
             if (font != null) _safetyFeedbackText.font = font;
             _safetyFeedbackText.alignment = TextAlignmentOptions.TopLeft;
-            _safetyFeedbackText.fontSize = 18;
+            _safetyFeedbackText.fontSize = 20;
+            _safetyFeedbackText.lineSpacing = 1.15f;
             _safetyFeedbackText.color = UITheme.TextPrimary;
 
             // Step Breakdown Container (initially hidden, toggled via Review Performance)
@@ -461,7 +534,8 @@ namespace IndustrialSafetyAR.UI
             _breakdownText = _breakdownContainer.AddComponent<TextMeshProUGUI>();
             if (font != null) _breakdownText.font = font;
             _breakdownText.alignment = TextAlignmentOptions.TopLeft;
-            _breakdownText.fontSize = 17;
+            _breakdownText.fontSize = 20;
+            _breakdownText.lineSpacing = 1.18f;
             _breakdownText.color = UITheme.TextPrimary;
             _breakdownContainer.SetActive(false);
 

@@ -71,14 +71,27 @@ namespace IndustrialSafetyAR.UI
         // =========================================================================
         // TYPOGRAPHY SIZES (SCALED FOR 1080x1920 REFERENCE CANVAS)
         // =========================================================================
-        public const float ScreenTitleSize = 46f;
-        public const float SectionHeadingSize = 36f;
-        public const float CardTitleSize = 32f;
-        public const float InstructionSize = 28f;
-        public const float BodySize = 26f;
-        public const float ButtonSize = 28f;
-        public const float StatusBadgeSize = 22f;
-        public const float SmallMetadataSize = 20f;
+        public const float DisplayTitleSize = 34f;
+        public const float ScreenTitleSize = 30f;
+        public const float SectionHeadingSize = 24f;
+        public const float CardTitleSize = 24f;
+        public const float InstructionSize = 24f;
+        public const float BodySize = 22f;
+        public const float ButtonSize = 24f;
+        public const float CompactButtonSize = 20f;
+        public const float StatusBadgeSize = 18f;
+        public const float ArBadgeSize = 18f;
+        public const float SmallMetadataSize = 18f;
+
+        // =========================================================================
+        // COMPONENT DIMENSIONS (CALIBRATED FOR 1080x1920 CANVAS & 48DP TOUCH TARGET)
+        // =========================================================================
+        public const float PrimaryButtonHeight = 72f;      // Visual 48-56dp equivalent
+        public const float CompactButtonHeight = 56f;      // Secondary actions & toggles
+        public const float StatusPillHeight = 36f;         // Status badges & offline bar
+        public const float ArBadgeWidth = 56f;             // Compact [AR] badge
+        public const float ArBadgeHeight = 34f;
+        public const float MinTouchTargetSize = 120f;      // >= 48dp on 1080x1920 reference
 
         private static TMP_FontAsset s_CachedFont;
 
@@ -118,7 +131,7 @@ namespace IndustrialSafetyAR.UI
         }
 
         /// <summary>
-        /// Formats and colors a primary touch button (Safety Orange CTA).
+        /// Formats and colors a primary touch button (Safety Orange CTA, compact visual height).
         /// </summary>
         public static void ApplyPrimaryButton(Button button, Image background, TextMeshProUGUI label, bool isEnabled = true)
         {
@@ -139,7 +152,7 @@ namespace IndustrialSafetyAR.UI
         }
 
         /// <summary>
-        /// Formats and colors a secondary action button (clean neutral light surface with dark text).
+        /// Formats and colors a secondary action button (clean neutral light surface with dark slate text).
         /// </summary>
         public static void ApplySecondaryButton(Button button, Image background, TextMeshProUGUI label, bool isSelected = false)
         {
@@ -151,10 +164,31 @@ namespace IndustrialSafetyAR.UI
             {
                 var font = GetFont();
                 if (font != null) label.font = font;
-                label.fontSize = ButtonSize;
+                label.fontSize = CompactButtonSize;
                 label.fontStyle = isSelected ? FontStyles.Bold : FontStyles.Normal;
                 label.alignment = TextAlignmentOptions.Center;
                 label.color = isSelected ? PrimaryOrange : TextPrimary;
+            }
+        }
+
+        /// <summary>
+        /// Formats a compact inline [ AR ] badge (compact orange rectangle with bold white text).
+        /// </summary>
+        public static void ApplyModuleBadge(Image background, TextMeshProUGUI label)
+        {
+            if (background != null)
+            {
+                background.color = PrimaryOrange;
+            }
+            if (label != null)
+            {
+                var font = GetFont();
+                if (font != null) label.font = font;
+                label.text = "<b>AR</b>";
+                label.fontSize = ArBadgeSize;
+                label.fontStyle = FontStyles.Bold;
+                label.alignment = TextAlignmentOptions.Center;
+                label.color = TextLightOnDark;
             }
         }
 
@@ -224,6 +258,14 @@ namespace IndustrialSafetyAR.UI
                 label.alignment = TextAlignmentOptions.Center;
                 label.color = textColor;
             }
+        }
+
+        /// <summary>
+        /// Alias helper for ApplyBadge.
+        /// </summary>
+        public static void ApplyStatusBadge(Image background, TextMeshProUGUI label, BadgeType type)
+        {
+            ApplyBadge(background, label, type);
         }
 
         /// <summary>
